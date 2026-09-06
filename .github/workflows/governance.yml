@@ -1,0 +1,50 @@
+name: Governance gates
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fast-lane-policy:
+    name: FAST-LANE policy drift
+    uses: rozkalnsandris/ops-workflows/.github/workflows/fast-lane-policy-drift.yml@3836da03685e0feca9232d5ddb914497ac72a2f7
+    with:
+      canonical_policy_sha: 3836da03685e0feca9232d5ddb914497ac72a2f7
+
+  github-only-policy:
+    name: GITHUB-ONLY policy drift
+    uses: rozkalnsandris/ops-workflows/.github/workflows/github-only-policy-drift.yml@3836da03685e0feca9232d5ddb914497ac72a2f7
+    with:
+      canonical_policy_sha: 3836da03685e0feca9232d5ddb914497ac72a2f7
+
+  public-repository-baseline:
+    name: Public repository automation baseline
+    uses: rozkalnsandris/ops-workflows/.github/workflows/public-repo-baseline.yml@3836da03685e0feca9232d5ddb914497ac72a2f7
+    with:
+      forbid_self_hosted: true
+
+  merge-gate:
+    name: FAST-LANE Merge Gate
+    runs-on: ubuntu-24.04
+    needs:
+      - fast-lane-policy
+      - github-only-policy
+      - public-repository-baseline
+    if: ${{ always() }}
+    steps:
+      - name: Require all governance checks
+        env:
+          FAST_LANE_RESULT: ${{ needs.fast-lane-policy.result }}
+          GITHUB_ONLY_RESULT: ${{ needs.github-only-policy.result }}
+          PUBLIC_BASELINE_RESULT: ${{ needs.public-repository-baseline.result }}
+        run: |
+          set -euo pipefail
+          test "$FAST_LANE_RESULT" = success
+          test "$GITHUB_ONLY_RESULT" = success
+          test "$PUBLIC_BASELINE_RESULT" = success
