@@ -113,6 +113,9 @@ Startup contract: `rozkalnsandris/ops-workflows/docs/START_GITHUB_ONLY_V1.md`. R
 - Revalidate mutable GitHub state immediately before state-dependent writes.
 - No open issue alone is not a STOP. Do not invent speculative work.
 - Unresolved equally authoritative lanes => `AMBIGUOUS_CANONICAL_LANE`.
+- Final routing is one of `READY_FOR_MERGE`, `PARKED`, `STOP_ERROR`, `NEW_SCOPE_OR_RISK`, `AMBIGUOUS_CANONICAL_LANE`, or `IDLE`.
+- `PARKED` is session-only. Executor availability is session capability, not READY rollout eligibility.
+- Executor unavailability alone must not change READY to `BLOCKED`; use `BLOCKED` only for rollout eligibility or contract failure.
 - Session-only executor availability never rewrites READY eligibility.
 <!-- END START-GITHUB-ONLY-V1-MANAGED -->
 
