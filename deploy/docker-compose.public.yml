@@ -1,0 +1,93 @@
+services:
+  schema-init:
+    build:
+      context: ..
+    command: ["rozkalns-weather", "init-database"]
+    environment:
+      WEATHER_RUNTIME_MODE: public-only
+      DATABASE_INIT_MODE: require-existing
+      DATABASE_URL: sqlite:///data/weather.db
+      HOME_TIMEZONE: Europe/Berlin
+    volumes:
+      - weather_data:/app/data
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    restart: "no"
+    profiles: ["bootstrap"]
+
+  weather:
+    build:
+      context: ..
+    environment:
+      WEATHER_RUNTIME_MODE: public-only
+      DATABASE_INIT_MODE: require-existing
+      DATABASE_URL: sqlite:///data/weather.db
+      HOME_TIMEZONE: Europe/Berlin
+    ports:
+      - "${WEATHER_PORT:-9180}:8000"
+    volumes:
+      - weather_data:/app/data
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/ready', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    restart: unless-stopped
+
+  public-ingest:
+    build:
+      context: ..
+    command: ["rozkalns-weather", "ingest-public"]
+    environment:
+      WEATHER_RUNTIME_MODE: public-only
+      DATABASE_INIT_MODE: require-existing
+      DATABASE_URL: sqlite:///data/weather.db
+      HOME_TIMEZONE: Europe/Berlin
+    volumes:
+      - weather_data:/app/data
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    restart: "no"
+    profiles: ["jobs"]
+
+  readiness:
+    build:
+      context: ..
+    command: ["rozkalns-weather", "readiness"]
+    environment:
+      WEATHER_RUNTIME_MODE: public-only
+      DATABASE_INIT_MODE: require-existing
+      DATABASE_URL: sqlite:///data/weather.db
+      HOME_TIMEZONE: Europe/Berlin
+    volumes:
+      - weather_data:/app/data
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    restart: "no"
+    profiles: ["checks"]
+
+volumes:
+  weather_data:

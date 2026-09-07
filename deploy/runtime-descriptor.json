@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "repository": "rozkalnsandris/rozkalns_weather",
+  "runtime_class": "public-only-rpi5",
+  "target_alias": "rozkalns-weather-public-rpi5",
+  "execution_location_class": "trusted-home-host",
+  "source_identity": {
+    "required": "immutable_40_char_commit_sha",
+    "must_be_merged_to_main": true,
+    "exact_sha_ci_required": true
+  },
+  "operation_id_candidate": "rozkalns-weather.public-runtime-release.v1",
+  "packaging": {
+    "kind": "docker-compose",
+    "compose_file": "deploy/docker-compose.public.yml",
+    "application_service": "weather",
+    "schema_init_service": "schema-init",
+    "public_ingest_service": "public-ingest",
+    "readiness_service": "readiness",
+    "container_user_uid": 10001,
+    "container_port": 8000,
+    "default_host_port": 9180
+  },
+  "persistent_data": {
+    "class": "docker_named_volume",
+    "logical_name": "weather_data",
+    "container_mount": "/app/data",
+    "database_url": "sqlite:///data/weather.db",
+    "corpus_deletion_allowed": false,
+    "implicit_backfill_on_start": false
+  },
+  "health": {
+    "liveness_endpoint": "/health",
+    "readiness_endpoint": "/ready",
+    "provider_health_endpoint": "/api/health/providers",
+    "readiness_schema_version": 1
+  },
+  "runtime_contract": {
+    "runtime_mode": "public-only",
+    "database_init_mode": "require-existing",
+    "weathernext_required": false,
+    "home_coordinates_required": false,
+    "dwd_warning_authority": true
+  },
+  "future_rpi5_adapter": {
+    "authorization_class": "STRICT",
+    "ordinary_live_all_eligible": false,
+    "baseline_resolver_candidate": "rozkalns-weather.public-runtime-baseline.v1",
+    "mutation_budget_candidates": [
+      {"category": "filesystem.release-materialization", "max_operations": 1},
+      {"category": "docker.named-volume-ensure", "max_operations": 1},
+      {"category": "docker.compose-build", "max_operations": 1},
+      {"category": "docker.compose-application-apply", "max_operations": 1},
+      {"category": "systemd.public-ingest-schedule-install-or-update", "max_operations": 1}
+    ],
+    "explicitly_separate_data_mutations": [
+      "sqlite.schema-init",
+      "historical.public-corpus-backfill",
+      "sqlite.backup-or-restore"
+    ],
+    "exclusions": [
+      "arbitrary shell command",
+      "arbitrary path or argv authority from GitHub prose",
+      "Google Cloud or WeatherNext credentials",
+      "HOME_LAT or HOME_LON",
+      "Cloudflare or network mutation",
+      "corpus delete, restore or destructive rollback",
+      "package install or generic sudo/root authority"
+    ],
+    "postconditions": [
+      "exact authorized source SHA is the deployed application identity",
+      "readiness endpoint reports ready without exposing coordinates or credentials",
+      "persistent corpus volume is retained across application replacement",
+      "WeatherNext remains access_pending/not-required until separately activated",
+      "public ingest scheduling is independent of WeatherNext scheduling"
+    ]
+  }
+}
