@@ -1,0 +1,13 @@
+[Unit]
+Description=Run WeatherNext collector after expected dissemination windows
+
+[Timer]
+OnCalendar=*-*-* 02:25:00 UTC
+OnCalendar=*-*-* 08:25:00 UTC
+OnCalendar=*-*-* 14:25:00 UTC
+OnCalendar=*-*-* 20:25:00 UTC
+Persistent=true
+RandomizedDelaySec=120
+
+[Install]
+WantedBy=timers.target

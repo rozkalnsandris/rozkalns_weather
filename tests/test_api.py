@@ -1,37 +1,57 @@
+from datetime import datetime, timezone
+
 from fastapi.testclient import TestClient
 
 from rozkalns_weather.app import create_app
 from rozkalns_weather.config import Settings
 from rozkalns_weather.db import Database
+from rozkalns_weather.models import ForecastRun, ForecastValue
 
 
-def _client(tmp_path, *, with_home: bool = True) -> TestClient:
+def _client(tmp_path, *, with_home: bool = True) -> tuple[TestClient, Database]:
     env = {"DATABASE_URL": f"sqlite:///{tmp_path / 'weather.db'}"}
     if with_home:
         env.update({"HOME_LAT": "51.5", "HOME_LON": "7.6"})
     settings = Settings.from_env(env)
     database = Database(settings.database_url)
-    return TestClient(create_app(settings=settings, database=database))
+    return TestClient(create_app(settings=settings, database=database)), database
 
 
-def test_health_is_ready(tmp_path) -> None:
-    response = _client(tmp_path).get("/health")
-    assert response.status_code == 200
-    assert response.json() == {"status": "ok", "database": "ready"}
+def test_health_and_pwa_root(tmp_path) -> None:
+    client, _ = _client(tmp_path)
+    assert client.get("/health").status_code == 200
+    root = client.get("/")
+    assert root.status_code == 200
+    assert "WeatherNext 3" in root.text
 
 
 def test_weather_next_is_first_class_provider(tmp_path) -> None:
-    response = _client(tmp_path).get("/api/providers")
-    providers = response.json()["providers"]
+    client, _ = _client(tmp_path)
+    providers = client.get("/api/providers").json()["providers"]
     weather_next = next(item for item in providers if item["id"] == "weathernext3")
     assert weather_next["role"] == "primary_research"
     assert weather_next["model_name"] == "WeatherNext 3"
 
 
 def test_provider_health_does_not_expose_home_coordinates(tmp_path) -> None:
-    response = _client(tmp_path).get("/api/health/providers")
+    client, _ = _client(tmp_path)
+    response = client.get("/api/health/providers")
     payload = response.json()
     assert payload["location"]["configured"] is True
     assert payload["location"]["coordinates_exposed"] is False
     assert "51.5" not in response.text
     assert "7.6" not in response.text
+
+
+def test_hourly_returns_latest_provider_snapshot(tmp_path) -> None:
+    client, database = _client(tmp_path)
+    database.insert_forecast_run(ForecastRun(
+        provider="weathernext3", model_provider="Google DeepMind", model_name="WeatherNext 3", model_version="3.0.0",
+        init_time_utc=datetime(2026, 9, 7, 0, tzinfo=timezone.utc), retrieved_at_utc=datetime(2026, 9, 7, 8, tzinfo=timezone.utc),
+        source_surface="test", values=(ForecastValue(valid_time_utc=datetime(2026,9,7,12,tzinfo=timezone.utc), lead_hours=12, variable="temperature_2m", statistic="mean", value=20, unit="degC"),)
+    ))
+    response = client.get("/api/hourly?hours=48")
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["location"]["coordinates_exposed"] is False
+    assert payload["series"][0]["provider"] == "weathernext3"

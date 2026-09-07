@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="112" fill="#111827"/>
+  <circle cx="190" cy="178" r="82" fill="#fbbf24"/>
+  <path d="M142 327c0-55 45-100 100-100 40 0 75 24 91 59 12-8 27-13 43-13 43 0 78 35 78 78s-35 78-78 78H152c-47 0-85-38-85-85 0-40 28-74 65-83 3 21 6 43 10 66z" fill="#60a5fa"/>
+  <text x="256" y="390" text-anchor="middle" font-family="system-ui,sans-serif" font-size="92" font-weight="800" fill="#fff">WN3</text>
+</svg>
