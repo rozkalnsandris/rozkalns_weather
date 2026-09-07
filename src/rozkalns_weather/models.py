@@ -56,10 +56,18 @@ class ForecastRun:
     raw_payload_hash: str | None = None
     status: str = "ok"
     source_metadata: dict[str, Any] = field(default_factory=dict)
+    init_time_quality: str = "provider_native"
+    upstream_available_at_utc: datetime | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "init_time_utc", ensure_utc(self.init_time_utc))
         object.__setattr__(self, "retrieved_at_utc", ensure_utc(self.retrieved_at_utc))
+        if self.upstream_available_at_utc is not None:
+            object.__setattr__(
+                self,
+                "upstream_available_at_utc",
+                ensure_utc(self.upstream_available_at_utc),
+            )
 
 
 @dataclass(frozen=True, slots=True)

@@ -1,31 +1,28 @@
 # Implementation status
 
-Šis fails sasaista roadmap ar reālo source state pēc AUTO-FULL #5.
+Status after the Issue #7 source lane candidate.
 
-## Gatavs source līmenī
+## Source-complete
+- FastAPI + SQLite immutable forecast corpus.
+- Location-aware forecast identity: `station_10416` and private runtime-only `home`.
+- DWD MOSMIX-L 10416 and DWD observation truth.
+- ICON-D2 / ECMWF IFS HRES / AIFS Single Runs with explicit run provenance and Open-Meteo availability metadata contract.
+- Provider runner with bounded read retry, failure isolation, single-cycle file lock, idempotent content hashing and revision tracking.
+- Corpus integrity/stats/SQLite backup commands.
+- WeatherNext BigQuery schema/query validator, 0.05° station-head + 0.1° surface, six summary statistics and hourly cycle handling.
+- WeatherNext readiness diagnostics.
+- Temperature MAE/RMSE/bias, lead buckets, model versions and p10–p90 coverage.
+- Precipitation amount/probability separation, Brier/reliability foundation.
+- Monthly WeatherNext station-skill report with common timestamps per lead bucket and small-sample warning.
+- PWA/API surfaces for station truth, home forecasts, accuracy and DWD warning/radar separation.
+- Docker/systemd deploy preparation only.
 
-- FastAPI application + privacy-safe provider metadata.
-- SQLite tables + migration helper + immutable `forecast_runs` / `forecast_values` triggers.
-- Runtime-only `HOME_LAT` / `HOME_LON`.
-- DWD MOSMIX-L `10416` KMZ parser/adapter ar provenance un unit normalization.
-- DWD WMO `10416` observation adapter caur Bright Sky/DWD Open Data.
-- ICON-D2, ECMWF IFS HRES un ECMWF AIFS adapters caur Open-Meteo, saglabājot upstream model identity.
-- `/api/hourly` provider series un provider freshness state.
-- WeatherNext 3 BigQuery query builder 0.05° + 0.1°, schema probe, `mean/p10/p25/p50/p75/p90`, current dissemination-latency model un live adapter contract.
-- Shared normalized variable semantics.
-- Verification v1: temperature MAE/RMSE/bias, lead buckets, rolling window, model-version dimension un p10–p90 coverage.
-- Mobile-first PWA skeleton: Overview / Models / Accuracy / Warnings-Radar.
-- DWD warnings/radar transport adapters, DWD authority explicit.
-- Docker/systemd deployment templates un operator guide.
+## External/live blockers
+1. WeatherNext allowlist/access approval.
+2. Private runtime `HOME_LAT` / `HOME_LON`.
+3. Google Cloud project/linked dataset/credentials.
+4. First real WeatherNext snapshot.
+5. RPi5 deployment and optional Cloudflare Access.
+6. Meaningful skill rankings require accumulated real corpus.
 
-## Ārējie/live blockeri
-
-1. WeatherNext real-time allowlist joprojām jāapstiprina Google pusē.
-2. `HOME_LAT` / `HOME_LON` jāievada tikai privātajā runtime.
-3. Google Cloud project/dataset un credentials jāuzstāda tikai privātajā runtime.
-4. RPi5 deployment + Cloudflare private access ir atsevišķs LIVE gate.
-5. Accuracy skaitļi kļūst nozīmīgi tikai pēc tam, kad ir uzkrāts reāls forecast + observation corpus.
-
-## WeatherNext fair-comparison piezīme
-
-WeatherNext saglabā upstream `init_time` no BigQuery. Open-Meteo current forecast API ne vienmēr dod stabilu upstream init timestamp katrā response; tādēļ V1 adapters to skaidri marķē ar `init_time_quality=retrieval_hour_proxy`. Precīzai run-to-run analīzei nākamais uzlabojums ir izmantot Open-Meteo Single Runs/Previous Model Runs vai tiešo provider run metadata.
+Home forecasts are not verified against DWD 10416 as if they were the same physical point. Measured accuracy uses the station benchmark.

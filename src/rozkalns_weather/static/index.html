@@ -11,7 +11,7 @@
 <body>
   <header class="hero">
     <div>
-      <div class="eyebrow">Dortmund-Wickede · private benchmark</div>
+      <div class="eyebrow">private WeatherNext benchmark</div>
       <h1>WeatherNext 3 <span>vs DWD & ECMWF</span></h1>
     </div>
     <div id="statusBadge" class="badge">loading</div>
@@ -29,11 +29,24 @@
       <div class="panel research">
         <div class="panel-title">WeatherNext 3 · primary research model</div>
         <div id="wnState" class="big-state">—</div>
-        <div class="muted">Eksperimentāla prognoze. Oficiālos severe-weather brīdinājumus dod DWD.</div>
+        <div class="muted">Hourly synoptic + interim runs are tracked. DWD remains the warning authority.</div>
       </div>
       <div class="panel">
-        <div class="panel-title">48 h temperatūra</div>
-        <div id="overviewChart" class="chart empty">Nav ielādētu forecast snapshotu.</div>
+        <div class="panel-title">DWD 10416 reference observation</div>
+        <div id="currentTruth" class="provider-grid">Nav observation datu.</div>
+        <div class="muted">Šis ir station truth, nevis mērījums privātajā home punktā.</div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">Home · 48 h temperatūra + WeatherNext p10–p90</div>
+        <div id="overviewChart" class="chart empty">Nav ielādētu home forecast snapshotu.</div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">Home · 48 h nokrišņi</div>
+        <div id="overviewPrecip" class="chart empty">Nav ielādētu precipitation snapshotu.</div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">Daily forecast by provider</div>
+        <div id="dailyGrid" class="provider-grid">Nav datu.</div>
       </div>
       <div class="panel">
         <div class="panel-title">Provider freshness</div>
@@ -43,22 +56,25 @@
 
     <section id="models" class="view">
       <div class="panel">
-        <div class="panel-title">Modeļu salīdzinājums</div>
-        <div class="legend">
-          <span>WeatherNext 3</span><span>ICON-D2</span><span>MOSMIX-L</span><span>IFS HRES</span><span>AIFS</span>
-        </div>
+        <div class="panel-title">Home modeļu salīdzinājums · temperatūra</div>
+        <div class="legend"><span>WeatherNext 3</span><span>ICON-D2</span><span>IFS HRES</span><span>AIFS</span></div>
         <div id="modelsChart" class="chart empty">Prognožu līnijas parādīsies pēc ingest.</div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">Home modeļu salīdzinājums · nokrišņi</div>
+        <div id="modelsPrecip" class="chart empty">Nokrišņu stabiņi parādīsies pēc ingest.</div>
       </div>
       <div class="panel research">
         <div class="panel-title">WeatherNext p10–p90 uncertainty</div>
-        <div id="uncertainty">Intervala dati parādīsies, kad būs WeatherNext pieeja.</div>
+        <div id="uncertainty">Intervala dati parādīsies pēc WeatherNext ingest.</div>
       </div>
     </section>
 
     <section id="accuracy" class="view">
       <div class="panel">
-        <div class="panel-title">Lokālā precizitāte</div>
+        <div class="panel-title">DWD 10416 station benchmark</div>
         <div class="switches"><button data-days="30" class="active">30d</button><button data-days="90">90d</button></div>
+        <div class="muted">Tikai location-matched station forecasts pret DWD 10416 truth.</div>
         <div id="accuracyTable" class="table-wrap">Vēl nav pietiekamu forecast + observation pāru.</div>
       </div>
     </section>
@@ -66,19 +82,20 @@
     <section id="safety" class="view">
       <div class="panel warning">
         <div class="panel-title">DWD official warnings</div>
-        <p>Šis slānis ir autoritatīvs. WeatherNext/ICON/ECMWF output netiek prezentēts kā warning.</p>
+        <p>DWD warning slānis ir autoritatīvs un atdalīts no modeļiem.</p>
         <button id="loadWarnings">Ielādēt warnings</button>
         <pre id="warningsOutput"></pre>
       </div>
       <div class="panel">
         <div class="panel-title">DWD radar</div>
-        <p class="muted">Radar ir observed/nowcast slānis un tiek turēts atsevišķi no modeļu forecast.</p>
+        <p class="muted">Radar observed/nowcast nav model forecast.</p>
         <button id="loadRadar">Ielādēt radar metadata</button>
         <pre id="radarOutput"></pre>
       </div>
     </section>
   </main>
-  <footer>WeatherNext 3 local benchmark · DWD warnings remain authoritative</footer>
+
+  <footer>WeatherNext 3 benchmark · measured skill uses DWD 10416 reference truth</footer>
   <script src="/static/app.js" defer></script>
 </body>
 </html>

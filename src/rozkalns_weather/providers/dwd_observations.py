@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
+from ..locations import DWD_10416
 from ..models import Observation, parse_time
 from .base import JsonFetcher, fetch_json
 
@@ -29,6 +30,8 @@ def parse_brightsky_observations(payload: dict[str, Any]) -> list[Observation]:
             continue
         source = sources.get(row.get("source_id"), {})
         wmo = str(source.get("wmo_station_id") or WMO_STATION_ID)
+        if wmo != WMO_STATION_ID:
+            continue
         for source_key, (variable, unit) in VARIABLES.items():
             raw = row.get(source_key)
             if raw is None:
@@ -37,6 +40,7 @@ def parse_brightsky_observations(payload: dict[str, Any]) -> list[Observation]:
                 Observation(
                     source_provider="DWD",
                     station_id=wmo,
+                    location_id=DWD_10416.id,
                     observed_at_utc=parse_time(str(row["timestamp"])),
                     variable=variable,
                     value=float(raw),
@@ -48,6 +52,7 @@ def parse_brightsky_observations(payload: dict[str, Any]) -> list[Observation]:
                         "station_name": source.get("station_name"),
                         "dwd_station_id": source.get("dwd_station_id"),
                         "wmo_station_id": source.get("wmo_station_id"),
+                        "reference_location_id": DWD_10416.id,
                     },
                 )
             )
