@@ -80,7 +80,12 @@ MVP backend virziens: **Python + FastAPI + SQLite**. Frontend: viegls responsive
 - [Forecast verification](docs/VERIFICATION.md)
 - [UI / UX](docs/UI.md)
 - [Roadmap](docs/ROADMAP.md)
+- [FAST-LANE v2.2 local contract](docs/FAST_LANE_V2_2.md)
 - [Source references](docs/SOURCES.md)
+
+## GitHub darba modelis
+
+Repo izmanto shared `ops-workflows` FAST-LANE v2.2, GITHUB-ONLY/LIVE-ALL, START_GITHUB_ONLY un Agent Work Cycle v1 modeli. Reusable policy CI ir piesaistīts immutable exact `ops-workflows` commit SHA; lokālie privacy un DWD official-warning noteikumi ir stingrāki un paliek autoritatīvi.
 
 ## Pašreizējais statuss
 
