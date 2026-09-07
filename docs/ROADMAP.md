@@ -18,6 +18,10 @@ forecast snapshot -> observation -> verification -> WeatherNext comparison
 - [x] Idempotency/revisions/integrity/stats/backup.
 - [x] Public provider smoke tooling.
 - [x] Single Runs init provenance and availability metadata contract.
+- [x] Bounded/resumable exact-run public backfill framework with dry-run/rate-limit/checkpoint.
+- [x] Common archive window contract from 2026-04-02; older IFS history separated from common series.
+- [x] Historical DWD WMO 10416 truth backfill without nearest-station fallback.
+- [x] Missing-run/revision/integrity reconciliation for immutable backfill snapshots.
 
 ## Phase 2 — WeatherNext 3
 - [x] BigQuery 0.05°/0.1° schema/query contract.
@@ -34,9 +38,14 @@ forecast snapshot -> observation -> verification -> WeatherNext comparison
 - [x] WeatherNext p10–p90 coverage.
 - [x] common-case monthly comparison by lead bucket.
 - [x] precipitation amount/probability separation.
-- [x] Brier/reliability foundation for genuine probability inputs.
-- [ ] larger-sample confidence intervals after corpus exists.
-- [ ] optional full-ensemble WeatherNext CRPS/Brier via GCS if justified.
+- [x] Public ICON-D2-EPS / IFS ENS / AIFS ENS member adapters with retention/provenance semantics.
+- [x] Genuine ensemble CRPS, empirical intervals, WIS-style scoring, member-fraction event probability, Brier and reliability primitives.
+- [x] Common-sample leaderboard abstraction with explicit comparison mode, `n`, lead bucket and model-version boundaries.
+- [x] Bootstrap MAE confidence interval only for statistically usable sample (`n >= 30`).
+- [x] Matched temperature/precipitation/wind-gust event verification summaries.
+- [x] WeatherNext 2 `legacy_ai_context` comparator contract; never a WN3 substitute or strict-run comparator without exact provenance.
+- [ ] populate larger historical public corpus after explicit corpus-write authority.
+- [ ] optional full-ensemble WeatherNext 3 CRPS/Brier if private source later exposes defensible members.
 
 ## Phase 4 — private PWA
 - [x] Overview / Models / Accuracy / Warnings-Radar.
@@ -44,6 +53,7 @@ forecast snapshot -> observation -> verification -> WeatherNext comparison
 - [x] home forecast charts/daily cards.
 - [x] provider init/freshness states.
 - [x] WeatherNext uncertainty surface.
+- [x] Accuracy v3 provider classes, lead-bucket sample/confidence and precipitation calibration surface.
 - [ ] private RPi5 deploy.
 - [ ] optional Cloudflare Access.
 
@@ -58,7 +68,8 @@ forecast snapshot -> observation -> verification -> WeatherNext comparison
 - [x] model-version + lead-bucket dimensions.
 - [x] notable misses archive payload.
 - [x] release-note hook without fabricated events.
-- [ ] first month of real corpus.
+- [x] public benchmark runway while WN3 access is pending.
+- [ ] first month of real WeatherNext 3 corpus.
 - [ ] version-change comparative reports.
 
 AQI/pollen/UV and Combined weighting remain lower priority until enough real corpus exists.
