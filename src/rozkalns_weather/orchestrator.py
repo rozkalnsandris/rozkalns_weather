@@ -16,12 +16,14 @@ from .providers.base import bytes_fetcher, json_fetcher
 from .providers.dwd_mosmix import DwdMosmixAdapter
 from .providers.dwd_observations import DwdObservationAdapter
 from .providers.open_meteo import ECMWF_AIFS, ECMWF_IFS, ICON_D2, OpenMeteoSingleRunAdapter
-from .providers.weathernext import WeatherNextBigQueryAdapter, latest_available_init
+from .providers.weathernext import WeatherNextBigQueryAdapter
 
 T = TypeVar("T")
 
+
 class IngestAlreadyRunning(RuntimeError):
     pass
+
 
 class FileRunLock:
     def __init__(self, path: Path, *, stale_after_seconds: int = 3600) -> None:
@@ -53,6 +55,7 @@ class FileRunLock:
             self.path.unlink(missing_ok=True)
             self._held = False
 
+
 @dataclass(frozen=True, slots=True)
 class ProviderOutcome:
     provider: str
@@ -64,6 +67,7 @@ class ProviderOutcome:
 
     def as_dict(self) -> dict[str, object]:
         return {"provider": self.provider, "state": self.state, "attempts": self.attempts, "detail": self.detail, "init_time_utc": self.init_time_utc, "locations": list(self.locations)}
+
 
 def retry_read_only(action: Callable[[], T], *, attempts: int, sleeper: Callable[[float], None] = time.sleep) -> tuple[T, int]:
     if attempts < 1 or attempts > 5:
@@ -78,6 +82,7 @@ def retry_read_only(action: Callable[[], T], *, attempts: int, sleeper: Callable
                 sleeper(min(2.0, 0.25 * index))
     assert last is not None
     raise last
+
 
 class IngestOrchestrator:
     def __init__(self, settings: Settings, database: Database, *, timeout_seconds: float | None = None, retry_attempts: int | None = None, sleeper: Callable[[float], None] = time.sleep) -> None:
@@ -167,9 +172,8 @@ class IngestOrchestrator:
             return ProviderOutcome("weathernext3", "access_pending", 0, detail="google_project_or_linked_dataset_pending").as_dict()
         assert self.settings.google_cloud_project and self.settings.weathernext_bigquery_dataset
         adapter = adapter or WeatherNextBigQueryAdapter(project=self.settings.google_cloud_project, dataset=self.settings.weathernext_bigquery_dataset)
-        init_time = latest_available_init(now)
-        actions: list[tuple[str, Callable[[], ForecastRun]]] = [(DWD_10416.id, lambda: adapter.fetch(lat=DWD_10416.lat, lon=DWD_10416.lon, now=now, init_time=init_time))]
+        actions: list[tuple[str, Callable[[], ForecastRun]]] = [(DWD_10416.id, lambda: adapter.fetch_latest_with_fallback(lat=DWD_10416.lat, lon=DWD_10416.lon, now=now))]
         if self.settings.home_configured:
             assert self.settings.home_lat is not None and self.settings.home_lon is not None
-            actions.append(("home", lambda: adapter.fetch(lat=self.settings.home_lat, lon=self.settings.home_lon, now=now, init_time=init_time)))
+            actions.append(("home", lambda: adapter.fetch_latest_with_fallback(lat=self.settings.home_lat, lon=self.settings.home_lon, now=now)))
         return self._record_forecast_locations("weathernext3", actions, now).as_dict()

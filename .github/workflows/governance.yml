@@ -5,6 +5,8 @@ on:
   push:
     branches:
       - main
+  schedule:
+    - cron: '17 5 * * 1'
   workflow_dispatch:
 
 permissions:
@@ -13,21 +15,39 @@ permissions:
 jobs:
   fast-lane-policy:
     name: FAST-LANE policy drift
-    uses: rozkalnsandris/ops-workflows/.github/workflows/fast-lane-policy-drift.yml@3836da03685e0feca9232d5ddb914497ac72a2f7
+    uses: rozkalnsandris/ops-workflows/.github/workflows/fast-lane-policy-drift.yml@5622b4831ce2242f774974e26135ac9c469a3f99
     with:
-      canonical_policy_sha: 3836da03685e0feca9232d5ddb914497ac72a2f7
+      canonical_policy_sha: 5622b4831ce2242f774974e26135ac9c469a3f99
 
   github-only-policy:
     name: GITHUB-ONLY policy drift
-    uses: rozkalnsandris/ops-workflows/.github/workflows/github-only-policy-drift.yml@3836da03685e0feca9232d5ddb914497ac72a2f7
+    uses: rozkalnsandris/ops-workflows/.github/workflows/github-only-policy-drift.yml@a334b2c4fa67d3de2e04650651c92096dfe3a7ca
     with:
-      canonical_policy_sha: 3836da03685e0feca9232d5ddb914497ac72a2f7
+      canonical_policy_sha: a334b2c4fa67d3de2e04650651c92096dfe3a7ca
 
   public-repository-baseline:
     name: Public repository automation baseline
-    uses: rozkalnsandris/ops-workflows/.github/workflows/public-repo-baseline.yml@3836da03685e0feca9232d5ddb914497ac72a2f7
+    uses: rozkalnsandris/ops-workflows/.github/workflows/public-repo-baseline.yml@e2fa7ecb1b1cdfab0711d8e3e147b5ae03a9a3f2
     with:
       forbid_self_hosted: true
+
+  auto-run-contract:
+    name: AUTO-RUN FULL contract
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          persist-credentials: false
+      - name: Validate machine contracts
+        run: |
+          set -euo pipefail
+          python -m json.tool .github/start-mode-routing.json >/dev/null
+          python -m json.tool .github/auto-run-full-v1.json >/dev/null
+          python -m json.tool .github/auto-run-full-v2.json >/dev/null
+          python -m json.tool .github/outcome-delivery-v1.json >/dev/null
+          grep -F 'AUTO-RUN FULL rozkalns_weather #<issue>' AGENTS.md >/dev/null
+          grep -F 'controller_issue": 9' .github/auto-run-full-v2.json >/dev/null
 
   merge-gate:
     name: FAST-LANE Merge Gate
@@ -36,6 +56,7 @@ jobs:
       - fast-lane-policy
       - github-only-policy
       - public-repository-baseline
+      - auto-run-contract
     if: ${{ always() }}
     steps:
       - name: Require all governance checks
@@ -43,8 +64,10 @@ jobs:
           FAST_LANE_RESULT: ${{ needs.fast-lane-policy.result }}
           GITHUB_ONLY_RESULT: ${{ needs.github-only-policy.result }}
           PUBLIC_BASELINE_RESULT: ${{ needs.public-repository-baseline.result }}
+          AUTO_RUN_RESULT: ${{ needs.auto-run-contract.result }}
         run: |
           set -euo pipefail
           test "$FAST_LANE_RESULT" = success
           test "$GITHUB_ONLY_RESULT" = success
           test "$PUBLIC_BASELINE_RESULT" = success
+          test "$AUTO_RUN_RESULT" = success
