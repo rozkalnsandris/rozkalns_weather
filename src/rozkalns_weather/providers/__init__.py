@@ -7,6 +7,10 @@ PROVIDERS = (
     ProviderDescriptor(id="icon_d2", model_provider="DWD", model_name="ICON-D2", role="short_range_baseline", transport="Open-Meteo Single Runs"),
     ProviderDescriptor(id="ecmwf_ifs", model_provider="ECMWF", model_name="IFS HRES", role="global_nwp_baseline", transport="Open-Meteo Single Runs"),
     ProviderDescriptor(id="ecmwf_aifs", model_provider="ECMWF", model_name="AIFS", role="ai_baseline", transport="Open-Meteo Single Runs"),
+    ProviderDescriptor(id="icon_d2_eps", model_provider="DWD", model_name="ICON-D2-EPS", role="probabilistic_baseline", transport="Open-Meteo Ensemble API"),
+    ProviderDescriptor(id="ecmwf_ifs_ens", model_provider="ECMWF", model_name="IFS ENS 0.25°", role="probabilistic_baseline", transport="Open-Meteo Ensemble API"),
+    ProviderDescriptor(id="ecmwf_aifs_ens", model_provider="ECMWF", model_name="AIFS ENS 0.25°", role="probabilistic_ai_baseline", transport="Open-Meteo Ensemble API"),
+    ProviderDescriptor(id="weathernext2", model_provider="Google", model_name="WeatherNext 2", role="legacy_ai_context", transport="Open-Meteo Ensemble API"),
 )
 
 __all__ = ["PROVIDERS", "ProviderDescriptor"]
