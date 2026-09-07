@@ -1,10 +1,6 @@
 # rozkalns_weather
 
-Privāts, lokāli orientēts laikapstākļu dashboard + forecast-verification projekts Dortmund-Wickede apkārtnei.
-
-## Kāpēc projekts eksistē
-
-Projekta centrā ir **Google WeatherNext 3**. Mērķis nav tikai parādīt prognozi, bet ilgstoši saglabāt immutable forecast snapshotus un izmērīt, cik precīzs WeatherNext 3 ir tieši mūsu lokācijā salīdzinājumā ar DWD un ECMWF.
+Privāts weather dashboard + forecast-verification projekts Dortmund-Wickede apkārtnei ar **WeatherNext 3** kā `primary_research` modeli.
 
 Galvenais cikls:
 
@@ -12,88 +8,52 @@ Galvenais cikls:
 forecast snapshot -> observation -> verification -> WeatherNext comparison
 ```
 
-WeatherNext 3 ir `primary_research` modelis. Tas nav oficiāls warning source; severe-weather brīdinājumu autoritāte Vācijā paliek **DWD**.
+WeatherNext 3 nav warning authority. Severe-weather brīdinājumos Vācijā autoritatīvs avots ir **DWD**.
 
-## Provideri
+## Benchmark metodika
 
-- **WeatherNext 3** — BigQuery 0.05° station-head temperatūrai/dew point + 0.1° surface laukiem, ensemble `mean/p10/p25/p50/p75/p90`;
-- **DWD MOSMIX-L 10416** — lokāls station-based baseline;
-- **DWD observations / WMO 10416** — verifikācijas truth, transportēts ar Bright Sky/DWD Open Data;
-- **DWD ICON-D2** — high-resolution short-range baseline caur Open-Meteo ar saglabātu upstream model identity;
-- **ECMWF IFS HRES** — tradicionāls globālais baseline;
-- **ECMWF AIFS** — AI baseline;
-- **DWD CAP warnings + radar** — atsevišķs safety/observed slānis.
+Projektā ir divi atšķirīgi lokācijas režīmi:
 
-## Lokācija un privacy
+- `station_10416` — publiska DWD Dortmund/Wickede WMO 10416 reference location. Šeit tiek veikta **mērīta accuracy verifikācija** pret DWD observations.
+- `home` — privāts runtime-only punkts. Šeit tiek glabātas un salīdzinātas prognozes, bet tās netiek sauktas par izmērītu home accuracy, kamēr nav home observation truth avota.
 
-Repo satur tikai publiski drošo `Dortmund-Wickede` label un DWD/WMO stacijas ID `10416`. Precīzā adrese, `HOME_LAT`, `HOME_LON`, Google credentials un Cloudflare/runtime secrets **netiek commitoti**.
+WeatherNext 3 corpus glabā gan 00/06/12/18 UTC `synoptic_360h`, gan interim hourly `interim_48h` runus. BigQuery 0.05° station-head temperatūra/dew point un 0.1° surface lauki saglabā `mean/p10/p25/p50/p75/p90`, init/retrieval/valid/lead/model-version provenance.
 
-Runtime `.env`:
+ICON-D2, ECMWF IFS HRES un AIFS benchmarkam izmanto Open-Meteo **Single Runs**, nevis retrieval-hour proxy. Upstream init un API availability metadata tiek glabāti atsevišķi.
 
-```dotenv
-HOME_LAT=
-HOME_LON=
-HOME_TIMEZONE=Europe/Berlin
-HOME_LABEL=Dortmund-Wickede
-GOOGLE_CLOUD_PROJECT=
-WEATHERNEXT_BIGQUERY_DATASET=
-DATABASE_URL=sqlite:///data/weather.db
-```
+Deterministisks precipitation amount (`mm`) un precipitation probability ir atšķirīgas quantities. Brier Score tiek aprēķināts tikai tad, ja corpus tiešām satur probability event forecast; probability netiek izdomāta no deterministic mm vai WeatherNext kvantilēm.
 
-## Implementācija
+## Privacy
 
-Backend: Python 3.12+, FastAPI, SQLite. Forecast runs/values ir DB-līmenī immutable. Provider failure ir izolēts; status/freshness tiek rādīts atsevišķi.
+Precīza mājas adrese, `HOME_LAT`, `HOME_LON`, credentials un Cloudflare secrets repo netiek commitoti. `.env` ir runtime-only.
 
-Svarīgākie endpointi:
-
-```text
-GET /health
-GET /api/providers
-GET /api/health/providers
-GET /api/hourly?hours=48&variable=temperature_2m
-GET /api/verification/summary?days=30
-GET /api/warnings
-GET /api/radar
-```
-
-Web/PWA ir iebūvēts FastAPI static slānī ar `Overview`, `Models`, `Accuracy`, `Warnings/Radar` skatiem. WeatherNext 3 ir vizuāli izcelts kā pētniecības modelis, nevis oficiāla autoritāte.
-
-## Collectors
-
-Publiskie baseline provideri:
+## CLI
 
 ```bash
 rozkalns-weather ingest-public
-```
-
-WeatherNext 3 pēc Google allowlist/BigQuery konfigurācijas:
-
-```bash
 rozkalns-weather ingest-weathernext
+rozkalns-weather smoke-public
+rozkalns-weather corpus-stats
+rozkalns-weather corpus-check
+rozkalns-weather diagnose-weathernext
+rozkalns-weather report-monthly --month YYYY-MM
 ```
 
-WeatherNext live ingest izmanto optional dependency:
+Mandatory CI ir fixture-driven un network-independent. `smoke-public` ir operatora izvēles read-only live contract check.
 
-```bash
-pip install '.[weathernext]'
-```
+## API / PWA
 
-Ja allowlist/config nav gatavs, sistēma paliek `access_pending`; tā nedrīkst ģenerēt/fabricēt WeatherNext datus.
-
-## Verification v1
-
-Temperatūrai ir MAE, RMSE, bias, lead-time buckets, 30d/90d logi un WeatherNext `p10-p90` coverage. Forecast/observation matching V1 ir exact hourly timestamp (`0 min` tolerance), lai noteikums būtu reproducējams. Model version tiek saglabāts un metrics API atdala versijas.
+`/api/current` rāda DWD 10416 reference observation, `/api/hourly` un `/api/daily` rāda private-home forecast comparison, bet `/api/verification/*` ir station-location matched benchmark. Combined weighting joprojām ir bloķēts līdz pietiekamam corpus.
 
 ## Deployment
 
-`Dockerfile`, `deploy/docker-compose.example.yml`, systemd timer piemēri un `docs/OPERATIONS.md` sagatavo RPi5 deploymentu, bet **nekāds live deploy, secrets, Cloudflare vai host mutation netiek veikts bez atsevišķas autorizācijas**.
+`Dockerfile`, `deploy/` un `docs/OPERATIONS.md` ir source-level deploy preparation. RPi5, systemd/Docker, Cloudflare, credentials un runtime mutation prasa atsevišķu LIVE autorizāciju.
 
 ## Dokumentācija
 
-- [WeatherNext 3](docs/WEATHERNEXT3.md)
-- [Architecture](docs/ARCHITECTURE.md)
-- [Verification](docs/VERIFICATION.md)
-- [Roadmap](docs/ROADMAP.md)
-- [Implementation status](docs/IMPLEMENTATION_STATUS.md)
-- [Operations](docs/OPERATIONS.md)
-- [Sources](docs/SOURCES.md)
+- `docs/BENCHMARK_METHODOLOGY.md`
+- `docs/WEATHERNEXT3.md`
+- `docs/VERIFICATION.md`
+- `docs/ROADMAP.md`
+- `docs/IMPLEMENTATION_STATUS.md`
+- `docs/OPERATIONS.md`
