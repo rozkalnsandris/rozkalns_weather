@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from pathlib import Path
 import os
 
@@ -80,10 +81,14 @@ def readiness_payload(settings: Settings, database: Database) -> dict[str, objec
     stored = database.provider_statuses() if database_state["state"] == "ready" else {}
 
     providers: list[dict[str, object]] = []
+    now = datetime.now(timezone.utc)
     for provider in PROVIDERS:
         saved = stored.get(provider.id, {})
         if provider.id == "weathernext3":
-            state = saved.get("state") or access_state(configured=settings.weathernext_cloud_configured)
+            state = saved.get("state") or access_state(
+                configured=settings.weathernext_cloud_configured,
+                now=now,
+            )
             required_for_runtime = False
         else:
             state = saved.get("state", "adapter_ready_not_ingested")
