@@ -2,138 +2,130 @@
 
 ## Source of truth
 
-GitHub ir projekta canonical source of truth. Pirms darba vienmēr nolasi šo failu, aktuālo README/docs, current `main`, aktīvo issue/PR un tikai attiecīgajam work item nepieciešamo CI/review stāvokli.
+GitHub ir projekta canonical source of truth. Pirms darba nolasi šo failu, relevant README/docs/continuation, current `main`, un tikai current work item nepieciešamo issue/PR/CI/review state. Mutable SHA/status/authorization no chat history vai Memory nav authority.
 
 ## Project intent
 
-Šis ir privātām mājas vajadzībām paredzēts weather dashboard/verification projekts. Galvenais pētniecības objekts ir **Google WeatherNext 3**, salīdzināts ar DWD un ECMWF avotiem konkrētam mājas punktam Dortmund-Wickede apkārtnē.
+Šis ir privātām mājas vajadzībām paredzēts weather dashboard/forecast-verification projekts Dortmund-Wickede apkārtnei. Galvenais pētniecības objekts ir **Google WeatherNext 3**, salīdzināts ar DWD un ECMWF.
 
 ## WeatherNext 3 priority
 
-- WeatherNext 3 jābūt first-class provider, nevis dekoratīvam papildinājumam.
-- Saglabā raw provider metadata: model version, init time, forecast valid time, lead time, retrieval time, statistic/member information.
-- Nedrīkst pārrakstīt vai izlīdzināt WeatherNext vērtības tā, ka vairs nevar veikt reproducējamu salīdzinājumu ar citiem modeļiem.
+- WeatherNext 3 ir first-class `primary_research` provider, nevis dekoratīvs papildinājums.
+- Saglabā raw provider/model provenance: model version, init time, forecast valid time, lead time, retrieval/publication time un statistic/member.
+- Nedrīkst pārrakstīt vai izlīdzināt provider vērtības tā, ka salīdzinājums vairs nav reproducējams.
 - Combined forecast nedrīkst slēpt provider-level prognozes.
-- WeatherNext accuracy jāvērtē ar atsevišķiem verifikācijas rādītājiem un lead-time buckets.
+- WeatherNext accuracy vērtē atsevišķi, tostarp lead-time buckets un model-version periods.
 
-## Safety / authority
+## Safety / warning authority
 
-- WeatherNext ir eksperimentāla forecast sistēma, nevis oficiāls warning source.
-- DWD CAP/oficiālie DWD brīdinājumi ir autoritatīvi severe-weather warnings Vācijā.
-- UI nedrīkst prezentēt AI model output kā oficiālu brīdinājumu.
+- WeatherNext ir eksperimentāla forecast sistēma, nevis official warning source.
+- DWD CAP/oficiālie DWD brīdinājumi ir autoritatīvie severe-weather warnings Vācijā.
+- UI nedrīkst prezentēt AI/model output kā oficiālu brīdinājumu.
+- WeatherNext real values nekad nefabricē. Ja private access nav gatavs, saglabā explicit pending/error state.
 
 ## Privacy
 
-- Precīzu mājas adresi, `HOME_LAT`, `HOME_LON`, API credentials, Cloudflare credentials un citus privātus runtime parametrus necommitot.
-- Repo pašreizējā redzamība jāpārbauda pirms jebkādu lokācijas detaļu pievienošanas.
-- `.env` nedrīkst commitot; tikai `.env.example` ar tukšiem placeholderiem.
+- Necommitot precīzu mājas adresi, `HOME_LAT`, `HOME_LON`, `.env`, API/Google/Cloudflare credentials, tokens, private runtime config vai sensitive logs/data.
+- Repo visibility pārbaudi pirms lokācijas detaļu pievienošanas.
+- `.env.example` satur tikai tukšus/non-secret placeholderus.
 
-## GitHub workflow
+## GitHub / runtime authority
 
-- Pirms GitHub write nosaki precīzu repo, branch/target un darbību.
-- `turpini` autorizē safe/read-only/source-level darbu līdz nākamajam Ready/STOP punktam; tas neautorizē merge/deploy/runtime mutation.
-- Merge prasa atsevišķu skaidru lietotāja autorizāciju.
-- Production/host/DB mutation, deploy, restart, secrets, permissions vai repository settings izmaiņas prasa atsevišķu skaidru autorizāciju.
-- Pēc pirmās autorizētās mutation kļūdas vai būtiskas neskaidrības saglabā evidence un STOP; neveic automātisku alternate mutation path.
+- Pirms GitHub write nosaki exact repo, target, current base/head, operation un scope.
+- `turpini` autorizē tikai safe FAST-LANE source-level continuation; tas neautorizē merge vai LIVE.
+- FAST merge prasa atsevišķu exact owner komandu.
+- Repository settings/rulesets/permissions/secrets/variables prasa atsevišķu exact owner authorization.
+- Private RPi5 deploy/runtime, Docker/systemd/timers, `.env`, credentials, Google Cloud/BigQuery private access, Cloudflare, production SQLite/corpus write/migration/restore/delete, permissions/ownership un host/network mutation ir LIVE/STRICT un prasa exact authority saskaņā ar current weather + `rozkalnsandris/RPi5_main` trust boundary.
+- Pēc pirmās autorizētās mutation kļūdas, timeout, drift vai ambiguity savāc tikai read-only evidence un STOP; bez jaunas authority nav retry/rollback/cleanup/alternate path.
 
 ## Implementation principles
 
-- Sāc ar minimum-sufficient architecture: Python/FastAPI + SQLite + viegls web/PWA.
-- Provider adapters saglabā atsevišķi no normalization/verification slāņa.
-- Saglabā gan forecast snapshot, gan observation truth data; nepārraksti vēsturiskos snapshotus ar jaunāku run.
-- Laiki datu slānī glabā UTC; UI attēlo `Europe/Berlin`.
-- Vienības normalizē uz SI/meteoroloģiski skaidru formu (`°C`, `mm`, `m/s` vai konsekventi izvēlēts display `km/h`, `hPa`).
-- Katram datu punktam saglabā provenance.
-- Provider failure nedrīkst izraisīt citas prognozes pazaudēšanu; UI rāda freshness/status.
+- Minimum-sufficient architecture: Python/FastAPI + SQLite + viegls web/PWA.
+- Provider adapters tur atsevišķi no normalization/verification slāņa.
+- Forecast snapshot/history ir reproducējams un netiek klusām pārrakstīts.
+- Provider failure ir izolēts; citu provider data nedrīkst pazust.
+- Data layer timestamps ir UTC; UI timezone `Europe/Berlin`.
+- Vienības normalizē konsekventi un katram datu punktam saglabā provenance.
+- Weighted Combined forecast paliek ārpus scope, kamēr nav pietiekama verification corpus, transparent versioned weights un backtest.
 
-## Out of scope until explicitly added
+## Startup command routing
 
-- Publisks weather service.
-- Komerciāla izplatīšana.
-- Automātiski severe-weather lēmumi tikai no WeatherNext.
-- Sarežģīts ML ensemble weighting pirms pietiekama lokāla verification corpus.
+Pirms mode izvēles nolasi `.github/start-mode-routing.json`.
+
+- Bare `START`, `START rozkalns_weather`, `SYNC rozkalns_weather`, `turpini` => **FAST-LANE v2.2**.
+- `GITHUB-ONLY` un `LIVE-ALL` aktivizējas tikai ar explicit current-command tokenu.
+- `AUTO-RUN FULL` aktivizējas tikai ar exact explicit `AUTO-RUN FULL rozkalns_weather #<issue>` un pēc tam jālasa `.github/auto-run-full-v2.json` + `docs/AUTO_RUN_FULL_V2.md`.
+- Neinferē režīmu no issue nosaukuma, controller state, deploy queue, historical chat, executor availability vai veca receipt.
 
 <!-- BEGIN FAST-LANE-V2.2-MANAGED -->
 ## FAST-LANE v2.2 Composite
 
-Read `docs/FAST_LANE_V2_2.md` as the active local startup contract. Canonical shared policy is pinned from `rozkalnsandris/ops-workflows` and checked by CI.
+Read `docs/FAST_LANE_V2_2.md` as active local FAST contract. Canonical shared policy is pinned from `rozkalnsandris/ops-workflows` and checked by CI.
 
-**Primary rule:** human approves the **RISK / DECISION**; automation executes the **TECHNICAL STEPS**.
+- Human approves risk/decision; automation executes safe technical steps.
+- FAST is discovery/audit/non-FULL continuation and may carry source/docs/tests/policy through Draft PR, CI/review convergence and Ready.
+- Batch 2-5 closely related same-risk items when that creates one coherent outcome; up to two scope-preserving corrective commits.
+- Read-only validation, CI/review inspection, exact-head/diff checks and safe corrections are not owner gates.
+- FAST merge remains a separate exact owner decision. Merge never implies LIVE.
+- STRICT includes private RPi5 runtime, credentials, host/root, Cloudflare, production DB/corpus and equivalent live authority.
+- Authorization is consumed at first authorized mutation; later error/ambiguity/drift => evidence + STOP unless recovery was pre-authorized.
 
-- `START`, `turpini`, or equivalent continuation may carry source-only work through Ready when there is no live deploy/restart/runtime or trust-boundary activation.
-- FAST may batch 2-5 closely related same-risk work items and use up to two scope-preserving corrective commits for CI/review findings.
-- Normal delivery has at most two owner gates: explicit **MERGE**, then one bounded **COMPOSITE LIVE** only when deploy/runtime mutation is actually required.
-- Read-only validation, evidence refresh, CI/review inspection, candidate verification and reconciliation are technical steps, not owner gates.
-- Composite Live must bind exact SHA, target, allowed mutation categories, practical limits, explicit exclusions and expected baseline when relevant.
-- Authorization is consumed at the first authorized mutation. Any later error, ambiguity or drift requires evidence preservation and STOP; no automatic retry, rollback, cleanup or alternate mutation path unless explicitly pre-authorized.
-- **STRICT** includes production deploy, service/runtime mutation, secrets/credentials, host/root, Cloudflare and equivalent live authority.
-- Merge remains explicit owner authority and never authorizes production deployment/runtime mutation.
-
-Weather privacy, official-warning and provider-provenance rules above remain stricter where applicable.
+Weather privacy, provider provenance and DWD warning authority remain stricter where applicable.
 <!-- END FAST-LANE-V2.2-MANAGED -->
+
+<!-- BEGIN AUTO-RUN-FULL-V2-MANAGED -->
+## AUTO-RUN FULL v2
+
+Canonical local contract: `.github/auto-run-full-v2.json` and `docs/AUTO_RUN_FULL_V2.md`. Outcome packaging: `.github/outcome-delivery-v1.json`. Durable controller: issue `#9`. Roadmap: issue `#8`.
+
+- `AUTO-RUN FULL rozkalns_weather #<issue>` is the normal implementation lane and one explicit issue-scoped owner decision. It is never inferred from START/turpini/chat/controller state.
+- Before activation freshly read repository rules, exact target issue/DoD, current `main`, active PR/CI/review state, relevant dependencies and controller #9.
+- Materialize an owner-identity `rozkalns.auto-run-full-authorization.v2` receipt on the target issue before using FULL authority. Freeze repository, issue/DoD, source actions, merge authority, any already-declared live classes/targets, retry/rollback semantics and exclusions. Later issue edits never silently expand authority.
+- Inside the frozen source envelope, analysis/source/docs/tests, branch/commit/push, canonical Outcome PR work, CI/review convergence and ordinary conflict correction without history rewrite require no additional owner nudge.
+- The explicit FULL command is merge authority only for that frozen issue's canonical PR. Final exact-head scope review, required CI, reviews/threads, mergeability and ruleset requirements must all be fresh. Changed head invalidates readiness.
+- Prefer GitHub native auto-merge only after final exact-head readiness and only if repository capability is enabled; otherwise use exact-head guarded direct merge fallback when supported. Never bypass rulesets, force merge, reset/rebase/force-push or rewrite history.
+- Source FULL does **not** imply weather LIVE authority. Private RPi5 deploy/runtime, Docker/systemd/timers, `.env`, credentials, Google Cloud/BigQuery private access, Cloudflare, production SQLite/corpus mutation, filesystem/ownership, root/sudo/network changes remain separate exact gates unless a stricter current contract validly froze that exact class/target before mutation.
+- WeatherNext real data must never be fabricated; DWD warning authority, privacy and provenance rules remain authoritative.
+- Preferred resume is supported GitHub-event-triggered ChatGPT Work; hourly Scheduled Task is fallback/watchdog. Neither creates authority. `turpini` is resume-only.
+- Three materially identical failures without a new safe hypothesis => `STOP_ERROR`.
+- Normal terminal state is `DONE` only after DoD proof, exact post-merge main verification, final GitHub receipt and controller #9 return to `IDLE`.
+<!-- END AUTO-RUN-FULL-V2-MANAGED -->
 
 <!-- BEGIN GITHUB-ONLY-LIVE-ALL-V1-MANAGED -->
 ## GITHUB-ONLY / LIVE-ALL v1
 
 Canonical shared contract: `rozkalnsandris/ops-workflows/docs/GITHUB_ONLY_LIVE_ALL.md` with machine invariants in `policy/github-only-live-all-v1.json`.
 
-- `GITHUB-ONLY` means fresh GitHub state and source/docs/test work through deploy preparation, but never the first live deploy/runtime mutation.
-- Persist deferred rollout state as public-safe `[DEPLOY-QUEUE]` issues in `rozkalnsandris/ops-workflows`; chat or memory is never the queue.
-- Merge remains separately explicit. Neither `GITHUB-ONLY` nor `LIVE-ALL` authorizes merge.
-- A GitHub write whose deterministic side effect changes production/runtime counts as live work and must not run under `GITHUB-ONLY`.
-- Queue `READY` requires final exact deployable SHA, exact target/entrypoint/preflight/verification/allowed mutations and no outstanding separate prerequisite owner gate.
-- `LIVE-ALL` snapshots only open `READY` items present at command start, freshly revalidates exact SHA/target/baseline and may execute only ordinary predeclared live mutations inside that exact envelope.
-- Secrets/credentials, host/root, Cloudflare infrastructure, exact home coordinates and equivalent separately gated authority remain excluded unless separately explicitly authorized.
-- After any selected live mutation starts, error/ambiguity requires public-safe evidence preservation and STOP; no automatic retry/rollback/cleanup/alternate mutation path unless explicitly pre-authorized.
-- Repository-local weather privacy and warning-source rules remain authoritative and stricter where applicable.
+- `GITHUB-ONLY` permits fresh GitHub/source/docs/test/deploy-prep work but never the first live/runtime mutation.
+- Deferred rollout state lives in public-safe `[DEPLOY-QUEUE]` issues in `ops-workflows`, never chat/Memory.
+- Merge is separate explicit authority unless an exact active FULL contract supplies issue-scoped merge authority; merge never implies LIVE.
+- `LIVE-ALL` snapshots only open READY queue items present at command start and revalidates exact SHA/target/baseline.
+- Secrets/credentials, exact home point, Cloudflare, host/root, production DB/corpus and other stricter classes remain separately gated.
+- After selected live mutation starts, error/ambiguity => evidence + STOP; no undeclared retry/rollback/cleanup/alternate path.
 <!-- END GITHUB-ONLY-LIVE-ALL-V1-MANAGED -->
 
 <!-- BEGIN START-GITHUB-ONLY-V1-MANAGED -->
 ## START_GITHUB_ONLY_V1 deterministic bootstrap amendment
 
-Startup contract: `rozkalnsandris/ops-workflows/docs/START_GITHUB_ONLY_V1.md`.
-Repository manifest: `.github/start-github-only.json`.
+Startup contract: `rozkalnsandris/ops-workflows/docs/START_GITHUB_ONLY_V1.md`. Repository manifest: `.github/start-github-only.json`.
 
-- `START rozkalns_weather GITHUB-ONLY` refreshes local rules/README/roadmap, pinned shared policy, current default branch, active PRs, active issues/dependencies and relevant deploy-queue items before selecting the canonical lane.
-- Revalidate mutable GitHub state immediately before every state-dependent write.
-- The absence of an open issue alone is NOT a STOP condition. Do not invent speculative work.
-- If declared tie-breakers cannot resolve equally authoritative lanes, report `AMBIGUOUS_CANONICAL_LANE` instead of choosing arbitrarily.
-- Final routing is one of `READY_FOR_MERGE`, `PARKED`, `STOP_ERROR`, `NEW_SCOPE_OR_RISK`, `AMBIGUOUS_CANONICAL_LANE`, or `IDLE`.
-- `PARKED` is session-only. Executor availability is session capability, not READY rollout eligibility.
-- Executor unavailability alone must not change READY to BLOCKED; use BLOCKED only for rollout eligibility or contract failure.
-- Repository-local privacy, weather provenance and official-warning rules remain authoritative.
+- `START rozkalns_weather GITHUB-ONLY` refreshes local rules/README/roadmap, pinned shared policy, current default branch, active PRs/issues/dependencies and relevant deploy queue before selecting one canonical lane.
+- Revalidate mutable GitHub state immediately before state-dependent writes.
+- No open issue alone is not a STOP. Do not invent speculative work.
+- Unresolved equally authoritative lanes => `AMBIGUOUS_CANONICAL_LANE`.
+- Session-only executor availability never rewrites READY eligibility.
 <!-- END START-GITHUB-ONLY-V1-MANAGED -->
 
 <!-- BEGIN AGENT-WORK-CYCLE-V1-MANAGED -->
 ## Agent Work Cycle v1
 
-Shared governance contract: `rozkalnsandris/ops-workflows/docs/AGENT_WORK_CYCLE_V1.md` with machine invariants in `policy/agent-work-cycle-v1.json`. Repository-local rules remain authoritative and may be stricter.
+Shared contract: `rozkalnsandris/ops-workflows/docs/AGENT_WORK_CYCLE_V1.md`; local rules may be stricter.
 
-### Canonical state and minimum-sufficient retrieval
-
-- GitHub is canonical for mutable source, branch, SHA, issue/PR, CI/review and authorization-continuity state. Never reuse mutable state from chat history without a fresh read.
-- `START rozkalns_weather` bootstraps only enough state to identify one current work item/lane/gate: current `AGENTS.md`, README/roadmap or explicit continuation when relevant, current default-branch SHA, and only the issue/PR state required by that lane.
-- For a current PR, inspect only the current exact head, required checks, reviews and unresolved threads unless a failure or conflict requires deeper evidence.
-- `SYNC rozkalns_weather` is incremental refresh of the current lane, not a repo-wide audit.
-- `turpini` resumes the same scope with incremental retrieval. It never creates MERGE, LIVE, retry, rollback, cleanup, credential, permission or runtime authority.
-- Do not enumerate unrelated work or historical CI/log/comment/review history during normal START/SYNC. Broaden retrieval only demand-driven or under an explicit audit mode.
-
-### Work execution and owner gates
-
-- Prefer the smallest coherent fix and carry safe source/docs/tests/policy work through Draft PR, exact-head CI/review convergence and Ready when repository-local rules permit it.
-- Technical intermediate steps such as CI polling, exact-head/diff checks, read-only preflight, evidence refresh and scope-preserving correction are not owner gates.
-- MERGE remains an explicit owner decision unless a repository-local explicitly activated FULL mode grants issue-scoped merge authority. Merge never implies LIVE/deploy authority.
-- LIVE/deploy/runtime/credential/permission/production-data mutations require separate exact authorization.
-- Authorization is consumed at the first authorized mutation. After mutation begins, any error, timeout, drift, ambiguity or authorization uncertainty is fail-closed: collect only necessary read-only evidence and STOP. No retry, rollback, cleanup or alternate mutation without fresh explicit authority unless pre-authorized.
-
-### Terminal response — exact next command
-
-Every user-visible work-cycle response that ends or pauses repository work must finish with exactly one copy-pasteable command as the final actionable content.
-
-- Use `ACTION REQUIRED` only for a genuine owner authorization/decision gate.
-- When a real owner gate exists, output the exact authorization command with current issue/PR identifiers and exact SHA/target bindings where applicable.
-- When no owner gate exists and mutable state must be refreshed, output `SYNC rozkalns_weather`.
-- When no owner gate exists and same-scope safe technical continuation is immediately available, output `turpini`.
-- When the current outcome is complete and no same-scope continuation remains, output `START rozkalns_weather`.
-- Give exactly one recommended command, not a menu.
+- START retrieves minimum-sufficient state for one lane: current rules, relevant README/roadmap/continuation, current default-branch SHA and only required issue/PR state.
+- SYNC is incremental refresh, not repo-wide audit. `turpini` resumes same safe scope.
+- For a current PR inspect exact head, required checks, reviews and unresolved threads; deepen only on failure/conflict.
+- Safe FAST source work proceeds through Draft PR/CI/review/Ready. FAST MERGE remains explicit.
+- FULL uses only its freshly activated frozen issue envelope.
+- LIVE/deploy/runtime/credential/permission/production-data mutations require separate exact authority unless current stricter contract explicitly froze that class/target.
+- Every terminal response ends with exactly one command: real owner gate => exact ACTION REQUIRED; waiting mutable state => `SYNC rozkalns_weather`; safe continuation => `turpini`; completed outcome => `START rozkalns_weather`.
 <!-- END AGENT-WORK-CYCLE-V1-MANAGED -->
