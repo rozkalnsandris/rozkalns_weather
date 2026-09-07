@@ -45,6 +45,8 @@ Precīza mājas adrese, `HOME_LAT`, `HOME_LON`, credentials un Cloudflare secret
 ## CLI
 
 ```bash
+rozkalns-weather init-database
+rozkalns-weather readiness
 rozkalns-weather ingest-public
 rozkalns-weather ingest-weathernext
 rozkalns-weather smoke-public
@@ -53,6 +55,8 @@ rozkalns-weather corpus-check
 rozkalns-weather diagnose-weathernext
 rozkalns-weather report-monthly --month YYYY-MM
 ```
+
+`init-database` ir explicit SQLite write operācija. RPi5 production candidate izmanto `DATABASE_INIT_MODE=require-existing`, tāpēc aplikācijas startup pats neizveido production DB. `readiness` ir privacy-safe un neveic tīkla pieprasījumus vai implicit schema creation.
 
 Public backfill ir atsevišķs source module, lai nejauši nesajauktu to ar parasto runtime ingest:
 
@@ -70,14 +74,35 @@ Mandatory CI ir fixture-driven un network-independent. `smoke-public` ir operato
 
 `/api/current` rāda DWD 10416 reference observation, `/api/hourly` un `/api/daily` rāda private-home forecast comparison, bet `/api/verification/*` ir station-location matched benchmark. Accuracy v3 UI atdala deterministic/ensemble/legacy provider roles, rāda lead-bucket sample size/confidence un genuine precipitation calibration atsevišķi. Combined weighting joprojām ir bloķēts līdz pietiekamam corpus.
 
+Runtime health/readiness:
+
+- `/health` — process/app liveness + local DB state summary;
+- `/ready` and `/api/readiness` — machine-readable schema/storage/provider/privacy readiness contract.
+
+Public-provider failure ir redzama provider state, bet izolēta no citiem provider. WeatherNext `access_pending` nav public-only runtime blocker.
+
+## Public-only RPi5 candidate
+
+Pirmais RPi5 rollout kandidāts ir intentionally public-only un neprasa WeatherNext credentials vai private home coordinates:
+
+- `deploy/docker-compose.public.yml` — fixed application/bootstrap/job service identities;
+- `deploy/runtime-descriptor.json` — machine-readable trusted deploy handoff;
+- `deploy/public-ingest-schedule.json` — public 30-minute collector cadence + explicit bootstrap order;
+- `docs/RPI5_PUBLIC_RUNTIME_HANDOFF.md` — trust-boundary, corpus retention un future `RPi5_main` adapter contract.
+
+Fixed runtime mode ir `WEATHER_RUNTIME_MODE=public-only`; application service izmanto `DATABASE_INIT_MODE=require-existing`. Schema init, historical corpus backfill, backup/restore un recurring schedule activation ir atsevišķas vēlākas LIVE/data mutations — tās nav app startup side effects.
+
 ## Deployment
 
-`Dockerfile`, `deploy/` un `docs/OPERATIONS.md` ir source-level deploy preparation. RPi5, systemd/Docker, Cloudflare, credentials un runtime mutation prasa atsevišķu LIVE autorizāciju.
+`Dockerfile`, `deploy/` un `docs/OPERATIONS.md` ir source-level deploy preparation. `rozkalns_weather` pats neiegūst RPi5 root/sudo/deploy authority. `RPi5_main` operation registry/adapter darbs ir atsevišķs source issue, un tikai pēc tā var būt atsevišķa explicit LIVE authorization.
+
+RPi5, systemd/Docker, Cloudflare, credentials, production SQLite/corpus writes un runtime mutation prasa atsevišķu LIVE autorizāciju.
 
 ## Dokumentācija
 
 - `docs/BENCHMARK_METHODOLOGY.md`
 - `docs/PUBLIC_BACKFILL_PROBABILISTIC_V3.md`
+- `docs/RPI5_PUBLIC_RUNTIME_HANDOFF.md`
 - `docs/WEATHERNEXT3.md`
 - `docs/VERIFICATION.md`
 - `docs/ROADMAP.md`
