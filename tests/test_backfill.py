@@ -10,8 +10,8 @@ from rozkalns_weather.models import ForecastRun, ForecastValue, Observation
 from rozkalns_weather.providers.open_meteo import ICON_D2
 
 
-def _db() -> Database:
-    database = Database("sqlite:///:memory:")
+def _db(tmp_path: Path) -> Database:
+    database = Database(f"sqlite:///{tmp_path / 'backfill.db'}")
     database.initialize()
     database.ensure_location(
         location_id=DWD_10416.id,
@@ -80,7 +80,7 @@ def test_iter_run_times_requires_explicit_cycle_hours() -> None:
 
 
 def test_forecast_backfill_is_checkpoint_resumable_and_idempotent(tmp_path: Path) -> None:
-    database = _db()
+    database = _db(tmp_path)
     stub = ForecastStub()
     runner = PublicBackfillRunner(database, sleep=lambda _: None)
     checkpoint = tmp_path / "icon.json"
@@ -117,7 +117,7 @@ def test_forecast_backfill_is_checkpoint_resumable_and_idempotent(tmp_path: Path
 
 
 def test_forecast_dry_run_performs_no_fetch_or_write(tmp_path: Path) -> None:
-    database = _db()
+    database = _db(tmp_path)
     stub = ForecastStub()
     result = PublicBackfillRunner(database).forecast_runs(
         model=ICON_D2,
@@ -134,7 +134,7 @@ def test_forecast_dry_run_performs_no_fetch_or_write(tmp_path: Path) -> None:
 
 
 def test_truth_backfill_chunks_and_resumes(tmp_path: Path) -> None:
-    database = _db()
+    database = _db(tmp_path)
     stub = ObservationStub()
     runner = PublicBackfillRunner(database, sleep=lambda _: None)
     checkpoint = tmp_path / "truth.json"
