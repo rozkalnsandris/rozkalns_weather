@@ -22,6 +22,7 @@ forecast snapshot -> observation -> verification -> WeatherNext comparison
 - [x] Common archive window contract from 2026-04-02; older IFS history separated from common series.
 - [x] Historical DWD WMO 10416 truth backfill without nearest-station fallback.
 - [x] Missing-run/revision/integrity reconciliation for immutable backfill snapshots.
+- [x] Explicit SQLite schema-init + privacy-safe readiness commands; RPi5 candidate can require an existing schema instead of creating it on app startup.
 
 ## Phase 2 — WeatherNext 3
 - [x] BigQuery 0.05°/0.1° schema/query contract.
@@ -47,14 +48,19 @@ forecast snapshot -> observation -> verification -> WeatherNext comparison
 - [ ] populate larger historical public corpus after explicit corpus-write authority.
 - [ ] optional full-ensemble WeatherNext 3 CRPS/Brier if private source later exposes defensible members.
 
-## Phase 4 — private PWA
+## Phase 4 — private PWA / RPi5 runtime
 - [x] Overview / Models / Accuracy / Warnings-Radar.
 - [x] current DWD station truth clearly labeled.
 - [x] home forecast charts/daily cards.
 - [x] provider init/freshness states.
 - [x] WeatherNext uncertainty surface.
 - [x] Accuracy v3 provider classes, lead-bucket sample/confidence and precipitation calibration surface.
+- [x] deterministic public-only RPi5 application packaging + fixed machine-readable deploy descriptor.
+- [x] public collector schedule and explicit non-destructive corpus-bootstrap contract.
+- [x] weather-side trusted-boundary handoff contract for a future `RPi5_main` static adapter.
+- [ ] `RPi5_main` source adapter/operation registration reviewed and merged.
 - [ ] private RPi5 deploy.
+- [ ] production public corpus bootstrap/backfill under explicit LIVE/data authority.
 - [ ] optional Cloudflare Access.
 
 ## Phase 5 — DWD safety/radar
