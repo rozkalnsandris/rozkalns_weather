@@ -1,0 +1,10 @@
+[Unit]
+Description=rozkalns_weather WeatherNext 3 ingest
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/rozkalns_weather
+EnvironmentFile=/opt/rozkalns_weather/.env
+ExecStart=/opt/rozkalns_weather/.venv/bin/rozkalns-weather ingest-weathernext

@@ -4,23 +4,32 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "rozkalns-weather"
-version = "0.1.0"
+version = "0.2.0"
 description = "Private local weather forecast comparison and WeatherNext 3 verification service"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
   "fastapi>=0.116,<1",
+  "httpx>=0.28,<1",
   "uvicorn>=0.35,<1",
 ]
 
 [project.optional-dependencies]
+weathernext = [
+  "google-cloud-bigquery>=3.36,<4",
+]
 test = [
-  "httpx>=0.28,<1",
   "pytest>=8.4,<9",
 ]
 
+[project.scripts]
+rozkalns-weather = "rozkalns_weather.cli:main"
+
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+rozkalns_weather = ["static/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -1,94 +1,99 @@
 # rozkalns_weather
 
-Privāts, lokāli orientēts laikapstākļu projekts mājas vajadzībām Dortmund-Wickede apkārtnē.
+Privāts, lokāli orientēts laikapstākļu dashboard + forecast-verification projekts Dortmund-Wickede apkārtnei.
 
-## Galvenais mērķis
+## Kāpēc projekts eksistē
 
-Projekta centrā ir **Google WeatherNext 3**: iegūt tā prognozes konkrētam mājas punktam, salīdzināt tās ar DWD un ECMWF modeļiem, ilgtermiņā izmērīt, cik precīzs WeatherNext 3 ir tieši mūsu lokācijā, un sekot tam, kā modeļa kvalitāte attīstās.
+Projekta centrā ir **Google WeatherNext 3**. Mērķis nav tikai parādīt prognozi, bet ilgstoši saglabāt immutable forecast snapshotus un izmērīt, cik precīzs WeatherNext 3 ir tieši mūsu lokācijā salīdzinājumā ar DWD un ECMWF.
 
-Šis nav paredzēts kā publisks weather service. Sākotnējais mērķis ir privāts web/PWA skats ģimenei.
-
-## Pamatideja
-
-Vienā mobilajam draudzīgā web skatā apvienot:
-
-- **WeatherNext 3** — galvenais eksperimentālais/izpētes modelis;
-- **DWD ICON-D2** — augstas izšķirtspējas īstermiņa modelis Vācijai;
-- **DWD MOSMIX-L** — lokāla station-based prognoze;
-- **DWD observations** — faktiskie novērojumi verifikācijai;
-- **DWD CAP warnings** — vienīgais autoritatīvais warning slānis;
-- **DWD radar** — faktiskie/ļoti īstermiņa nokrišņi;
-- **ECMWF IFS HRES** — tradicionāls globālais etalons;
-- **ECMWF AIFS** — vēl viens AI modelis salīdzinājumam;
-- vēlāk: AQI, pollen un UV.
-
-## WeatherNext 3 projektā ir īpašā lomā
-
-WeatherNext 3 nav vienkārši vēl viens modelis sarakstā. Projekts radās tieši tāpēc, lai:
-
-1. redzētu WeatherNext 3 prognozi blakus DWD/ECMWF;
-2. saglabātu katras prognozes snapshot pirms notikuma;
-3. pēc tam salīdzinātu prognozi ar reāli novēroto;
-4. mērītu kļūdas pēc lead time, sezonas un parametra;
-5. redzētu WeatherNext 3 ensemble nenoteiktību (`mean`, `p10`, `p25`, `p50`, `p75`, `p90`);
-6. sekotu modeļa versiju un kvalitātes izmaiņām laika gaitā.
-
-Sk. [docs/WEATHERNEXT3.md](docs/WEATHERNEXT3.md) un [docs/VERIFICATION.md](docs/VERIFICATION.md).
-
-## Lokācija
-
-- Darba lokācija: **Dortmund-Wickede**.
-- DWD lokālais references punkts: **DORTMUND / WMO 10416** (`MOSMIX_L_LATEST_10416.kmz`).
-- **Unna nav jāizmanto kā forecast bāze.** Modeļiem jāpadod precīzs mājas WGS84 punkts, nevis pilsētas centrs vai tuvākā pilsēta.
-- Precīza mājas adrese un koordinātas netiek glabātas GitHub. Tās būs tikai lokālā runtime konfigurācijā (`HOME_LAT`, `HOME_LON`).
-
-> Piezīme: repository pašlaik ir publisks. Tāpēc tajā apzināti netiek commitota precīza mājas adrese, koordinātas, API credentials vai citi sensitīvi dati.
-
-## Plānotā arhitektūra
+Galvenais cikls:
 
 ```text
-Home WGS84 point
-      |
-      +-- WeatherNext 3 (BigQuery initially)
-      +-- DWD ICON-D2
-      +-- DWD MOSMIX-L / observations
-      +-- DWD CAP warnings
-      +-- DWD radar
-      +-- ECMWF IFS / AIFS
-                |
-                v
-        collectors/adapters
-                |
-                v
-       normalized forecast DB
-                |
-        +-------+--------+
-        |                |
-   verification       REST API
-        |                |
-        +---------> Web/PWA
+forecast snapshot -> observation -> verification -> WeatherNext comparison
 ```
 
-MVP backend virziens: **Python + FastAPI + SQLite**. Frontend: viegls responsive web/PWA. Privātu ārējo pieeju vēlāk var nodrošināt ar Cloudflare Access.
+WeatherNext 3 ir `primary_research` modelis. Tas nav oficiāls warning source; severe-weather brīdinājumu autoritāte Vācijā paliek **DWD**.
+
+## Provideri
+
+- **WeatherNext 3** — BigQuery 0.05° station-head temperatūrai/dew point + 0.1° surface laukiem, ensemble `mean/p10/p25/p50/p75/p90`;
+- **DWD MOSMIX-L 10416** — lokāls station-based baseline;
+- **DWD observations / WMO 10416** — verifikācijas truth, transportēts ar Bright Sky/DWD Open Data;
+- **DWD ICON-D2** — high-resolution short-range baseline caur Open-Meteo ar saglabātu upstream model identity;
+- **ECMWF IFS HRES** — tradicionāls globālais baseline;
+- **ECMWF AIFS** — AI baseline;
+- **DWD CAP warnings + radar** — atsevišķs safety/observed slānis.
+
+## Lokācija un privacy
+
+Repo satur tikai publiski drošo `Dortmund-Wickede` label un DWD/WMO stacijas ID `10416`. Precīzā adrese, `HOME_LAT`, `HOME_LON`, Google credentials un Cloudflare/runtime secrets **netiek commitoti**.
+
+Runtime `.env`:
+
+```dotenv
+HOME_LAT=
+HOME_LON=
+HOME_TIMEZONE=Europe/Berlin
+HOME_LABEL=Dortmund-Wickede
+GOOGLE_CLOUD_PROJECT=
+WEATHERNEXT_BIGQUERY_DATASET=
+DATABASE_URL=sqlite:///data/weather.db
+```
+
+## Implementācija
+
+Backend: Python 3.12+, FastAPI, SQLite. Forecast runs/values ir DB-līmenī immutable. Provider failure ir izolēts; status/freshness tiek rādīts atsevišķi.
+
+Svarīgākie endpointi:
+
+```text
+GET /health
+GET /api/providers
+GET /api/health/providers
+GET /api/hourly?hours=48&variable=temperature_2m
+GET /api/verification/summary?days=30
+GET /api/warnings
+GET /api/radar
+```
+
+Web/PWA ir iebūvēts FastAPI static slānī ar `Overview`, `Models`, `Accuracy`, `Warnings/Radar` skatiem. WeatherNext 3 ir vizuāli izcelts kā pētniecības modelis, nevis oficiāla autoritāte.
+
+## Collectors
+
+Publiskie baseline provideri:
+
+```bash
+rozkalns-weather ingest-public
+```
+
+WeatherNext 3 pēc Google allowlist/BigQuery konfigurācijas:
+
+```bash
+rozkalns-weather ingest-weathernext
+```
+
+WeatherNext live ingest izmanto optional dependency:
+
+```bash
+pip install '.[weathernext]'
+```
+
+Ja allowlist/config nav gatavs, sistēma paliek `access_pending`; tā nedrīkst ģenerēt/fabricēt WeatherNext datus.
+
+## Verification v1
+
+Temperatūrai ir MAE, RMSE, bias, lead-time buckets, 30d/90d logi un WeatherNext `p10-p90` coverage. Forecast/observation matching V1 ir exact hourly timestamp (`0 min` tolerance), lai noteikums būtu reproducējams. Model version tiek saglabāts un metrics API atdala versijas.
+
+## Deployment
+
+`Dockerfile`, `deploy/docker-compose.example.yml`, systemd timer piemēri un `docs/OPERATIONS.md` sagatavo RPi5 deploymentu, bet **nekāds live deploy, secrets, Cloudflare vai host mutation netiek veikts bez atsevišķas autorizācijas**.
 
 ## Dokumentācija
 
-- [Project brief](docs/PROJECT_BRIEF.md)
 - [WeatherNext 3](docs/WEATHERNEXT3.md)
-- [Data sources](docs/DATA_SOURCES.md)
 - [Architecture](docs/ARCHITECTURE.md)
-- [Forecast verification](docs/VERIFICATION.md)
-- [UI / UX](docs/UI.md)
+- [Verification](docs/VERIFICATION.md)
 - [Roadmap](docs/ROADMAP.md)
-- [FAST-LANE v2.2 local contract](docs/FAST_LANE_V2_2.md)
-- [Source references](docs/SOURCES.md)
-
-## GitHub darba modelis
-
-Repo izmanto shared `ops-workflows` FAST-LANE v2.2, GITHUB-ONLY/LIVE-ALL, START_GITHUB_ONLY un Agent Work Cycle v1 modeli. Reusable policy CI ir piesaistīts immutable exact `ops-workflows` commit SHA; lokālie privacy un DWD official-warning noteikumi ir stingrāki un paliek autoritatīvi.
-
-## Pašreizējais statuss
-
-**Bootstrap / research design.** Vēl nav runtime implementācijas.
-
-Pirmais ārējais WeatherNext 3 blocker ir Google real-time forecast allowlist pieeja. DWD un ECMWF daļu var sākt būvēt neatkarīgi no tās.
+- [Implementation status](docs/IMPLEMENTATION_STATUS.md)
+- [Operations](docs/OPERATIONS.md)
+- [Sources](docs/SOURCES.md)

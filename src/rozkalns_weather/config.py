@@ -28,14 +28,12 @@ class Settings:
         source = os.environ if env is None else env
         lat = _optional_float("HOME_LAT", source.get("HOME_LAT"))
         lon = _optional_float("HOME_LON", source.get("HOME_LON"))
-
         if lat is not None and not -90 <= lat <= 90:
             raise ValueError("HOME_LAT must be between -90 and 90")
         if lon is not None and not -180 <= lon <= 180:
             raise ValueError("HOME_LON must be between -180 and 180")
         if (lat is None) != (lon is None):
             raise ValueError("HOME_LAT and HOME_LON must be configured together")
-
         return cls(
             home_lat=lat,
             home_lon=lon,
@@ -52,4 +50,4 @@ class Settings:
 
     @property
     def weathernext_configured(self) -> bool:
-        return bool(self.google_cloud_project and self.weathernext_bigquery_dataset)
+        return bool(self.home_configured and self.google_cloud_project and self.weathernext_bigquery_dataset)

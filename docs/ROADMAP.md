@@ -1,134 +1,109 @@
 # Roadmap
 
-## Phase 0 — Bootstrap / access
-
-- [x] Define project goal and WeatherNext 3 priority.
-- [x] Define provider roles and privacy policy.
-- [x] Define verification methodology.
-- [ ] Make repository private if desired; current repository visibility must be checked before committing any private location detail.
-- [ ] Submit WeatherNext Data Request / allowlist request.
-- [ ] Decide runtime secrets/config mechanism for `HOME_LAT` / `HOME_LON`.
-
-**Exit:** project docs are canonical and WeatherNext access request is in progress or approved.
-
-## Phase 1 — DWD baseline
-
-Implement first working local forecast without waiting for WeatherNext access.
-
-- [ ] Backend skeleton (`FastAPI`).
-- [ ] SQLite schema for immutable forecast snapshots and observations.
-- [ ] `home` location loaded from environment only.
-- [ ] DWD MOSMIX-L 10416 adapter.
-- [ ] DWD observation adapter.
-- [ ] ICON-D2 point forecast adapter.
-- [ ] Provider freshness/status API.
-- [ ] Basic 48 h hourly endpoint.
-- [ ] Tests for units/timezone/accumulation semantics.
-
-**Exit:** private local API can show DWD forecast + observations with provenance.
-
-## Phase 2 — WeatherNext 3 first-class integration
-
-- [ ] Confirm allowlist access works.
-- [ ] Inspect current BigQuery dataset schema.
-- [ ] Implement spatial point lookup for home location.
-- [ ] Ingest selected surface variables.
-- [ ] Ingest `mean`, `p10`, `p25`, `p50`, `p75`, `p90` where available.
-- [ ] Store init time, retrieval time, valid time, lead time and model version.
-- [ ] Handle dissemination latency correctly.
-- [ ] Prevent overwrite of older forecast runs.
-- [ ] Add WeatherNext-specific health/freshness diagnostics.
-- [ ] Add first WeatherNext vs DWD chart.
-
-**Exit:** WeatherNext 3 forecasts are visible and stored in a form suitable for long-term local verification.
-
-## Phase 3 — ECMWF comparison
-
-- [ ] Add IFS HRES adapter.
-- [ ] Add AIFS adapter.
-- [ ] Preserve upstream model identity if Open-Meteo is transport layer.
-- [ ] Add common variable semantics mapping.
-- [ ] Add model comparison view.
-
-**Exit:** WeatherNext 3 can be compared with both traditional NWP and another AI model.
-
-## Phase 4 — Verification engine
-
-- [ ] Join forecast snapshots to DWD observations by valid time.
-- [ ] Temperature MAE/RMSE/bias.
-- [ ] Lead-time buckets.
-- [ ] Rolling 30d/90d metrics.
-- [ ] Model version dimension.
-- [ ] Precipitation occurrence event definition.
-- [ ] Brier Score/reliability pipeline.
-- [ ] WeatherNext p10–p90 coverage metrics.
-- [ ] Accuracy API.
-- [ ] Accuracy UI.
-
-**Exit:** project can answer “which model has actually been more accurate here?” with reproducible metrics.
-
-## Phase 5 — Full private PWA
-
-- [ ] Overview page.
-- [ ] Hourly graph.
-- [ ] Daily cards.
-- [ ] `Combined | DWD | WeatherNext | ECMWF` provider switch.
-- [ ] WeatherNext uncertainty band.
-- [ ] Freshness/status indicators.
-- [ ] Installable PWA.
-- [ ] Private remote access design (e.g. Cloudflare Access) — separate runtime authorization required.
-
-**Exit:** practical daily-use weather app on phone.
-
-## Phase 6 — Radar + warnings
-
-- [ ] DWD CAP official warnings.
-- [ ] DWD radar ingest/rendering.
-- [ ] Home-centered radar view.
-- [ ] Warning priority UX.
-- [ ] Distinguish observed radar from forecast/nowcast.
-
-**Exit:** app covers forecast + actual precipitation + official severe-weather information.
-
-## Phase 7 — Additional environment data
-
-Optional, only after core forecast comparison is stable.
-
-- [ ] European AQI.
-- [ ] PM2.5 / PM10 / NO2 / O3.
-- [ ] pollen.
-- [ ] UV.
-- [ ] sunrise/sunset/daylight/sunshine.
-
-## Phase 8 — Combined forecast
-
-Only after sufficient verified history.
-
-- [ ] Define minimum sample requirement.
-- [ ] Calculate provider skill by variable and lead time.
-- [ ] Design transparent weighting.
-- [ ] Version weights and evaluation windows.
-- [ ] Backtest Combined against naive baselines.
-- [ ] Keep all original provider lines visible.
-
-**Exit:** Combined forecast demonstrates measurable out-of-sample benefit rather than just averaging models.
-
-## Phase 9 — WeatherNext evolution reports
-
-- [ ] Monthly WeatherNext local skill report.
-- [ ] Version-change annotations.
-- [ ] Compare new model period vs previous model period.
-- [ ] Archive notable misses/wins.
-- [ ] Track Google release notes relevant to operational forecast behavior.
-
-This phase is ongoing and directly serves the original reason for creating the project.
-
-## Ordering principle
-
-Do not let radar, AQI, styling or extra providers delay the core loop:
+Galvenais prioritātes cikls nemainās:
 
 ```text
 forecast snapshot -> observation -> verification -> WeatherNext comparison
 ```
 
-That loop is the project’s primary product.
+## Phase 0 — bootstrap/access
+
+- [x] Project goal, WeatherNext-first priority, privacy un verification methodology.
+- [x] Runtime-only home point contract.
+- [ ] WeatherNext Data Request / allowlist apstiprināts.
+- [ ] Privātajā runtime konfigurēts Google Cloud + home point.
+
+**Exit:** source ir gatavs; live WeatherNext ingest sākas tiklīdz ir access.
+
+## Phase 1 — DWD baseline
+
+- [x] FastAPI backend.
+- [x] SQLite immutable forecast store + observations.
+- [x] DWD MOSMIX-L 10416 adapter.
+- [x] DWD observations adapter WMO 10416.
+- [x] ICON-D2 point adapter.
+- [x] Provider health/freshness API.
+- [x] 48 h hourly API.
+- [x] Unit/timezone/immutability/privacy tests.
+
+**Exit:** source gatavs lokālam DWD baseline ingest.
+
+## Phase 2 — WeatherNext 3 first-class integration
+
+- [x] Current BigQuery 0.05°/0.1° table contract + schema probe.
+- [x] Runtime home-point spatial lookup.
+- [x] Station-head temperature/dew point + 0.1° surface field ingestion contract.
+- [x] `mean/p10/p25/p50/p75/p90` support.
+- [x] Model/init/retrieval/valid/lead/statistic provenance.
+- [x] Dissemination-latency state.
+- [x] WeatherNext-specific provider health state (`access_pending`, latency, configured).
+- [ ] Live allowlist access verified with real query.
+- [ ] First real WeatherNext snapshot stored.
+
+**Exit:** pēc access nav vajadzīgs schema redesign; live query ir vienīgais ārējais gate.
+
+## Phase 3 — ECMWF comparison
+
+- [x] IFS HRES adapter.
+- [x] AIFS adapter.
+- [x] Upstream model identity preserved when Open-Meteo is transport.
+- [x] Shared normalized semantics.
+- [x] Model comparison web surface.
+
+## Phase 4 — verification engine
+
+- [x] Forecast ↔ DWD observation exact-hour matching V1.
+- [x] Temperature MAE/RMSE/bias.
+- [x] Lead-time buckets.
+- [x] Rolling 30d/90d API windows.
+- [x] Model-version dimension.
+- [x] WeatherNext p10–p90 coverage.
+- [ ] Precipitation Brier/reliability pipeline after probabilistic rain semantics are validated end-to-end.
+- [ ] Larger-sample statistical confidence reporting after corpus exists.
+
+## Phase 5 — private PWA
+
+- [x] Overview.
+- [x] Model comparison chart surface.
+- [x] WeatherNext first-class research panel.
+- [x] Accuracy surface.
+- [x] PWA manifest/service worker basics.
+- [x] Freshness/status display.
+- [ ] Live private deployment on RPi5.
+- [ ] Cloudflare Access, if chosen — separate LIVE gate.
+
+## Phase 6 — radar + warnings
+
+- [x] DWD warning API contract (Bright Sky transport; DWD authority explicit).
+- [x] DWD radar API contract/metadata surface.
+- [x] Observed/radar-nowcast vs model forecast separation.
+- [ ] Live UI map rendering validation after private runtime has home coordinates.
+
+## Phase 7 — environment extras
+
+Optional after the core comparison runs reliably:
+
+- [ ] AQI / PM2.5 / PM10 / NO2 / O3.
+- [ ] pollen.
+- [ ] UV.
+- [ ] sunrise/sunset/daylight.
+
+## Phase 8 — Combined forecast
+
+Blocked intentionally until enough verified history exists:
+
+- [ ] minimum sample requirement;
+- [ ] skill by provider/variable/lead;
+- [ ] transparent/versioned weights;
+- [ ] out-of-sample backtest;
+- [ ] original provider lines always visible.
+
+## Phase 9 — WeatherNext evolution
+
+Ongoing after live corpus starts:
+
+- [ ] monthly WeatherNext local skill report;
+- [ ] version-change annotations;
+- [ ] new-vs-old version period comparison;
+- [ ] notable misses/wins archive;
+- [ ] release-note tracking.
