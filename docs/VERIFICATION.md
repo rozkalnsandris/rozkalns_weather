@@ -2,54 +2,44 @@
 
 ## Mērķis
 
-Galvenā projekta vērtība ir nevis tikai “parādīt vairākus modeļus”, bet **objektīvi izmērīt WeatherNext 3 un citu modeļu lokālo skill**.
+Projekta galvenā vērtība ir objektīvi izmērīt WeatherNext 3 un citu modeļu lokālo skill, saglabājot reproducējamu forecast provenance. Forecast snapshot netiek aizvietots ar vēlāk publicētu run.
 
-Galvenais princips:
+## Truth un location semantics
 
-> Forecast jānovērtē pret to, kas bija zināms un pieejams prognozes izdošanas brīdī, un pēc tam pret neatkarīgu reālo novērojumu.
+Measured benchmark izmanto publisko DWD WMO `10416` reference location `station_10416`. Historical truth backfill ir pinned tieši uz WMO `10416`; Bright Sky ir transport, DWD paliek source authority. Ja transport response source metadata neapstiprina 10416, dati netiek klusām pāradresēti uz nearest station.
 
-Nedrīkst izmantot vēlāk atjaunotu prognozi kā aizvietojumu tam forecast, ko modelis deva agrāk.
+Privātais `home` punkts ir atsevišķs comparison stream. Home forecast netiek saukts par izmērītu home accuracy, kamēr nav home observation truth.
 
-## Provider minimum
+## Immutable forecast policy
 
-Benchmark tabulā vismaz:
-
-- WeatherNext 3;
-- DWD ICON-D2;
-- DWD MOSMIX-L 10416;
-- ECMWF IFS HRES;
-- ECMWF AIFS.
-
-Papildus var vērtēt Combined forecast pēc tam, kad ir pietiekams corpus.
-
-## Truth source
-
-Sākotnēji:
-
-- DWD observations no piemērotākās lokālās stacijas, primāri `10416 DORTMUND`, ja konkrētais parametrs/stundas novērojums ir pieejams;
-- jāglabā station metadata un distance;
-- DWD radar var kalpot precipitation event truth/context, bet tā interpretācija jādefinē atsevišķi.
-
-Vēlāk:
-
-- lokāls mājas weather sensor var tikt pievienots kā atsevišķs ground-truth stream;
-- nedrīkst automātiski sajaukt home sensor un DWD station observations vienā truth series bez source dimension.
-
-## Forecast snapshot policy
-
-Katru provider run saglabājam immutable.
-
-Minimum key:
+Minimum identity saglabā:
 
 ```text
-(provider, model_version, init_time, location, valid_time, variable, statistic)
+(provider, model_version, init_time, location, valid_time, variable, statistic, retrieval/revision provenance)
 ```
 
-Ja provider vēlāk labo/pārpublicē to pašu run, saglabājam revision/retrieval metadata, nevis klusām pārrakstām vēsturi.
+Identisks payload ir idempotents. Ja upstream pārpublicē citu payload tam pašam run, tas ir jauns revision; vecais snapshot netiek pārrakstīts.
 
-## Lead-time buckets
+Historical Open-Meteo Single Runs saglabā explicit `run=` initialization. Ja historical surface neizpauž original availability timestamp, `upstream_available_at_utc` paliek `null`; retrieval time netiek fabricēts par publication time.
 
-Metrics nerēķina tikai vienā kopējā vidējā. Minimum buckets:
+## Deterministic baseline
+
+Strict exact-run archive comparatori:
+
+- DWD ICON-D2;
+- ECMWF IFS HRES;
+- ECMWF AIFS 0.25° Single.
+
+Common public archive comparison window sākas `2026-04-02`. IFS vecāks history no `2024-03-14` drīkst būt tikai atsevišķs non-common series.
+
+Temperature minimum metrics:
+
+- MAE;
+- RMSE;
+- bias;
+- explicit sample size `n`.
+
+Lead buckets:
 
 - 0–6 h
 - 6–12 h
@@ -61,166 +51,88 @@ Metrics nerēķina tikai vienā kopējā vidējā. Minimum buckets:
 - 7–10 d
 - 10–15 d
 
-Ne visi provider aptver visus buckets. Salīdzinājumu veic tikai kopīgajā pieejamības logā.
+Model-version periods paliek atsevišķi.
 
-## Temperature metrics
+## Common-sample fairness
 
-Minimum:
+`common_sample_leaderboard` vispirms intersecto sample identity starp salīdzināmajiem provider vienā comparison mode un lead bucket, un tikai tad rēķina metric. Provider-only timestamps netiek izmantoti, lai mākslīgi uzlabotu ranking.
 
-### MAE
+Comparison modes ir atsevišķi:
 
-`mean(abs(forecast - observed))`
+- `run_to_run` — līdzīgu initialization/run semantics salīdzinājums;
+- `user_available` — tikai forecast, kas bija reāli pieejams attiecīgajā decision-time contract.
 
-Viegli interpretējams galvenais rādītājs.
+Šos režīmus nedrīkst poolot vienā leaderboard. `init_time`, `upstream_available_at_utc` un `retrieved_at_utc` jāglabā atsevišķi, lai user-available gate būtu auditējams.
 
-### RMSE
+Bootstrap MAE 95% CI tiek rādīts tikai pie `n >= 30`; mazākam sample uncertainty state paliek explicit, nevis tiek izdomāts confidence interval.
 
-Vairāk soda lielas kļūdas.
+## Public ensembles
 
-### Bias
+Open-Meteo Ensemble API public adapters:
 
-`mean(forecast - observed)`
+- DWD ICON-D2-EPS;
+- ECMWF IFS ENS 0.25°;
+- ECMWF AIFS ENS 0.25°.
 
-Parāda sistemātisku par siltu/par aukstu tendenci.
+Parser saglabā control/member identity un member suffix konsekvenci starp variables. Individual-member historical retention ir īsa un source adapter ir bounded līdz trim `past_days`; vecāki member dati netiek fabricēti.
 
-### Median absolute error
+WeatherNext 2 ir tikai `legacy_ai_context`. Ja Open-Meteo surface nedod defensible exact-run init provenance, WN2 neiet strict run-to-run leaderboard un nekad neaizvieto WeatherNext 3.
 
-Noder robustumam pret atsevišķiem outlier.
+## Genuine probabilistic verification
 
-Rādām metric pēc:
+Probabilistic score drīkst saņemt tikai genuine ensemble/probability input.
 
-- provider/model version;
-- lead bucket;
-- 30/90 dienu window;
-- kalendārā mēneša/sezonas;
-- day/night, ja pietiek datu.
+Implemented primitives:
 
-## Precipitation verification
-
-Nedrīkst salīdzināt tikai “mm kļūdu”, jo precipitation ir gan occurrence, gan amount problēma.
-
-### Occurrence
-
-Definē event threshold, piemēram, `>= 0.1 mm/h` vai citu explicit slieksni.
-
-Probabilistic forecasts:
-
+- ensemble CRPS;
+- empirical member quantiles;
+- central interval lower/upper, width un empirical coverage;
+- interval score un WIS-style weighted interval score;
+- precipitation event probability kā genuine member fraction;
 - Brier Score;
-- reliability/calibration;
-- hit/miss/false alarm summary pie izvēlētiem probability threshold.
+- reliability bins.
 
-Deterministic amount:
+Default precipitation occurrence candidate ir `>= 0.1 mm/h`. Probability tiek rēķināta kā member fraction, kas sasniedz slieksni. Deterministic precipitation amount un WeatherNext summary quantiles netiek pārvērstas probability.
 
-- MAE/RMSE precipitation amount;
-- event-conditioned error;
-- accumulated 3 h / 6 h / 24 h totals, ja accumulation semantics ir pareizi normalizēti.
+## WeatherNext uncertainty
 
-WeatherNext 3 percentiles/ensemble nedrīkst reducēt uz vienu deterministic number pirms saglabāšanas.
+WeatherNext 3 summary distribution jāsaglabā kā `mean/p10/p25/p50/p75/p90` ar model version/init/retrieval/valid/lead provenance. Summary intervalam var vērtēt coverage/width, bet CRPS/Brier nedrīkst izlikties par full-ensemble score, ja genuine members/probability nav pieejami.
 
-## Wind verification
+## Event verification
 
-Atsevišķi:
+Temperature extreme, precipitation event un wind/gust event verification lieto tikai semantiski matched forecast/truth variable un explicit threshold/direction.
 
-- sustained wind speed;
-- gusts, ja provider/truth semantiski salīdzināmi;
-- direction circular error, ja ieviešam.
+Event summary rāda:
 
-Svarīgi nesalīdzināt 10 m mean wind ar gust kā vienu un to pašu mainīgo.
+- hits;
+- misses;
+- false alarms;
+- correct negatives;
+- hit rate;
+- false-alarm ratio;
+- critical success index.
 
-## WeatherNext uncertainty verification
+10 m sustained wind un gust nekad netiek sajaukti kā viena quantity.
 
-WeatherNext 3 ensemble ir viena no projekta galvenajām priekšrocībām.
+## Missing data
 
-Jāvērtē:
+Missing observation vai forecast nav automātiski forecast error. Missing values netiek imputētas tikai metric aizpildīšanai. Member data, kas vairs nav pieejami retention dēļ, tiek atzīmēti kā unavailable, nevis rekonstruēti/fabricēti.
 
-- cik bieži observation iekrīt `p10–p90` intervalā;
-- interval width;
-- calibration pēc lead time;
-- vai šaurāks interval tiešām nozīmē mazāku kļūdu;
-- reliability diagrams precipitation probability, ja pieejams atbilstošs probabilistic field.
+## Accuracy v3 UI
 
-## Fair-comparison rules
+PWA Accuracy/Models skati atdala:
 
-1. Izmanto vienu un to pašu valid time.
-2. Izmanto vienu un to pašu home location semantics, cik modelis to ļauj.
-3. Saglabā provider native init time.
-4. Nesaņem vēlāk publicētu run un neuzdod to par agrāku prognozi.
-5. Izmanto tikai forecast, kas bija pieejams pirms valid time.
-6. Normalizē units un accumulation windows.
-7. Salīdzinājumos skaidri norādi sample size `n`.
-8. Neizdari secinājumus no ļoti maza sample.
-9. Model version changes rāda atsevišķi.
-10. Missing data nav forecast error.
+- deterministic providers;
+- ensemble providers;
+- WeatherNext 3 `primary_research`;
+- WeatherNext 2 `legacy_ai_context`.
 
-## Data availability bias
-
-WeatherNext dissemination latency var būt būtiska. Ja salīdzinām “freshest available forecast at decision time”, jāglabā:
-
-- `init_time`;
-- `published/available time`, ja iespējams;
-- `retrieved_at`.
-
-Tad var būt divi benchmark režīmi:
-
-### Run-to-run skill
-
-Salīdzina līdzīga init cikla modeļus.
-
-### User-available skill
-
-Salīdzina labāko forecast, kas reāli bija pieejams lietotājam konkrētajā brīdī.
-
-Abi atbild uz atšķirīgiem jautājumiem un nedrīkst tikt sajaukti.
-
-## Rolling dashboards
-
-Plānotie summary:
-
-```text
-Temperature MAE — last 30 days
-WeatherNext 3   1.1 °C
-ICON-D2         0.9 °C
-MOSMIX          1.0 °C
-IFS HRES        1.2 °C
-AIFS            1.1 °C
-```
-
-Tas ir tikai UI piemērs; nedrīkst izmantot izdomātus skaitļus produkcijas datos.
-
-Papildu skati:
-
-- 30d / 90d / all-time;
-- by lead time;
-- by model version;
-- temperature / precipitation / wind tabs;
-- WeatherNext p10–p90 calibration;
-- worst misses;
-- best/worst event types.
+UI rāda lead bucket, `n`, sample-confidence state un genuine precipitation calibration atsevišķi. Production UI nekad nedrīkst izmantot izdomātus skill skaitļus.
 
 ## Combined forecast eligibility
 
-Combined weighting nedrīkst sākties, kamēr nav:
-
-- pietiekams common-period sample;
-- vismaz vairāku nedēļu datu, bet vēlams sezonāli plašāks corpus;
-- stabila provenance;
-- pārbaudīta missing-data logic;
-- metric pipeline tests.
-
-Sākuma Combined var būt tikai vizuāls konsenss, nevis “mūsu modelis”.
-
-Kad weighting tiek ieviests, weights jāsaglabā ar version un training/evaluation window, lai rezultāts būtu auditējams.
+Weighted Combined forecast paliek ārpus scope, kamēr nav pietiekams common-period corpus, stabila provenance, missing-data logic, metric tests un transparent versioned weighting/backtest contract.
 
 ## WeatherNext evolution report
 
-Reizi mēnesī vai pēc būtiska model release var ģenerēt:
-
-- WeatherNext version;
-- sample period;
-- lead-time skill vs ICON-D2/IFS/AIFS;
-- change vs previous period;
-- uncertainty calibration;
-- notable failure cases;
-- release-note/context links.
-
-Tas tieši atbalsta projekta mērķi sekot, **kā WeatherNext 3 attīstās mūsu lokācijā**.
+Kad ir reāls corpus, periodiskais report rāda WeatherNext version, sample period, lead-time skill vs public baselines, change vs previous period, uncertainty calibration un notable misses. Release/model events tiek piesaistīti tikai verificētam provenance; nekas netiek fabricēts.

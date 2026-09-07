@@ -54,6 +54,41 @@ rozkalns-weather corpus-check
 rozkalns-weather corpus-stats
 ```
 
+## Public archive backfill source contract
+
+`python -m rozkalns_weather.backfill` ir apzināti atdalīts no parastā runtime ingest. Tas pieprasa explicit `--database-url`, model/date/run-hour ranges un checkpoint path. Drošais pirmais solis vienmēr ir `--dry-run`:
+
+```bash
+python -m rozkalns_weather.backfill --database-url sqlite:///<non-production-path> forecast \
+  --model icon_d2 --start 2026-04-02 --end 2026-04-03 \
+  --run-hours 0,6,12,18 --checkpoint <checkpoint.json> --dry-run
+
+python -m rozkalns_weather.backfill --database-url sqlite:///<non-production-path> truth \
+  --start 2026-04-02 --end 2026-04-30 \
+  --checkpoint <truth-checkpoint.json> --chunk-days 14 --dry-run
+```
+
+Forecast backfill ir rate-limited un checkpoint tiek atomiski saglabāts pēc katra veiksmīga exact run. Identisks immutable snapshot ir idempotents; mainīts upstream payload kļūst par jaunu revision, nevis pārraksta veco snapshot.
+
+Historical Single Runs var neizpaust sākotnējo publication/availability timestamp; tādā gadījumā `upstream_available_at_utc` paliek `null`. Retrieval time netiek fabricēts par publication time.
+
+Truth backfill pieprasa explicit WMO station `10416`. Bright Sky ir transport only; ja response source metadata neapstiprina `10416`, rinda netiek pieņemta. Missing values netiek imputētas.
+
+Reconciliation ir read-only pret izvēlēto DB:
+
+```bash
+python -m rozkalns_weather.backfill --database-url sqlite:///<path> integrity \
+  --model icon_d2 --start 2026-04-02 --end 2026-04-30 --run-hours 0,6,12,18
+```
+
+Tas rāda expected/present/missing/unexpected runus un revisions.
+
+**Svarīgi:** production/public corpus backfill izpilde pati par sevi ir data-write/LIVE mutation un nav autorizēta tikai tāpēc, ka source komanda eksistē vai ir merged.
+
+## Ensemble public surface
+
+ICON-D2-EPS, IFS ENS 0.25° un AIFS ENS 0.25° adapters ir public/read transport source capability. Individual-member past history kodā ir bounded līdz 3 dienām; expired members nekad netiek fabricēti. WeatherNext 2 adapteris ir tikai `legacy_ai_context`.
+
 ## WeatherNext first-live preflight
 
 Pēc allowlist approval un tikai privātajā runtime:

@@ -56,6 +56,11 @@
 
     <section id="models" class="view">
       <div class="panel">
+        <div class="panel-title">Provider classes · provenance first</div>
+        <div id="providerClasses" class="provider-grid">Ielādē provider metadata…</div>
+        <div class="muted">Deterministic un ensemble transporti tiek rādīti atsevišķi. WeatherNext 2 ir tikai legacy AI context un nekad neaizvieto WeatherNext 3.</div>
+      </div>
+      <div class="panel">
         <div class="panel-title">Home modeļu salīdzinājums · temperatūra</div>
         <div class="legend"><span>WeatherNext 3</span><span>ICON-D2</span><span>IFS HRES</span><span>AIFS</span></div>
         <div id="modelsChart" class="chart empty">Prognožu līnijas parādīsies pēc ingest.</div>
@@ -72,10 +77,16 @@
 
     <section id="accuracy" class="view">
       <div class="panel">
-        <div class="panel-title">DWD 10416 station benchmark</div>
+        <div class="panel-title">DWD 10416 station benchmark · deterministic</div>
         <div class="switches"><button data-days="30" class="active">30d</button><button data-days="90">90d</button></div>
-        <div class="muted">Tikai location-matched station forecasts pret DWD 10416 truth.</div>
+        <div class="muted">Tikai location-matched station forecasts pret DWD 10416 truth. Lead bucket un sample size paliek redzami; mazi sample netiek pasniegti kā droši secinājumi.</div>
         <div id="accuracyTable" class="table-wrap">Vēl nav pietiekamu forecast + observation pāru.</div>
+        <div id="leadBucketTable" class="table-wrap"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">Ensemble calibration · precipitation event</div>
+        <div id="calibrationTable" class="table-wrap">Genuine member-derived probability dati vēl nav pieejami.</div>
+        <div class="muted">Brier/reliability ir derīgi tikai genuine probability/member input. Deterministic precipitation amount netiek pārveidots par probability.</div>
       </div>
     </section>
 
@@ -97,5 +108,6 @@
 
   <footer>WeatherNext 3 benchmark · measured skill uses DWD 10416 reference truth</footer>
   <script src="/static/app.js" defer></script>
+  <script src="/static/accuracy_v3.js" defer></script>
 </body>
 </html>
