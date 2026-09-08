@@ -88,13 +88,13 @@ Pirmais RPi5 rollout kandidāts ir intentionally public-only un neprasa WeatherN
 - `deploy/docker-compose.public.yml` — fixed application/bootstrap/job service identities;
 - `deploy/runtime-descriptor.json` — machine-readable trusted deploy handoff;
 - `deploy/public-ingest-schedule.json` — public 30-minute collector cadence + explicit bootstrap order;
-- `docs/RPI5_PUBLIC_RUNTIME_HANDOFF.md` — trust-boundary, corpus retention un future `RPi5_main` adapter contract.
+- `docs/RPI5_PUBLIC_RUNTIME_HANDOFF.md` — trust-boundary, corpus retention un reviewed `RPi5_main` adapter/bootstrap handoff contract.
 
 Fixed runtime mode ir `WEATHER_RUNTIME_MODE=public-only`; application service izmanto `DATABASE_INIT_MODE=require-existing`. Schema init, historical corpus backfill, backup/restore un recurring schedule activation ir atsevišķas vēlākas LIVE/data mutations — tās nav app startup side effects.
 
 ## Deployment
 
-`Dockerfile`, `deploy/` un `docs/OPERATIONS.md` ir source-level deploy preparation. `rozkalns_weather` pats neiegūst RPi5 root/sudo/deploy authority. `RPi5_main` operation registry/adapter darbs ir atsevišķs source issue, un tikai pēc tā var būt atsevišķa explicit LIVE authorization.
+`Dockerfile`, `deploy/` un `docs/OPERATIONS.md` ir source-level deploy preparation. `rozkalns_weather` pats neiegūst RPi5 root/sudo/deploy authority. `RPi5_main` static weather operation/adapter source darbs un deterministic first-bootstrap source composition ir merged (`RPi5_main` Issue #408 / PR #409 un Issue #410 / PR #415), bet trusted execution un host wiring paliek disabled līdz atsevišķam exact LIVE gate.
 
 RPi5, systemd/Docker, Cloudflare, credentials, production SQLite/corpus writes un runtime mutation prasa atsevišķu LIVE autorizāciju.
 
