@@ -1,6 +1,6 @@
 # Implementation status
 
-Status reconciled after `AUDIT-HANDOFF` on 2026-09-08 and extended by Issue #19, Issue #22 and Issue #24 source work.
+Status reconciled after `AUDIT-HANDOFF` on 2026-09-08 and extended by Issue #19, Issue #22, Issue #24 and Issue #26 source work.
 
 ## Source-complete
 - FastAPI + SQLite immutable forecast corpus.
@@ -78,6 +78,18 @@ Status reconciled after `AUDIT-HANDOFF` on 2026-09-08 and extended by Issue #19,
 - `docs/WEATHERNEXT_SUSTAINED_COLLECTION.md` contains the exact later recurring-private-BigQuery and production-SQLite accumulation gate templates. Source merge does not activate either gate.
 - Fixture-driven tests cover lifecycle/admission/cadence/dedupe/ledger/recovery/version/freshness/verification/quantile/privacy contracts without provider network access.
 
+## Issue #26 WeatherNext version-evolution / comparative-report readiness package
+- `deploy/weathernext-version-evolution.json` freezes verified WeatherNext 3 model/schema boundary identity, performance-independent calendar windows, strict common-sample semantics, skill/quantile/freshness deltas, privacy-safe report fields and a later production read-only gate template.
+- `src/rozkalns_weather/weathernext_evolution.py` provides network/DB-independent boundary validation, before/after window planning, `station_10416` common-sample intersection, MAE/RMSE/bias delta summaries, summary-quantile calibration deltas, deterministic event/notable-case analysis and freshness/latency comparison.
+- Unknown/non-WeatherNext-3 model identities, invalid schema fingerprints and unverified release metadata fail closed; provider-effective release time is not inferred from locally first-observed or retrieval time.
+- Before/after windows are symmetric by source rule (default 30, max 92 days per side) and never selected using observed forecast performance. Corpus clipping is exposed as an explicit comparability/seasonality limitation.
+- Cross-version measured skill stays `station_10416` + DWD WMO 10416, matches valid time/variable/lead bucket/run class/statistic/unit/accumulation semantics, preserves before/after/common `n` and never pools private `home` into station accuracy.
+- MAE/RMSE/bias deltas remain per variable/lead bucket/run class, expose absolute + relative `after - before` change, keep sample confidence explicit and never emit a global version winner.
+- WeatherNext p10/p25/p50/p75/p90 evolution compares coverage/width and p50 MAE only; summary quantiles do not fabricate CRPS/Brier/event probability, and precipitation retains 60-minute accumulation semantics.
+- Event and notable regression/improvement records use fixed semantics and deterministic ordering rather than manual cherry-picking. Freshness comparison keeps expected, observed-upstream and retrieved timestamps distinct and treats missing/delayed state separately from forecast skill.
+- `weathernext3_version_evolution_v1` report validation rejects private Google identity, credentials/tokens, SQL, coordinates, private paths, raw provider payloads/logs; source fixtures contain synthetic values only and do not claim empirical WeatherNext results.
+- `docs/WEATHERNEXT_VERSION_EVOLUTION.md` defines the exact later production corpus **read-only** gate. Source merge does not authorize production corpus reads/writes, BigQuery, scheduler or RPi5 mutation.
+
 ## RPi5_main trusted-boundary source integration
 - `RPi5_main` Issue #408 / PR #409 is merged and registers the static `rozkalns-weather.public-runtime-release.v1` operation plus dedicated execution-disabled weather adapter.
 - The operation remains `STRICT` and not ordinary `LIVE-ALL` eligible; source registration is not LIVE authority.
@@ -95,9 +107,10 @@ Status reconciled after `AUDIT-HANDOFF` on 2026-09-08 and extended by Issue #19,
 6. Google Cloud project/linked dataset/credentials, any real schema/dry-run/canary BigQuery request, and the first real WeatherNext snapshot remain private LIVE/data gates.
 7. Recurring private WeatherNext BigQuery collection and any private scheduler/timer activation remain distinct exact owner gates; the source cadence planner does not authorize them.
 8. Production accumulation of WeatherNext snapshots and the first real month of corpus remain data-write/LIVE outcomes, not source-readiness claims.
-9. Analytics Hub linked-dataset creation/deletion or IAM/credential mutation remains a distinct exact owner gate and is not implied by first-access or sustained-collection source readiness.
-10. Backup/restore and any destructive data recovery remain separately gated; application rollback never implies DB rollback.
-11. Meaningful measured rankings and bootstrap intervals require enough real common-sample corpus.
+9. A real WeatherNext version-change report against private production SQLite remains a separate exact **read-only production-corpus gate** binding exact source SHA/CI, DB target, versions/boundary/windows/sample requirements and privacy-safe output; it authorizes no corpus mutation.
+10. Analytics Hub linked-dataset creation/deletion or IAM/credential mutation remains a distinct exact owner gate and is not implied by first-access or sustained-collection source readiness.
+11. Backup/restore and any destructive data recovery remain separately gated; application rollback never implies DB rollback.
+12. Meaningful measured rankings and bootstrap intervals require enough real common-sample corpus.
 
 A read-only audit on 2026-09-08 found no deployed weather container, no `weather_data` volume and no weather systemd service/timer on the RPi5 at that time. This is point-in-time runtime evidence, not durable source truth; future LIVE work must refresh it.
 
