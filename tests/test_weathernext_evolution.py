@@ -230,8 +230,10 @@ def test_event_and_notable_case_selection_is_deterministic() -> None:
     assert high["regressed"] == 1
 
     notable = notable_error_delta_cases(common["pairs"], limit=2)
-    assert [row["valid_time_utc"] for row in notable] == sorted(row["valid_time_utc"] for row in notable)
-    assert {row["classification"] for row in notable} == {"improvement", "regression"}
+    assert notable[0]["valid_time_utc"] == "2026-08-11T12:00:00Z"
+    assert notable[0]["classification"] == "regression"
+    assert notable[1]["valid_time_utc"] == "2026-08-10T12:00:00Z"
+    assert notable[1]["classification"] == "improvement"
 
 
 def test_precipitation_semantics_fail_closed_without_one_hour_accumulation() -> None:
