@@ -20,45 +20,85 @@ WeatherNext 3 remains first-class research functionality in source, but in this 
 Canonical production-candidate files:
 
 - `Dockerfile` — non-root application image, UID 10001, internal port 8000;
-- `deploy/docker-compose.public.yml` — fixed service names and commands;
+- `deploy/docker-compose.public.yml` — fixed application and one-shot job identities;
 - `deploy/runtime-descriptor.json` — machine-readable trusted-boundary handoff;
-- `deploy/public-ingest-schedule.json` — scheduler and bootstrap contract.
+- `deploy/rollout-readiness.json` — bounded bootstrap/recovery/evidence/failure contract;
+- `deploy/public-ingest-schedule.json` — deterministic scheduler handoff.
 
 Fixed Compose services:
 
 - `schema-init` -> `rozkalns-weather init-database`;
 - `weather` -> image default FastAPI/uvicorn entrypoint;
 - `public-ingest` -> `rozkalns-weather ingest-public`;
-- `readiness` -> `rozkalns-weather readiness`.
+- `readiness` -> `rozkalns-weather readiness`;
+- `corpus-check` -> `rozkalns-weather corpus-check`.
 
-The future trusted adapter selects these reviewed identities. GitHub issue prose must never supply an arbitrary shell command, path, argv or environment payload.
+The application service does not `depends_on` schema-init, backfill or schedule activation. Replacing/starting `weather` therefore cannot silently initialize schema, backfill history, restore or delete corpus.
 
-## Persistent corpus semantics
+The trusted adapter selects these reviewed identities. GitHub issue prose must never supply an arbitrary shell command, host path, argv or environment payload.
+
+## Deterministic source preflight
+
+`rozkalns-weather rollout-preflight` validates the exact reviewed source checkout without network calls or runtime mutation. Inputs are explicit:
+
+- exact 40-character weather source SHA form;
+- bounded start/end dates;
+- WMO `10416` truth identity;
+- exact model set `icon_d2`, `ecmwf_ifs`, `ecmwf_aifs`;
+- exact UTC run hours `0,6,12,18`;
+- maximum 180 inclusive days, no earlier than the three-model common benchmark start `2026-04-02`;
+- one explicit recovery decision;
+- optional already-completed checkpoint stages as an exact ordered prefix only.
+
+The source preflight deliberately cannot prove current GitHub-main membership, exact-SHA CI, current `RPi5_main` state or current host state. Those are fresh evidence requirements at the LIVE gate.
+
+## Persistent corpus and bootstrap semantics
 
 The logical persistent storage class is the Docker named volume `weather_data`, mounted at `/app/data`; the canonical in-container database URL is `sqlite:///data/weather.db`.
 
-Application startup in the reviewed RPi5 candidate uses `require-existing` and therefore does not initialize the production database. Schema creation is the separate explicit `schema-init` operation. Historical backfill is also separate from schema initialization and recurring ingest.
+Application startup uses `require-existing` and therefore does not initialize the production database. Schema creation is the separate explicit `schema-init` operation. Historical backfill is separate from both schema initialization and recurring ingest.
 
-The intended first-live sequence is:
+The fixed bootstrap state order is:
 
-1. establish the persistent data volume;
-2. explicit schema initialization;
-3. `readiness` / `/ready` schema and privacy check;
-4. optional read-only `smoke-public` network contract check;
-5. explicit bounded DWD truth backfill;
-6. explicit bounded deterministic forecast backfill;
-7. integrity check;
-8. enable recurring public ingest at the reviewed cadence.
+1. `volume_ensure`;
+2. `explicit_schema_init`;
+3. `readiness_check`;
+4. `public_smoke_read_only` — optional, but explicitly checkpointed as passed or skipped;
+5. `bounded_dwd_truth_backfill`;
+6. `bounded_forecast_backfill`;
+7. `corpus_integrity_check`;
+8. `enable_recurring_public_ingest` last.
+
+Resume accepts only an exact completed prefix of that sequence. Stage skipping/reordering, hidden retry and implicit stage advancement fail closed. The rollout plan emits a fingerprint bound to source SHA, dates/models/run hours and recovery decision.
 
 Steps that write SQLite or historical corpus data require explicit production-data/LIVE authority. Merely merging this source does not authorize them.
 
-## Backup and failure semantics
+## Backup and recovery semantics
 
-Before historical production corpus writes, a persistent storage target and an explicit backup/recovery decision must be established by the later LIVE operation. Application replacement must retain the named corpus volume.
+Before historical production corpus writes, the later LIVE operation must bind exactly one recovery decision:
 
-No automatic corpus deletion, restore, cleanup or destructive rollback is part of this contract. After a mutation-capable LIVE step begins, unexpected state follows the repository fail-closed rules. Application rollback must never imply database rollback.
+- `verified_backup_available`; or
+- `owner_accepts_proceeding_without_prewrite_backup`.
 
-## Readiness contract
+The source verification helper can read a disposable SQLite backup using `PRAGMA integrity_check`, required-table checks and SHA-256 metadata while suppressing its path. That source capability does not authorize a production backup, restore or delete.
+
+No automatic corpus deletion, restore, cleanup or destructive rollback is part of this contract. After a mutation-capable LIVE step begins, unexpected state follows fail-closed rules. Application rollback never implies database rollback.
+
+## Deterministic timer handoff
+
+`deploy/public-ingest-schedule.json` binds:
+
+- `rozkalns-weather-public-ingest.timer`;
+- `rozkalns-weather-public-ingest.service`;
+- `OnCalendar=*:0/30`;
+- `Persistent=true` catch-up semantics;
+- bounded 60-second randomized delay and accuracy;
+- no-overlap semantics plus the application ingest lock;
+- schedule installation/enablement only after corpus integrity succeeds.
+
+WeatherNext scheduling remains disabled and separately gated. This weather source issue never installs/enables/restarts a real systemd unit.
+
+## Readiness and post-rollout evidence
 
 `GET /ready`, `GET /api/readiness` and `rozkalns-weather readiness` expose schema version 1 readiness. They report:
 
@@ -72,23 +112,42 @@ No automatic corpus deletion, restore, cleanup or destructive rollback is part o
 
 Public provider `error` or `adapter_ready_not_ingested` is visible but does not make application runtime readiness false. Runtime readiness is based on the local application/storage/schema contract; provider network health remains an independently visible operational signal.
 
-## Future `RPi5_main` source adapter contract
+A future trusted executor may pipe sanitized evidence to `rozkalns-weather rollout-evidence-validate`. Passing evidence must bind the deployed exact SHA, target/operation/runtime mode, HTTP 200 for `/health`, `/ready` and `/api/health/providers`, ready schema, persistent SQLite + retained `weather_data`, required provider-state presence and corpus integrity. WeatherNext remains non-required and non-fabricated.
 
-This repository does **not** mutate or authorize `RPi5_main`. After this handoff is merged, a separate RPi5_main source issue may review and register a static adapter compatible with `deploy/runtime-descriptor.json`.
+The evidence validator rejects home-coordinate, credential, raw-log, database-path, host-path or environment fields and host-private path strings. Raw private logs are never part of the GitHub receipt.
 
-Candidate identity:
+## Current `RPi5_main` source interface
 
-- target alias: `rozkalns-weather-public-rpi5`;
-- operation ID: `rozkalns-weather.public-runtime-release.v1`;
-- execution location: `trusted-home-host`;
-- authorization class: `STRICT` initially;
-- ordinary `LIVE-ALL` eligibility: false until a dedicated canary proves the operation.
+`RPi5_main` source integration already exists and must be refreshed before LIVE rather than re-created here:
 
-The future adapter must bind an exact merged weather source SHA and exact-SHA CI, independently resolve the current target baseline, and enforce fixed mutation categories/counts. It must not accept generic shell/path/argv/environment authority from GitHub text.
+- Issue #408 / PR #409 registered static operation `rozkalns-weather.public-runtime-release.v1` and a dedicated execution-disabled weather adapter;
+- Issue #410 / PR #415 added deterministic first-bootstrap composition for application release, volume ensure, schema init, readiness, optional smoke, bounded DWD truth/forecast backfill, integrity and recurring schedule handoff.
+
+These are source interfaces, not deployment proof. Trusted execution/host wiring remains a separate runtime fact and must be freshly revalidated. This weather issue does not mutate `RPi5_main`.
+
+The operation remains `STRICT` and not ordinary `LIVE-ALL` eligible. A future LIVE envelope must bind an exact merged weather SHA and exact-SHA CI, independently resolve the current RPi5 target baseline, and enforce fixed mutation categories/counts. It must not accept generic shell/path/argv/environment authority from GitHub text.
 
 Database schema initialization, historical corpus backfill, backup/restore, private home configuration, Google Cloud/WeatherNext credentials, Cloudflare/network changes and package/root permission changes remain separate mutation classes. They must not be smuggled into an ordinary application-release adapter.
 
-At the time this handoff was designed, the RPi5 executor registry did not contain a weather operation and global execution was disabled. That is dependency evidence only, not a promise about future mutable runtime state; the future RPi5_main issue must refresh it.
+## Fail-closed stage matrix
+
+`deploy/rollout-readiness.json` freezes stage-specific failure behavior for application release, volume ensure, schema init, truth backfill, forecast backfill, integrity and schedule activation. Once a future mutation starts, unexpected state means STOP with minimum sufficient read-only evidence. There is no undeclared retry, rollback, automatic repair, cleanup, restore or alternate scheduler activation.
+
+## Future exact LIVE gate fields
+
+Before the first live mutation, freshly bind:
+
+- exact trusted host and target alias;
+- reviewed **merged** weather SHA and exact-SHA required CI;
+- current `RPi5_main` SHA and exact static operation identity;
+- current sanitized runtime baseline;
+- bounded start/end dates, exact three-model set, UTC run hours and WMO `10416` truth;
+- recovery decision;
+- exact mutation classes and budgets;
+- health/readiness/provider/schema/storage/corpus-integrity verification postconditions;
+- application rollback semantics, explicitly excluding implicit SQLite restore/delete/cleanup.
+
+Any drift after binding must be handled under current authorization/fail-closed rules. Read-only preflight does not consume a later LIVE authorization; the first selected runtime mutation does.
 
 ## Warning and privacy invariants
 
