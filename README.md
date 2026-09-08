@@ -52,9 +52,15 @@ rozkalns-weather ingest-weathernext
 rozkalns-weather smoke-public
 rozkalns-weather corpus-stats
 rozkalns-weather corpus-check
+rozkalns-weather rollout-preflight --source-sha <MERGED_SHA> --start YYYY-MM-DD --end YYYY-MM-DD --models icon_d2,ecmwf_ifs,ecmwf_aifs --run-hours 0,6,12,18 --recovery-decision <DECISION>
+rozkalns-weather rollout-evidence-validate < sanitized-evidence.json
 rozkalns-weather diagnose-weathernext
 rozkalns-weather report-monthly --month YYYY-MM
 ```
+
+`rollout-preflight` ir **source-checkout-only read-only** validators: tas neveic tīkla pieprasījumus, nelasa production runtime un neko nemutē. Tas pārbauda fixed descriptor/Compose/schedule identities, exact 40-char SHA formu, WMO `10416`, exact `icon_d2/ecmwf_ifs/ecmwf_aifs` + `00/06/12/18` scope, ne vairāk kā 180 inclusive dienas, ordered checkpoint prefix un explicit recovery decision. Tas pats neapstiprina, ka SHA patiešām ir current merged `main` vai ka exact-SHA CI ir green — to vēlāk svaigi pierāda GitHub/LIVE gate.
+
+`rollout-evidence-validate` no stdin pieņem tikai privacy-safe pēc-rollout evidence un fail-closed, ja nav `/health`, `/ready`, provider-health, schema/storage/corpus integrity postconditions vai ja evidence satur private path/log/coordinate/credential laukus.
 
 `init-database` ir explicit SQLite write operācija. RPi5 production candidate izmanto `DATABASE_INIT_MODE=require-existing`, tāpēc aplikācijas startup pats neizveido production DB. `readiness` ir privacy-safe un neveic tīkla pieprasījumus vai implicit schema creation.
 
@@ -87,10 +93,11 @@ Pirmais RPi5 rollout kandidāts ir intentionally public-only un neprasa WeatherN
 
 - `deploy/docker-compose.public.yml` — fixed application/bootstrap/job service identities;
 - `deploy/runtime-descriptor.json` — machine-readable trusted deploy handoff;
-- `deploy/public-ingest-schedule.json` — public 30-minute collector cadence + explicit bootstrap order;
+- `deploy/rollout-readiness.json` — canonical bounded rollout/state/recovery/evidence/failure contract;
+- `deploy/public-ingest-schedule.json` — explicit systemd timer identity, 30-minute cadence, `Persistent=true`, bounded jitter, overlap semantics un enable-last ordering;
 - `docs/RPI5_PUBLIC_RUNTIME_HANDOFF.md` — trust-boundary, corpus retention un reviewed `RPi5_main` adapter/bootstrap handoff contract.
 
-Fixed runtime mode ir `WEATHER_RUNTIME_MODE=public-only`; application service izmanto `DATABASE_INIT_MODE=require-existing`. Schema init, historical corpus backfill, backup/restore un recurring schedule activation ir atsevišķas vēlākas LIVE/data mutations — tās nav app startup side effects.
+Fixed runtime mode ir `WEATHER_RUNTIME_MODE=public-only`; application service izmanto `DATABASE_INIT_MODE=require-existing`. Compose `weather` service nav `depends_on` saites uz schema/backfill jobiem. `schema-init`, historical corpus writes, backup/restore un recurring schedule activation ir redzami atsevišķas mutation classes — tās nav app startup vai application replacement side effects.
 
 ## Deployment
 
