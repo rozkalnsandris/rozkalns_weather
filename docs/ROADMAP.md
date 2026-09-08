@@ -31,6 +31,7 @@ forecast snapshot -> observation -> verification -> WeatherNext comparison
 - [x] dissemination latency/readiness diagnostics.
 - [x] station benchmark + optional home collection design.
 - [x] deterministic first-access source readiness: linked-dataset/schema fingerprint, dry-run cost cap, bounded `station_10416` canary, provenance/evidence validation and explicit first-snapshot write gate separation.
+- [x] deterministic sustained-collection source readiness: post-canary snapshot admission, target-disseminated cadence/dedupe, missing-run recovery ledger, model/schema boundaries and privacy-safe freshness health.
 - [ ] live BigQuery access verified.
 - [ ] first real WeatherNext snapshot stored.
 
@@ -79,6 +80,7 @@ forecast snapshot -> observation -> verification -> WeatherNext comparison
 - [x] notable misses archive payload.
 - [x] release-note hook without fabricated events.
 - [x] public benchmark runway while WN3 access is pending.
+- [x] first-month verification source readiness: station common-times/model-version/lead-bucket eligibility, summary-quantile calibration and sanitized evidence/report contract.
 - [ ] first month of real WeatherNext 3 corpus.
 - [ ] version-change comparative reports.
 
