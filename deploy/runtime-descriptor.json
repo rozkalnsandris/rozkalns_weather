@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "repository": "rozkalnsandris/rozkalns_weather",
   "runtime_class": "public-only-rpi5",
   "target_alias": "rozkalns-weather-public-rpi5",
@@ -10,6 +10,15 @@
     "exact_sha_ci_required": true
   },
   "operation_id_candidate": "rozkalns-weather.public-runtime-release.v1",
+  "rollout_readiness": {
+    "descriptor": "deploy/rollout-readiness.json",
+    "public_schedule_descriptor": "deploy/public-ingest-schedule.json",
+    "source_preflight_command": "rozkalns-weather rollout-preflight",
+    "post_rollout_evidence_validator": "rozkalns-weather rollout-evidence-validate",
+    "source_preflight_is_read_only": true,
+    "source_preflight_performs_network_calls": false,
+    "source_preflight_grants_live_authority": false
+  },
   "packaging": {
     "kind": "docker-compose",
     "compose_file": "deploy/docker-compose.public.yml",
@@ -17,6 +26,7 @@
     "schema_init_service": "schema-init",
     "public_ingest_service": "public-ingest",
     "readiness_service": "readiness",
+    "corpus_check_service": "corpus-check",
     "container_user_uid": 10001,
     "container_port": 8000,
     "default_host_port": 9180
@@ -72,7 +82,8 @@
       "readiness endpoint reports ready without exposing coordinates or credentials",
       "persistent corpus volume is retained across application replacement",
       "WeatherNext remains access_pending/not-required until separately activated",
-      "public ingest scheduling is independent of WeatherNext scheduling"
+      "public ingest scheduling is independent of WeatherNext scheduling",
+      "corpus integrity passes before recurring schedule activation"
     ]
   }
 }

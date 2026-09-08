@@ -1,13 +1,25 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "runtime_class": "public-only-rpi5",
   "scheduler_owner": "RPi5_main",
   "public_ingest": {
     "service": "public-ingest",
     "cadence": "PT30M",
-    "overlap_policy": "application_file_lock_rejects_overlap",
+    "overlap_policy": "systemd_single_oneshot_plus_application_file_lock_rejects_overlap",
     "failure_policy": "provider_failures_are_isolated_and_visible",
     "network_required": true
+  },
+  "systemd_timer": {
+    "timer_unit": "rozkalns-weather-public-ingest.timer",
+    "service_unit": "rozkalns-weather-public-ingest.service",
+    "on_calendar": "*:0/30",
+    "persistent": true,
+    "missed_run_policy": "catch_up_once_after_downtime",
+    "randomized_delay_seconds": 60,
+    "accuracy_seconds": 60,
+    "overlap_behavior": "do_not_start_second_oneshot_while_service_is_active_and_ingest_lock_rejects_overlap",
+    "enable_order": "last_after_corpus_integrity",
+    "install_or_enable_requires_separate_live_authority": true
   },
   "weathernext": {
     "enabled": false,
@@ -17,13 +29,16 @@
   "bootstrap": {
     "implicit_on_application_start": false,
     "required_order": [
+      "volume_ensure",
       "explicit_schema_init",
       "readiness_check",
       "public_smoke_read_only",
-      "explicit_bounded_truth_backfill",
-      "explicit_bounded_forecast_backfill",
-      "integrity_check",
+      "bounded_dwd_truth_backfill",
+      "bounded_forecast_backfill",
+      "corpus_integrity_check",
       "enable_recurring_public_ingest"
-    ]
+    ],
+    "schedule_enable_is_last": true,
+    "automatic_retry_or_repair": false
   }
 }

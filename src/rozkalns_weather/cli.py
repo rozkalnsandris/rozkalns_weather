@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import argparse
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 import json
 from pathlib import Path
+import sys
 
 from .config import Settings
 from .db import Database
@@ -11,6 +12,7 @@ from .locations import DWD_10416
 from .orchestrator import IngestAlreadyRunning, IngestOrchestrator
 from .providers.weathernext import WeatherNextBigQueryAdapter
 from .reporting import monthly_weather_next_report
+from .rollout import RECOVERY_DECISIONS, build_rollout_plan, validate_post_rollout_evidence
 from .runtime import database_schema_state, readiness_payload
 from .smoke import smoke_public
 
@@ -50,6 +52,25 @@ def _print(payload: object) -> None:
     print(json.dumps(payload, sort_keys=True, indent=2, default=str))
 
 
+def _invalid_rollout(exc: Exception) -> None:
+    _print(
+        {
+            "schema_version": 1,
+            "state": "invalid",
+            "error": str(exc),
+            "live_authority_granted": False,
+            "production_data_authority_granted": False,
+            "privacy": {
+                "coordinates_exposed": False,
+                "credentials_exposed": False,
+                "database_path_exposed": False,
+                "host_private_paths_exposed": False,
+                "raw_logs_exposed": False,
+            },
+        }
+    )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(prog="rozkalns-weather")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -61,6 +82,26 @@ def main() -> None:
     sub.add_parser("smoke-public", help="optional real-network provider contract smoke checks")
     sub.add_parser("corpus-stats", help="print privacy-safe corpus coverage statistics")
     sub.add_parser("corpus-check", help="run corpus integrity checks")
+    preflight = sub.add_parser(
+        "rollout-preflight",
+        help="validate the fixed public-only source package and emit a sanitized later-LIVE rollout envelope without network/runtime mutation",
+    )
+    preflight.add_argument("--source-sha", required=True, help="exact reviewed 40-character weather commit SHA")
+    preflight.add_argument("--start", required=True, help="bounded bootstrap start date YYYY-MM-DD")
+    preflight.add_argument("--end", required=True, help="bounded bootstrap end date YYYY-MM-DD")
+    preflight.add_argument("--models", required=True, help="exact comma-separated bootstrap models")
+    preflight.add_argument("--run-hours", required=True, help="exact comma-separated UTC run hours")
+    preflight.add_argument("--recovery-decision", required=True, choices=RECOVERY_DECISIONS)
+    preflight.add_argument(
+        "--completed-stage",
+        action="append",
+        default=[],
+        help="repeat only for an already checkpointed ordered stage prefix; stage skipping is rejected",
+    )
+    sub.add_parser(
+        "rollout-evidence-validate",
+        help="read a privacy-safe post-rollout evidence JSON object from stdin and validate public-only pass/fail postconditions",
+    )
     diagnose = sub.add_parser("diagnose-weathernext", help="BigQuery access/schema diagnostic without logging credentials or coordinates")
     diagnose.add_argument("--no-point-query", action="store_true", help="schema-only diagnostic")
     report = sub.add_parser("report-monthly", help="generate WeatherNext station-skill monthly report")
@@ -68,6 +109,35 @@ def main() -> None:
     backup = sub.add_parser("backup", help="create a consistent SQLite backup at the provided local path")
     backup.add_argument("--output", required=True)
     args = parser.parse_args()
+
+    if args.command == "rollout-preflight":
+        try:
+            payload = build_rollout_plan(
+                source_sha=args.source_sha,
+                start=date.fromisoformat(args.start),
+                end=date.fromisoformat(args.end),
+                models=args.models,
+                run_hours_utc=args.run_hours,
+                recovery_decision=args.recovery_decision,
+                completed_stages=args.completed_stage,
+            )
+        except (ValueError, json.JSONDecodeError) as exc:
+            _invalid_rollout(exc)
+            raise SystemExit(2)
+        _print(payload)
+        return
+
+    if args.command == "rollout-evidence-validate":
+        try:
+            evidence = json.load(sys.stdin)
+            if not isinstance(evidence, dict):
+                raise ValueError("rollout evidence must be a JSON object")
+            payload = validate_post_rollout_evidence(evidence)
+        except (ValueError, json.JSONDecodeError) as exc:
+            _invalid_rollout(exc)
+            raise SystemExit(2)
+        _print(payload)
+        return
 
     settings = Settings.from_env()
 

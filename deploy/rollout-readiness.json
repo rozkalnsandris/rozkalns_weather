@@ -1,0 +1,191 @@
+{
+  "schema_version": 1,
+  "repository": "rozkalnsandris/rozkalns_weather",
+  "runtime_class": "public-only-rpi5",
+  "target_alias": "rozkalns-weather-public-rpi5",
+  "operation_id": "rozkalns-weather.public-runtime-release.v1",
+  "source_identity": {
+    "exact_40_character_commit_sha_required": true,
+    "must_be_merged_to_main": true,
+    "exact_sha_ci_required": true,
+    "source_preflight_may_not_claim_main_membership_without_fresh_github_evidence": true
+  },
+  "runtime_contract": {
+    "runtime_mode": "public-only",
+    "database_init_mode": "require-existing",
+    "compose_file": "deploy/docker-compose.public.yml",
+    "application_service": "weather",
+    "schema_init_service": "schema-init",
+    "public_ingest_service": "public-ingest",
+    "readiness_service": "readiness",
+    "corpus_check_service": "corpus-check",
+    "container_port": 8000,
+    "default_host_port": 9180,
+    "persistent_volume": "weather_data",
+    "implicit_schema_init_on_application_start": false,
+    "implicit_historical_backfill_on_application_start": false,
+    "implicit_schedule_enable_on_application_start": false,
+    "corpus_delete_or_restore_on_application_replacement": false
+  },
+  "bootstrap_contract": {
+    "truth_station_id": "10416",
+    "truth_location_id": "station_10416",
+    "models": [
+      "icon_d2",
+      "ecmwf_ifs",
+      "ecmwf_aifs"
+    ],
+    "run_hours_utc": [0, 6, 12, 18],
+    "common_benchmark_start": "2026-04-02",
+    "max_inclusive_days": 180,
+    "bounded_dates_required": true,
+    "stage_order": [
+      "volume_ensure",
+      "explicit_schema_init",
+      "readiness_check",
+      "public_smoke_read_only",
+      "bounded_dwd_truth_backfill",
+      "bounded_forecast_backfill",
+      "corpus_integrity_check",
+      "enable_recurring_public_ingest"
+    ],
+    "checkpoint_contract": {
+      "ordered_prefix_only": true,
+      "stage_skip_without_checkpoint_forbidden": true,
+      "hidden_retry_forbidden": true,
+      "implicit_stage_advance_forbidden": true,
+      "public_smoke_may_be_explicitly_recorded_as_skipped": true,
+      "resume_requires_same_bootstrap_fingerprint": true
+    }
+  },
+  "recovery_contract": {
+    "required_before_first_production_corpus_write": true,
+    "allowed_decisions": [
+      "verified_backup_available",
+      "owner_accepts_proceeding_without_prewrite_backup"
+    ],
+    "verified_backup_requires_sqlite_integrity_check": true,
+    "automatic_restore_allowed": false,
+    "automatic_delete_allowed": false,
+    "automatic_cleanup_allowed": false,
+    "application_rollback_implies_sqlite_rollback": false,
+    "backup_or_restore_is_a_separate_mutation_class": true
+  },
+  "timer_handoff": {
+    "descriptor": "deploy/public-ingest-schedule.json",
+    "scheduler_owner": "RPi5_main",
+    "actual_install_or_enable_requires_separate_live_authority": true,
+    "weathernext_timer_enabled": false
+  },
+  "post_rollout_evidence_contract": {
+    "schema_version": 1,
+    "privacy_safe": true,
+    "required_identity": [
+      "source_sha",
+      "target_alias",
+      "operation_id",
+      "runtime_mode"
+    ],
+    "required_http_checks": [
+      "/health",
+      "/ready",
+      "/api/health/providers"
+    ],
+    "required_runtime_checks": [
+      "database_schema_ready",
+      "persistent_sqlite_storage",
+      "docker_named_volume_storage_class",
+      "weather_data_retained",
+      "provider_states_present",
+      "corpus_integrity_ok"
+    ],
+    "privacy_postconditions": {
+      "coordinates_exposed": false,
+      "credentials_exposed": false,
+      "database_path_exposed": false,
+      "host_private_paths_exposed": false,
+      "raw_logs_exposed": false
+    },
+    "weathernext_postconditions": {
+      "required_for_public_runtime": false,
+      "values_fabricated": false
+    }
+  },
+  "failure_matrix": [
+    {
+      "stage": "application_release",
+      "mutation_class": "docker.compose-application-apply",
+      "on_failure": "STOP_WITH_READ_ONLY_EVIDENCE",
+      "automatic_retry": false,
+      "automatic_rollback": false,
+      "sqlite_rollback": false
+    },
+    {
+      "stage": "volume_ensure",
+      "mutation_class": "docker.named-volume-ensure",
+      "on_failure": "STOP_WITH_READ_ONLY_EVIDENCE",
+      "automatic_retry": false,
+      "automatic_cleanup": false
+    },
+    {
+      "stage": "explicit_schema_init",
+      "mutation_class": "sqlite.schema-init",
+      "on_failure": "STOP_WITH_READ_ONLY_EVIDENCE",
+      "automatic_retry": false,
+      "automatic_restore": false
+    },
+    {
+      "stage": "bounded_dwd_truth_backfill",
+      "mutation_class": "historical.public-corpus-backfill",
+      "on_failure": "STOP_WITH_READ_ONLY_EVIDENCE_AND_CHECKPOINT",
+      "automatic_retry": false,
+      "automatic_cleanup": false
+    },
+    {
+      "stage": "bounded_forecast_backfill",
+      "mutation_class": "historical.public-corpus-backfill",
+      "on_failure": "STOP_WITH_READ_ONLY_EVIDENCE_AND_CHECKPOINT",
+      "automatic_retry": false,
+      "automatic_cleanup": false
+    },
+    {
+      "stage": "corpus_integrity_check",
+      "mutation_class": "read-only",
+      "on_failure": "STOP_WITH_READ_ONLY_EVIDENCE",
+      "automatic_repair": false,
+      "automatic_restore": false
+    },
+    {
+      "stage": "enable_recurring_public_ingest",
+      "mutation_class": "systemd.public-ingest-schedule-install-or-update",
+      "on_failure": "STOP_WITH_READ_ONLY_EVIDENCE",
+      "automatic_retry": false,
+      "alternate_scheduler_activation": false
+    }
+  ],
+  "trusted_boundary_compatibility": {
+    "repository": "rozkalnsandris/RPi5_main",
+    "static_operation_source": "RPi5_main issue #408 / PR #409",
+    "bootstrap_composition_source": "RPi5_main issue #410 / PR #415",
+    "execution_or_host_wiring_enabled_by_this_contract": false,
+    "arbitrary_shell_authority": false,
+    "arbitrary_host_path_authority": false,
+    "arbitrary_argv_authority": false,
+    "runtime_environment_authority": false
+  },
+  "live_gate_required_fields": [
+    "exact_host_and_target",
+    "reviewed_merged_weather_sha",
+    "exact_sha_ci",
+    "current_rpi5_main_sha_and_operation",
+    "current_runtime_baseline",
+    "bounded_start_and_end_dates",
+    "exact_models_and_run_hours",
+    "recovery_decision",
+    "exact_mutation_classes_and_budgets",
+    "verification_postconditions",
+    "rollback_semantics"
+  ],
+  "source_full_grants_live_authority": false,
+  "source_full_grants_production_data_authority": false
+}
