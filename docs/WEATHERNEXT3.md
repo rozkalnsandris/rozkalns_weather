@@ -63,6 +63,8 @@ Pirmās piekļuves source contract ir `deploy/weathernext-first-access.json` un 
 
 Sustained collection source contract ir `deploy/weathernext-sustained-collection.json` un `docs/WEATHERNEXT_SUSTAINED_COLLECTION.md`. Tas sākas tikai pēc validēta first-access canary/snapshot admission un definē deterministic cadence, dedupe, missing-run ledger/recovery, model/schema boundaries, freshness health un first-month verification readiness. Tas pats neveic nevienu real BigQuery query, production SQLite write vai scheduler activation.
 
+Version-evolution source contract ir `deploy/weathernext-version-evolution.json` un `docs/WEATHERNEXT_VERSION_EVOLUTION.md`. Tas sagatavo verificētas WeatherNext 3 model/schema boundary salīdzinājumu ar deterministic before/after windows, strict `station_10416` common samples, skill/quantile/freshness deltas, deterministic notable cases un privacy-safe report payload. Source merge pats nelasa production corpus un neapgalvo, ka reāls version boundary ir jau novērots lokāli.
+
 ## BigQuery query discipline
 
 Google iesaka:
@@ -183,6 +185,8 @@ Saglabājam model version/provider metadata. Ja Google maina WeatherNext versiju
 - regression/improvement analīzē izmantot salīdzināmu periodu.
 
 Sustained collection contract model version un schema fingerprint tur kā atsevišķus collection dimensions. Jebkura neatbilstība rada `version_boundary`; current source atbalsts ir `3.0.0`, un unknown future version neprasa automātisku coercion — tas prasa explicit adapter/version lēmumu.
+
+Version-evolution contract šo boundary analizē tikai tad, ja release/model metadata ir verificēta un before/after versijas ir explicit. Comparison windows tiek izvēlēti pēc fiksēta kalendāra ap boundary, nevis pēc forecast rezultātiem. Measured skill intersecto tikai semantiski identiskus `station_10416` samples un saglabā `n` katrai pusei + common `n`; lead bucket un run class netiek pooloti. Report rāda absolūtos/relatīvos MAE/RMSE/bias deltas, summary-quantile calibration un freshness/latency izmaiņas, bet neizdod globālu “winner”. Reāls report pret production corpus prasa atsevišķu read-only owner gate.
 
 ## Official references
 
