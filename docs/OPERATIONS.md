@@ -22,6 +22,7 @@ Canonical package/contract files:
 
 - `deploy/docker-compose.public.yml`
 - `deploy/runtime-descriptor.json`
+- `deploy/rollout-readiness.json`
 - `deploy/public-ingest-schedule.json`
 - `docs/RPI5_PUBLIC_RUNTIME_HANDOFF.md`
 
@@ -64,6 +65,33 @@ rozkalns-weather corpus-stats
 
 `readiness` does not perform provider network calls and does not implicitly initialize the SQLite schema when the runtime uses `DATABASE_INIT_MODE=require-existing`.
 
+## Deterministic rollout source preflight
+
+Run this only from the exact reviewed repository checkout whose fixed `deploy/` files will later be materialized. It is read-only, network-independent and does not inspect or mutate live RPi5 state:
+
+```bash
+rozkalns-weather rollout-preflight \
+  --source-sha <EXACT_REVIEWED_40_CHAR_SHA> \
+  --start <YYYY-MM-DD> \
+  --end <YYYY-MM-DD> \
+  --models icon_d2,ecmwf_ifs,ecmwf_aifs \
+  --run-hours 0,6,12,18 \
+  --recovery-decision <verified_backup_available|owner_accepts_proceeding_without_prewrite_backup>
+```
+
+The command validates:
+
+1. fixed target `rozkalns-weather-public-rpi5` and operation `rozkalns-weather.public-runtime-release.v1`;
+2. Compose/service/volume/readiness identities and absence of implicit `depends_on`, private env file or home-coordinate wiring;
+3. public-only + `require-existing` runtime semantics;
+4. DWD truth identity WMO `10416`;
+5. exactly ICON-D2, IFS and AIFS at UTC `00/06/12/18`;
+6. common benchmark start no earlier than `2026-04-02` and no more than 180 inclusive days;
+7. ordered checkpoint prefix and next stage;
+8. explicit recovery decision and no automatic restore/delete/cleanup.
+
+The preflight validates only the **form and source contract** of `--source-sha`. It cannot claim GitHub `main` membership, exact-SHA CI, current `RPi5_main` baseline or current RPi5 runtime state; those must be freshly proven at the later LIVE gate.
+
 ## Explicit SQLite schema bootstrap
 
 Production-candidate application startup does **not** create the schema. Schema creation is a separately invoked data-write operation:
@@ -105,28 +133,42 @@ python -m rozkalns_weather.backfill --database-url sqlite:///<path> integrity \
 
 Production/public corpus backfill itself is a data-write/LIVE mutation.
 
-## First public corpus bootstrap order
+## First public corpus bootstrap state machine
 
-The machine contract in `deploy/public-ingest-schedule.json` freezes the intended order:
+`deploy/rollout-readiness.json` and `deploy/public-ingest-schedule.json` freeze the intended order:
 
-1. persistent storage target established;
-2. explicit `schema-init` under data-write authority;
-3. `readiness` / `/ready` must report schema/storage privacy readiness;
-4. optional read-only `smoke-public`;
-5. explicit bounded historical DWD truth backfill;
-6. explicit bounded deterministic forecast backfill;
-7. integrity check;
-8. only then enable recurring public ingest.
+1. `volume_ensure`;
+2. `explicit_schema_init` under data-write authority;
+3. `readiness_check` / `/ready` schema-storage-privacy proof;
+4. `public_smoke_read_only` — optional network smoke, but the stage must still be explicitly checkpointed as passed or skipped;
+5. `bounded_dwd_truth_backfill`;
+6. `bounded_forecast_backfill`;
+7. `corpus_integrity_check`;
+8. `enable_recurring_public_ingest` last.
+
+Resume may name only an exact already-completed ordered prefix using repeated `--completed-stage`. A missing middle stage, reordering, implicit stage advance or hidden retry fails closed. The preflight emits a `bootstrap_fingerprint`; later resume evidence must remain bound to the same source SHA, dates/models/run-hours and recovery decision.
 
 Backfill is never an implicit application/container startup side effect. WeatherNext scheduling remains disabled in this public-only phase.
 
-## Public baseline collector
+## Public baseline collector and timer handoff
 
 ```bash
 rozkalns-weather ingest-public
 ```
 
-It collects the DWD 10416 station benchmark and, only if private home coordinates are configured later, a separate home forecast comparison. Provider failures are isolated. The reviewed scheduling contract is every 30 minutes; exact systemd/host installation remains owned by the trusted RPi5 boundary and requires later authority.
+It collects the DWD 10416 station benchmark and, only if private home coordinates are configured later, a separate home forecast comparison. Provider failures are isolated.
+
+The machine-readable timer handoff is fixed to:
+
+- timer unit `rozkalns-weather-public-ingest.timer`;
+- service unit `rozkalns-weather-public-ingest.service`;
+- `OnCalendar=*:0/30`;
+- `Persistent=true` with catch-up-after-downtime semantics;
+- `RandomizedDelaySec=60` and `AccuracySec=60` contract;
+- no overlapping second oneshot plus the application ingest lock as an additional rejection layer;
+- timer installation/enablement only after corpus integrity passes.
+
+Actual systemd installation/enable/restart is owned by `RPi5_main` and remains a separate LIVE mutation.
 
 ## Readiness / API preflight
 
@@ -138,6 +180,18 @@ curl -fsS http://127.0.0.1:8000/api/health/providers
 ```
 
 `/ready` and `/api/readiness` expose schema version 1 and must not reveal coordinates, credentials or the host/database path. Public-provider network state is visible but isolated from local runtime readiness.
+
+## Privacy-safe post-rollout evidence
+
+A future trusted executor may collect only sanitized evidence and pipe it to:
+
+```bash
+rozkalns-weather rollout-evidence-validate < sanitized-evidence.json
+```
+
+Required postconditions include exact deployed source SHA identity, target/operation identity, HTTP 200 for `/health`, `/ready` and `/api/health/providers`, ready schema, persistent SQLite storage class, retained `weather_data`, DWD/ICON/ECMWF/WeatherNext provider state presence, `corpus_integrity.ok=true`, and WeatherNext remaining non-required/non-fabricated in public-only mode.
+
+Evidence is rejected if it contains fields for home coordinates, credentials, raw logs, database path, host path or environment payload, or string values exposing `/home/`, `/opt/` or `/root/` paths. The validator emits only a sanitized summary.
 
 ## WeatherNext first-live preflight
 
@@ -167,33 +221,48 @@ If the newest hourly dissemination window has passed but data is delayed, collec
 
 ## Trusted RPi5 boundary
 
-`rozkalns_weather` is not autonomous host authority. The future adapter contract is documented in `docs/RPI5_PUBLIC_RUNTIME_HANDOFF.md` and `deploy/runtime-descriptor.json`.
+`rozkalns_weather` is not autonomous host authority. The adapter contract is documented in `docs/RPI5_PUBLIC_RUNTIME_HANDOFF.md`, `deploy/runtime-descriptor.json` and `deploy/rollout-readiness.json`.
 
-Candidate future identity:
+Current source-side integration identity:
 
 - target alias `rozkalns-weather-public-rpi5`;
 - operation ID `rozkalns-weather.public-runtime-release.v1`;
 - execution class `trusted-home-host`;
-- initial authorization class `STRICT`;
+- authorization class `STRICT`;
 - no arbitrary command/path/argv/environment authority from GitHub prose.
 
-A separate `RPi5_main` source issue must refresh its current rules/registry and implement/review the static adapter. This weather issue does not modify that repository or register an operation.
+`RPi5_main` Issue #408 / PR #409 registered the static execution-disabled weather operation/adapter; Issue #410 / PR #415 added deterministic bootstrap composition. Those merged source interfaces do not prove current runtime enablement and do not grant LIVE authority. Current `RPi5_main` and host state must be freshly read before a real rollout.
 
-## Exact LIVE gate preflight
+## Exact LIVE gate template
 
-Before any RPi5 mutation freshly determine:
+Before any RPi5 mutation bind **all** of the following in the exact owner-authorized LIVE envelope:
 
-- exact target host/alias;
-- reviewed and merged exact weather source SHA;
-- exact-SHA CI/review evidence;
-- current trusted-controller/deployed baseline;
-- exact static `RPi5_main` operation/adapter identity;
-- exact Docker/systemd/data mutation classes and practical budgets;
-- current persistent corpus baseline without exposing protected data;
-- health/readiness verification;
-- explicit rollback semantics and exclusions.
+```text
+host=<exact trusted RPi5 host>
+target=rozkalns-weather-public-rpi5
+weather_sha=<reviewed merged exact SHA>
+weather_exact_sha_ci=<fresh required-check evidence>
+rpi5_main_sha=<fresh current main SHA>
+operation=rozkalns-weather.public-runtime-release.v1
+runtime_baseline=<fresh sanitized read-only baseline>
+bootstrap_start=<YYYY-MM-DD>
+bootstrap_end=<YYYY-MM-DD>
+models=icon_d2,ecmwf_ifs,ecmwf_aifs
+run_hours_utc=0,6,12,18
+truth_station=10416
+recovery_decision=<verified_backup_available|owner_accepts_proceeding_without_prewrite_backup>
+mutation_classes_and_budgets=<exact frozen set>
+verification=<health/readiness/provider/schema/storage/corpus-integrity postconditions>
+rollback=<application semantics only; no implicit SQLite restore/delete/cleanup>
+```
+
+Read-only preflight must also prove the selected date window is <=180 inclusive days and consistent with the common archive start, and that the current live baseline has not drifted after authorization binding.
 
 Merge does not authorize this step. Separate explicit LIVE authorization is mandatory before deploy/redeploy/restart, Docker/systemd/timer mutation, credentials, Cloudflare, database/schema/corpus data mutation or filesystem permissions.
+
+## Fail-closed failure matrix
+
+`deploy/rollout-readiness.json` freezes failure behavior for application release, volume ensure, schema init, truth backfill, forecast backfill, integrity and schedule activation. Once a future mutation starts, unexpected state means STOP with minimum read-only evidence. There is no undeclared retry, alternate scheduler, automatic repair, volume cleanup, corpus delete or restore.
 
 ## Backup / recovery
 
@@ -202,6 +271,8 @@ Source provides a consistent SQLite backup command:
 ```bash
 rozkalns-weather backup --output <private-backup-path>
 ```
+
+Source tests additionally verify disposable SQLite backups with read-only `PRAGMA integrity_check`, required-table presence, SHA-256 and size metadata while suppressing the path from output. A future production backup remains separately gated and must not be inferred from source test success.
 
 Backup/restore execution against live storage is itself a separately gated LIVE/data operation. No automatic restore, corpus deletion, cleanup or destructive rollback is declared by the public runtime contract.
 
