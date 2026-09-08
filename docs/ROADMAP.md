@@ -30,6 +30,7 @@ forecast snapshot -> observation -> verification -> WeatherNext comparison
 - [x] hourly interim + synoptic run classes.
 - [x] dissemination latency/readiness diagnostics.
 - [x] station benchmark + optional home collection design.
+- [x] deterministic first-access source readiness: linked-dataset/schema fingerprint, dry-run cost cap, bounded `station_10416` canary, provenance/evidence validation and explicit first-snapshot write gate separation.
 - [ ] live BigQuery access verified.
 - [ ] first real WeatherNext snapshot stored.
 
