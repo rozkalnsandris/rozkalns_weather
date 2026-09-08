@@ -60,7 +60,8 @@ forecast snapshot -> observation -> verification -> WeatherNext comparison
 - [x] weather-side trusted-boundary handoff contract for a future `RPi5_main` static adapter.
 - [x] `RPi5_main` static source adapter/operation registration reviewed and merged via Issue #408 / PR #409.
 - [x] `RPi5_main` deterministic first-bootstrap source composition merged via Issue #410 / PR #415.
-- [ ] first public-only RPi5 rollout under a separately authorized exact LIVE gate.
+- [x] deterministic rollout-readiness package: source-only preflight, <=180-day WMO 10416 + ICON-D2/IFS/AIFS bootstrap envelope, ordered checkpoint/resume, recovery decision, explicit systemd timer semantics, post-rollout evidence validator and fail-closed stage matrix.
+- [ ] first public-only RPi5 rollout under a separately authorized exact LIVE gate using freshly bound host/source/CI/bounds/recovery/mutation-budget fields.
 - [ ] production public corpus schema/bootstrap/backfill under explicit LIVE/data authority.
 - [ ] later private-home / WeatherNext runtime activation after private access and configuration are explicitly ready.
 - [ ] optional Cloudflare Access.
