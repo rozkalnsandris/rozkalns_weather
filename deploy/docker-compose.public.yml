@@ -89,5 +89,26 @@ services:
     restart: "no"
     profiles: ["checks"]
 
+  corpus-check:
+    build:
+      context: ..
+    command: ["rozkalns-weather", "corpus-check"]
+    environment:
+      WEATHER_RUNTIME_MODE: public-only
+      DATABASE_INIT_MODE: require-existing
+      DATABASE_URL: sqlite:///data/weather.db
+      HOME_TIMEZONE: Europe/Berlin
+    volumes:
+      - weather_data:/app/data
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    restart: "no"
+    profiles: ["checks"]
+
 volumes:
   weather_data:
