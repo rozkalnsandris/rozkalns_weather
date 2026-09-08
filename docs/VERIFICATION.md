@@ -159,4 +159,12 @@ Weighted Combined forecast paliek ārpus scope, kamēr nav pietiekams common-per
 
 Kad ir reāls corpus, periodiskais report rāda WeatherNext version, sample period, lead-time skill vs public baselines, change vs previous period, uncertainty calibration un notable misses. Release/model events tiek piesaistīti tikai verificētam provenance; nekas netiek fabricēts.
 
+Issue #26 source contract `src/rozkalns_weather/weathernext_evolution.py` papildus definē strict cross-version salīdzinājumu. Boundary prasa explicit before/after `model_version`, schema fingerprintus, provider-effective UTC laiku un verificētu release metadata avotu. Before/after windows ir fiksēti calendar windows ap boundary un nekad netiek izvēlēti pēc forecast performance.
+
+Cross-version skill izmanto tikai common `station_10416` samples ar identisku valid time, variable, lead bucket, run class, statistic/unit un accumulation semantics. MAE/RMSE/bias tiek rēķināti katrai pusei un reportēti kā `after - before` delta; lead bucket/run class netiek pooloti un globāls “winner” netiek emitēts. `n < 30` paliek explicit insufficient/limited sample stāvoklis bez izdomātas uncertainty.
+
+WeatherNext summary kvantiļu evolution salīdzina p10-p90/p25-p75 coverage/width un p50 MAE. No summary kvantilēm netiek fabricēts CRPS, Brier score vai precipitation event probability. Freshness comparison tur `expected_available_at_utc`, defensible observed upstream availability un `retrieved_at_utc` atsevišķi; missing/delayed count nav forecast skill.
+
+Notable regression/improvement cases tiek atlasīti deterministiski pēc absolūtās error-delta magnitūdas un stabila tie-break, nevis manuāli cherry-pickoti. Sanitized `weathernext3_version_evolution_v1` payload neietver private Google identity, credentials/tokens, SQL, coordinates, private paths, raw provider payload vai raw logs. Reāls report pret production SQLite ir atsevišķs exact **read-only** owner gate un nedod corpus mutation authority.
+
 Issue #24 first-month evidence ir tikai sanitized aggregate payload. Tas nesatur raw WeatherNext real-time provider payload, private Google/dataset identity, credentials, home coordinates, SQL, private paths vai raw logs. Default ir `publication_allowed=false` un pirms jebkādas publiskošanas jāveic fresh upstream terms pārbaude.
