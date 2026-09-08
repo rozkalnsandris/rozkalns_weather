@@ -5,6 +5,7 @@ Description=Run public weather ingest every 30 minutes
 OnCalendar=*:0/30
 Persistent=true
 RandomizedDelaySec=60
+AccuracySec=60
 
 [Install]
 WantedBy=timers.target
