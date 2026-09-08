@@ -60,6 +60,8 @@ python -m rozkalns_weather.weathernext_access plan --now <UTC_TIMESTAMP> --hours
 python -m rozkalns_weather.weathernext_access preflight --schema-only --max-bytes-billed <CAP>
 python -m rozkalns_weather.weathernext_access preflight --hours-limit 6 --max-bytes-billed <CAP>
 python -m rozkalns_weather.weathernext_access validate-evidence < sanitized-first-access-evidence.json
+python -m rozkalns_weather.weathernext_collection plan --now <UTC_TIMESTAMP> --limit 24
+python -m rozkalns_weather.weathernext_collection validate-evidence < sanitized-first-month-evidence.json
 ```
 
 `rollout-preflight` ir **source-checkout-only read-only** validators: tas neveic tīkla pieprasījumus, nelasa production runtime un neko nemutē. Tas pārbauda fixed descriptor/Compose/schedule identities, exact 40-char SHA formu, WMO `10416`, exact `icon_d2/ecmwf_ifs/ecmwf_aifs` + `00/06/12/18` scope, ne vairāk kā 180 inclusive dienas, ordered checkpoint prefix un explicit recovery decision. Tas pats neapstiprina, ka SHA patiešām ir current merged `main` vai ka exact-SHA CI ir green — to vēlāk svaigi pierāda GitHub/LIVE gate.
@@ -67,6 +69,8 @@ python -m rozkalns_weather.weathernext_access validate-evidence < sanitized-firs
 `rollout-evidence-validate` no stdin pieņem tikai privacy-safe pēc-rollout evidence un fail-closed, ja nav `/health`, `/ready`, provider-health, schema/storage/corpus integrity postconditions vai ja evidence satur private path/log/coordinate/credential laukus.
 
 WeatherNext first-access source contract ir `deploy/weathernext-first-access.json` + `docs/WEATHERNEXT_FIRST_ACCESS.md`. Network-free `weathernext_access plan` izvēlas vienu target-disseminated init un bounded forecast-hour/cost envelope. `preflight --schema-only` un dry-run preflight ir paredzēti tikai vēlākai atsevišķi autorizētai private BigQuery read-only pārbaudei; source AUTO-FULL tos neizpilda. Dry-run evidence ir obligāta pirms bounded canary query, un production SQLite first-snapshot write paliek atsevišķa mutation class.
+
+WeatherNext sustained-collection source contract ir `deploy/weathernext-sustained-collection.json` + `docs/WEATHERNEXT_SUSTAINED_COLLECTION.md`. Network-free `weathernext_collection plan` izveido target-disseminated hourly/synoptic init plānu, izmet jau zināmos init un pats neveic BigQuery query, SQLite write vai scheduler activation. Missing-run recovery, model/schema boundary un freshness health ir deterministiski source contracti. Pirmā mēneša mērītā verifikācija paliek tikai `station_10416` common valid-times, atsevišķi pa model version un lead bucket; MAE/RMSE/bias tiek uzskatīti par meaningful tikai pie `n >= 30` attiecīgajā slice. Reāla recurring WeatherNext collection, production corpus accumulation un scheduler activation paliek atsevišķi exact LIVE/data gates.
 
 WeatherNext dokumentētais dissemination target tiek glabāts kā `expected_available_at_utc`, nevis kā novērots publication timestamp. `upstream_available_at_utc` paliek `null`, kamēr upstream nav devis defensible observed publication evidence.
 
@@ -120,6 +124,7 @@ RPi5, systemd/Docker, Cloudflare, credentials, private Google Cloud/BigQuery acc
 - `docs/RPI5_PUBLIC_RUNTIME_HANDOFF.md`
 - `docs/WEATHERNEXT3.md`
 - `docs/WEATHERNEXT_FIRST_ACCESS.md`
+- `docs/WEATHERNEXT_SUSTAINED_COLLECTION.md`
 - `docs/VERIFICATION.md`
 - `docs/ROADMAP.md`
 - `docs/IMPLEMENTATION_STATUS.md`
