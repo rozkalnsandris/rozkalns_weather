@@ -96,19 +96,28 @@ def test_compose_candidate_has_fixed_jobs_and_no_private_env_file() -> None:
     assert 'command: ["rozkalns-weather", "init-database"]' in compose
     assert 'command: ["rozkalns-weather", "ingest-public"]' in compose
     assert 'command: ["rozkalns-weather", "readiness"]' in compose
+    assert 'command: ["rozkalns-weather", "corpus-check"]' in compose
     assert "DATABASE_INIT_MODE: require-existing" in compose
     assert "WEATHER_RUNTIME_MODE: public-only" in compose
     assert "HOME_LAT" not in compose
     assert "HOME_LON" not in compose
     assert "env_file:" not in compose
+    assert "depends_on:" not in compose
     assert "ingest-weathernext" not in compose
     assert "/ready" in compose
 
 
 def test_public_schedule_keeps_weathernext_dormant_and_bootstrap_explicit() -> None:
     schedule = json.loads(Path("deploy/public-ingest-schedule.json").read_text())
+    assert schedule["schema_version"] == 2
     assert schedule["public_ingest"]["cadence"] == "PT30M"
+    assert schedule["systemd_timer"]["timer_unit"] == "rozkalns-weather-public-ingest.timer"
+    assert schedule["systemd_timer"]["service_unit"] == "rozkalns-weather-public-ingest.service"
+    assert schedule["systemd_timer"]["on_calendar"] == "*:0/30"
+    assert schedule["systemd_timer"]["persistent"] is True
+    assert schedule["systemd_timer"]["randomized_delay_seconds"] == 60
+    assert schedule["systemd_timer"]["enable_order"] == "last_after_corpus_integrity"
     assert schedule["weathernext"]["enabled"] is False
     assert schedule["bootstrap"]["implicit_on_application_start"] is False
-    assert schedule["bootstrap"]["required_order"][0] == "explicit_schema_init"
+    assert schedule["bootstrap"]["required_order"][0] == "volume_ensure"
     assert schedule["bootstrap"]["required_order"][-1] == "enable_recurring_public_ingest"
