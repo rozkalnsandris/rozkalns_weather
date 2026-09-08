@@ -1,6 +1,6 @@
 # Implementation status
 
-Status during the Issue #15 AUTO-RUN FULL v2 source lane.
+Status reconciled after `AUDIT-HANDOFF` on 2026-09-08.
 
 ## Source-complete
 - FastAPI + SQLite immutable forecast corpus.
@@ -29,27 +29,37 @@ Status during the Issue #15 AUTO-RUN FULL v2 source lane.
 - Matched event verification covers temperature extremes, precipitation and wind/gust event contingency summaries.
 - Accuracy v3 UI surfaces deterministic/ensemble/legacy provider classes, deterministic lead-bucket sample/confidence and genuine precipitation calibration separately.
 
-## Issue #15 public-only RPi5 source contract
+## Public-only RPi5 weather source contract
 - `WEATHER_RUNTIME_MODE=public-only` is the first RPi5 runtime class; neither WeatherNext credentials nor private home coordinates are prerequisites.
 - WeatherNext absence stays explicit `access_pending` and is never represented by fabricated values.
 - `DATABASE_INIT_MODE=require-existing` prevents the reviewed application service from implicitly creating the production SQLite schema.
 - `rozkalns-weather init-database` is the explicit schema mutation entrypoint; `rozkalns-weather readiness` is read-only with respect to schema creation and network access.
 - `/ready` and `/api/readiness` expose machine-readable schema/storage/provider/privacy state without database paths, credentials or coordinates.
 - `deploy/docker-compose.public.yml` fixes application/bootstrap/public-ingest/readiness service identities and runs as non-root with no-new-privileges/cap-drop hardening.
-- `deploy/runtime-descriptor.json` defines the public-safe target alias, operation ID candidate, persistent volume semantics, health contract and future RPi5 mutation/exclusion envelope.
+- `deploy/runtime-descriptor.json` defines the public-safe target alias, operation identity, persistent volume semantics, health contract and future RPi5 mutation/exclusion envelope.
 - `deploy/public-ingest-schedule.json` keeps public ingest cadence separate from WeatherNext and requires explicit bootstrap ordering.
 - Historical backfill remains a separate bounded data-write operation; it is never an application startup side effect.
-- `docs/RPI5_PUBLIC_RUNTIME_HANDOFF.md` defines the later `RPi5_main` adapter expectations without claiming cross-repo or runtime authority.
+- `docs/RPI5_PUBLIC_RUNTIME_HANDOFF.md` defines the trusted-boundary adapter expectations without claiming cross-repo or runtime authority.
 - Fixture-driven rollout tests cover public-only startup, WeatherNext-pending behavior, no implicit DB creation, provider failure visibility, descriptor privacy and bootstrap/schedule semantics.
 
-## Still external/live or cross-repository gated
-1. WeatherNext allowlist/access approval.
-2. Private runtime `HOME_LAT` / `HOME_LON` if/when home forecasts are activated.
-3. Google Cloud project/linked dataset/credentials and first real WeatherNext snapshot.
-4. A separate `RPi5_main` source issue must review/register the static weather deploy adapter; current weather Issue #15 does not mutate that repository.
-5. RPi5 application deployment, Docker/systemd/timer activation and any host/filesystem/network changes require separate exact LIVE authority.
-6. Production SQLite schema initialization and historical/public corpus population are explicit data-write/LIVE gates.
-7. Backup/restore and any destructive data recovery are separately gated; application rollback never implies DB rollback.
+## RPi5_main trusted-boundary source integration
+- `RPi5_main` Issue #408 / PR #409 is merged and registers the static `rozkalns-weather.public-runtime-release.v1` operation plus dedicated execution-disabled weather adapter.
+- The operation remains `STRICT` and not ordinary `LIVE-ALL` eligible; source registration is not LIVE authority.
+- `RPi5_main` Issue #410 / PR #415 is merged and adds the deterministic first-bootstrap composition for application release, volume ensure, explicit schema init, readiness, optional public smoke, bounded DWD truth and deterministic forecast backfill, integrity, and recurring public ingest scheduling.
+- Application, schema, corpus-write and schedule mutation classes remain distinct even when a later exact LIVE authorization composes them into one bounded rollout.
+- The source contracts do not provide arbitrary shell/path/argv/environment authority and do not include private runtime data.
+- Trusted execution/host wiring remains disabled until separately authorized and freshly revalidated; mutable `RPi5_main` executor/runtime state must always be refreshed before any LIVE action.
+
+## Still external/live gated
+1. First public-only RPi5 rollout under a separate exact LIVE authorization after fresh source/host/target preflight.
+2. Production SQLite schema initialization and historical/public corpus population under separately bounded data-write/LIVE authority, with explicit date/model bounds and recovery decision.
+3. Any Docker/systemd/timer activation or host/filesystem/network mutation remains separately gated.
+4. WeatherNext allowlist/access approval for private WeatherNext activation.
+5. Private runtime `HOME_LAT` / `HOME_LON` if/when private-home forecasts are activated.
+6. Google Cloud project/linked dataset/credentials and the first real WeatherNext snapshot.
+7. Backup/restore and any destructive data recovery remain separately gated; application rollback never implies DB rollback.
 8. Meaningful measured rankings and bootstrap intervals require enough real common-sample corpus.
+
+A read-only audit on 2026-09-08 found no deployed weather container, no `weather_data` volume and no weather systemd service/timer on the RPi5 at that time. This is point-in-time runtime evidence, not durable source truth; future LIVE work must refresh it.
 
 Home forecasts are not verified against DWD 10416 as if they were the same physical point. Measured accuracy uses the station benchmark. WeatherNext 3 real values remain absent until private access is explicitly ready; no placeholder values are fabricated.
