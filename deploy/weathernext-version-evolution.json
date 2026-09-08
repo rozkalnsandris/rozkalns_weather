@@ -1,0 +1,148 @@
+{
+  "contract": "weathernext3-version-evolution.v1",
+  "provider": "weathernext3",
+  "research_role": "primary_research",
+  "warning_authority": "DWD",
+  "comparison_location": {
+    "location_id": "station_10416",
+    "truth_source": "DWD WMO 10416",
+    "private_home_measured_skill_allowed": false
+  },
+  "version_boundary": {
+    "required_dimensions": [
+      "before_model_version",
+      "after_model_version",
+      "before_schema_fingerprint",
+      "after_schema_fingerprint",
+      "effective_at_utc",
+      "release_source_url",
+      "release_metadata_verified"
+    ],
+    "unknown_product_policy": "fail_closed",
+    "weather_next_2_gen_graph_coercion_allowed": false,
+    "provider_release_time_is_local_first_observed_time": false
+  },
+  "comparison_windows": {
+    "selection": "symmetric_calendar_windows_around_effective_boundary",
+    "performance_based_window_selection_allowed": false,
+    "default_days_per_side": 30,
+    "maximum_days_per_side": 92,
+    "unequal_or_clipped_windows": "explicit_limitation",
+    "seasonality_limitation_exposed": true
+  },
+  "common_sample": {
+    "identity": [
+      "location_id",
+      "valid_time_utc",
+      "variable",
+      "lead_bucket",
+      "run_class",
+      "forecast_semantics"
+    ],
+    "required_location_id": "station_10416",
+    "pool_incompatible_versions": false,
+    "private_home_excluded": true
+  },
+  "deterministic_skill_delta": {
+    "metrics": ["mae", "rmse", "bias"],
+    "group_dimensions": ["variable", "lead_bucket", "run_class"],
+    "absolute_delta": true,
+    "relative_delta": true,
+    "global_winner_label_allowed": false,
+    "uncertainty_min_n": 30
+  },
+  "quantile_calibration": {
+    "statistics": ["p10", "p25", "p50", "p75", "p90"],
+    "metrics": [
+      "p10_p90_coverage",
+      "p10_p90_mean_width",
+      "p25_p75_coverage",
+      "p25_p75_mean_width",
+      "p50_mae"
+    ],
+    "synthetic_crps_allowed": false,
+    "synthetic_brier_allowed": false,
+    "synthetic_precipitation_probability_allowed": false,
+    "precipitation_accumulation_minutes": 60
+  },
+  "event_analysis": {
+    "deterministic_selection": "largest_absolute_error_delta_then_valid_time",
+    "temperature_high_c": 30.0,
+    "temperature_freeze_c": 0.0,
+    "precipitation_1h_mm": 0.1,
+    "wind_gust_10m_ms": 15.0,
+    "cherry_pick_by_observed_performance_allowed": false
+  },
+  "freshness_latency": {
+    "expected_available_at_utc_distinct": true,
+    "observed_upstream_available_at_utc_distinct": true,
+    "retrieved_at_utc_distinct": true,
+    "compare_missing_delayed_counts": true,
+    "private_provider_identity_exposed": false
+  },
+  "report_contract": {
+    "report_type": "weathernext3_version_evolution_v1",
+    "api_ui_ready": true,
+    "research_verification_label_required": true,
+    "required_sections": [
+      "boundary",
+      "windows",
+      "common_sample_counts",
+      "skill_deltas",
+      "quantile_calibration_deltas",
+      "freshness_latency",
+      "event_summary",
+      "notable_cases",
+      "release_provenance",
+      "limitations"
+    ],
+    "real_empirical_result_claim_requires_real_corpus": true
+  },
+  "privacy_publication": {
+    "forbidden_fields": [
+      "home_lat",
+      "home_lon",
+      "latitude",
+      "longitude",
+      "google_cloud_project",
+      "bigquery_dataset",
+      "credentials",
+      "token",
+      "sql",
+      "database_path",
+      "host_path",
+      "raw_payload",
+      "raw_log"
+    ],
+    "private_realtime_values_export_allowed": false,
+    "restricted_provider_payload_export_allowed": false,
+    "release_claim_requires_verified_metadata": true
+  },
+  "later_real_corpus_gate": {
+    "mutation_class": "production_corpus_read_only_version_evolution_report",
+    "requires_exact_owner_authority": true,
+    "required_bindings": [
+      "weather_sha",
+      "weather_exact_sha_ci",
+      "sqlite_target",
+      "read_only_query_scope",
+      "before_model_version",
+      "after_model_version",
+      "effective_boundary_utc",
+      "before_window",
+      "after_window",
+      "minimum_sample_requirement",
+      "privacy_safe_output_contract",
+      "failure_semantics"
+    ],
+    "corpus_mutation_allowed": false,
+    "implicit_migration_allowed": false,
+    "implicit_cleanup_allowed": false
+  },
+  "authority": {
+    "source_auto_full_authorizes_real_bigquery_query": false,
+    "source_auto_full_authorizes_production_corpus_read": false,
+    "source_auto_full_authorizes_production_corpus_write": false,
+    "source_auto_full_authorizes_runtime_mutation": false
+  }
+}
