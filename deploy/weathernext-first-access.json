@@ -1,0 +1,125 @@
+{
+  "schema_version": 1,
+  "contract": "weathernext3-first-access.v1",
+  "provider": {
+    "id": "weathernext3",
+    "model_provider": "Google DeepMind",
+    "model_name": "WeatherNext 3",
+    "model_version_contract": "3.0.0",
+    "warning_authority": false
+  },
+  "access": {
+    "surface": "Google BigQuery linked dataset",
+    "read_only_before_snapshot_write": true,
+    "project_env": "GOOGLE_CLOUD_PROJECT",
+    "dataset_env": "WEATHERNEXT_BIGQUERY_DATASET",
+    "private_runtime_only": true,
+    "analytics_hub_link_mutation_authorized": false
+  },
+  "tables": [
+    {
+      "name": "weathernext_3_0_0_0p05deg",
+      "resolution": "0p05",
+      "role": "station",
+      "required_canary_variables": [
+        "station_head_temperature_2m_mean",
+        "station_head_dewpoint_temperature_2m_mean"
+      ]
+    },
+    {
+      "name": "weathernext_3_0_0_0p1deg",
+      "resolution": "0p1",
+      "role": "surface",
+      "required_canary_any_of": [
+        "wind_speed_10m_mean",
+        "mean_sea_level_pressure_mean",
+        "total_cloud_cover_mean",
+        "total_precipitation_1hr_mean"
+      ]
+    }
+  ],
+  "statistics": ["mean", "p10", "p25", "p50", "p75", "p90"],
+  "query_guardrails": {
+    "init_time_partition_filter_required": true,
+    "select_star_forbidden": true,
+    "selected_columns_only": true,
+    "dry_run_required_before_canary": true,
+    "maximum_bytes_billed_required": true,
+    "maximum_allowed_bytes_billed_per_query": 1073741824,
+    "max_canary_forecast_hours": 24,
+    "initial_location_id": "station_10416",
+    "private_home_scope_initially_allowed": false
+  },
+  "dissemination": {
+    "synoptic_hours_utc": [0, 6, 12, 18],
+    "synoptic_horizon_hours": 360,
+    "interim_horizon_hours": 48,
+    "synoptic_target_delay_minutes": 490,
+    "interim_target_delay_minutes": 445,
+    "fallback_only_on_data_latency": true
+  },
+  "provenance": {
+    "required": [
+      "provider",
+      "model_provider",
+      "model_name",
+      "model_version",
+      "init_time_utc",
+      "retrieved_at_utc",
+      "valid_time_utc",
+      "lead_hours",
+      "statistic",
+      "source_surface",
+      "run_class",
+      "forecast_horizon_hours",
+      "expected_available_at_utc"
+    ],
+    "precipitation_accumulation_minutes": 60,
+    "fabricated_upstream_publication_time_forbidden": true
+  },
+  "stages": [
+    {"id": "linked_dataset_probe", "mutation_class": "read_only_private_bigquery", "next": "schema_fingerprint"},
+    {"id": "schema_fingerprint", "mutation_class": "read_only_private_bigquery", "next": "dry_run_cost_guard"},
+    {"id": "dry_run_cost_guard", "mutation_class": "read_only_private_bigquery", "next": "bounded_canary_query"},
+    {"id": "bounded_canary_query", "mutation_class": "read_only_private_bigquery", "next": "provenance_validate"},
+    {"id": "provenance_validate", "mutation_class": "read_only_local_validation", "next": "first_snapshot_write"},
+    {
+      "id": "first_snapshot_write",
+      "mutation_class": "production_sqlite_forecast_snapshot_write",
+      "requires_separate_exact_private_live_data_authority": true,
+      "automatic": false
+    }
+  ],
+  "fail_closed_states": [
+    "access_pending",
+    "permission_denied",
+    "dataset_unlinked",
+    "schema_changed",
+    "cost_cap_rejected",
+    "data_latency",
+    "empty_canary",
+    "write_stage_failure"
+  ],
+  "privacy": {
+    "forbid_repo_values": [
+      "GOOGLE_CLOUD_PROJECT value",
+      "WEATHERNEXT_BIGQUERY_DATASET value",
+      "credentials",
+      "service account material",
+      "tokens",
+      "HOME_LAT",
+      "HOME_LON",
+      "private SQL with coordinates",
+      "private filesystem paths",
+      "raw logs"
+    ],
+    "sanitized_evidence_only": true
+  },
+  "authority": {
+    "source_auto_full_authorizes_real_bigquery_query": false,
+    "source_auto_full_authorizes_first_snapshot_write": false,
+    "credentials_or_iam_mutation_authorized": false,
+    "analytics_hub_link_mutation_authorized": false,
+    "rpi5_or_runtime_mutation_authorized": false
+  }
+}

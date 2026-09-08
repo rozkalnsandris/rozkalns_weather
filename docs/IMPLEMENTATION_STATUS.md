@@ -1,6 +1,6 @@
 # Implementation status
 
-Status reconciled after `AUDIT-HANDOFF` on 2026-09-08 and extended by Issue #19 source work.
+Status reconciled after `AUDIT-HANDOFF` on 2026-09-08 and extended by Issue #19 and Issue #22 source work.
 
 ## Source-complete
 - FastAPI + SQLite immutable forecast corpus.
@@ -38,7 +38,7 @@ Status reconciled after `AUDIT-HANDOFF` on 2026-09-08 and extended by Issue #19 
 - `deploy/docker-compose.public.yml` fixes application/bootstrap/public-ingest/readiness/corpus-check service identities and runs as non-root with no-new-privileges/cap-drop hardening.
 - The `weather` application has no implicit `depends_on` chain to schema/backfill jobs; application replacement cannot silently initialize schema, backfill history, restore or delete corpus.
 - `deploy/runtime-descriptor.json` binds the public-safe target/operation/persistent-volume/health contract to `deploy/rollout-readiness.json`.
-- `deploy/public-ingest-schedule.json` now carries host-consumable systemd unit identities, `*:0/30`, `Persistent=true`, 60-second bounded jitter, overlap semantics and enable-last ordering; actual install/enable remains LIVE-only.
+- `deploy/public-ingest-schedule.json` carries host-consumable systemd unit identities, `*:0/30`, `Persistent=true`, 60-second bounded jitter, overlap semantics and enable-last ordering; actual install/enable remains LIVE-only.
 - Historical backfill remains a separate bounded data-write operation; it is never an application startup side effect.
 - `docs/RPI5_PUBLIC_RUNTIME_HANDOFF.md` defines the trusted-boundary adapter expectations without claiming cross-repo or runtime authority.
 
@@ -54,6 +54,18 @@ Status reconciled after `AUDIT-HANDOFF` on 2026-09-08 and extended by Issue #19 
 - `deploy/rollout-readiness.json` contains stage-specific fail-closed behavior and explicitly preserves the already-merged `RPi5_main` #408/#409 + #410/#415 interface without enabling trusted execution/host wiring.
 - Fixture-driven tests cover contract consistency, bounds/model/run-hour rejection, checkpoint ordering, disposable SQLite backup verification, evidence privacy and CLI behavior without runtime environment.
 
+## Issue #22 WeatherNext first-access readiness package
+- `deploy/weathernext-first-access.json` freezes the WeatherNext 3 BigQuery linked-dataset/table roles, six-statistic contract, one-init canary bounds, cost guardrails, privacy fields, state machine and explicit first-snapshot write boundary.
+- `src/rozkalns_weather/weathernext_access.py` provides a network-free canary planner plus private-read-only schema/dry-run helpers that can later be invoked only under a separately authorized BigQuery gate.
+- The first canary is pinned to logical benchmark location `station_10416`, maximum 24 forecast hours and an explicit per-query `maximum_bytes_billed`; the source contract additionally rejects caps above 1 GiB.
+- Schema readiness uses deterministic SHA-256 fingerprints over the expected WeatherNext 3 0.05°/0.1° field contract and detects missing/renamed fields without emitting private project/dataset identity.
+- BigQuery dry-run must succeed for both product surfaces before the real bounded canary helper is eligible; `SELECT *` stays forbidden and exact `init_time` partition filtering remains mandatory.
+- Canary completeness requires non-empty 0.05° station temperature/dew-point output plus non-empty 0.1° surface output, but sanitized evidence reports only presence/counts rather than real values.
+- Provenance validation preserves provider/model/version, init/retrieval/valid/lead/statistic/source/run-class/horizon and 60-minute precipitation semantics.
+- Documented dissemination targets are stored as `expected_available_at_utc`; they are no longer fabricated into `upstream_available_at_utc`. The latter remains `null` until upstream provides defensible observed publication evidence.
+- Access/schema/dry-run/canary/provenance stages are distinct from `production_sqlite_forecast_snapshot_write`. A validated write envelope proves only eligibility and never performs the write.
+- `docs/WEATHERNEXT_FIRST_ACCESS.md` defines privacy-safe evidence and the later exact private gate fields. Fixture-driven tests use fake BigQuery clients and make no network request.
+
 ## RPi5_main trusted-boundary source integration
 - `RPi5_main` Issue #408 / PR #409 is merged and registers the static `rozkalns-weather.public-runtime-release.v1` operation plus dedicated execution-disabled weather adapter.
 - The operation remains `STRICT` and not ordinary `LIVE-ALL` eligible; source registration is not LIVE authority.
@@ -68,9 +80,10 @@ Status reconciled after `AUDIT-HANDOFF` on 2026-09-08 and extended by Issue #19 
 3. Any Docker/systemd/timer activation or host/filesystem/network mutation remains separately gated.
 4. WeatherNext allowlist/access approval for private WeatherNext activation.
 5. Private runtime `HOME_LAT` / `HOME_LON` if/when private-home forecasts are activated.
-6. Google Cloud project/linked dataset/credentials and the first real WeatherNext snapshot.
-7. Backup/restore and any destructive data recovery remain separately gated; application rollback never implies DB rollback.
-8. Meaningful measured rankings and bootstrap intervals require enough real common-sample corpus.
+6. Google Cloud project/linked dataset/credentials, any real schema/dry-run/canary BigQuery request, and the first real WeatherNext snapshot remain private LIVE/data gates.
+7. Analytics Hub linked-dataset creation/deletion or IAM/credential mutation remains a distinct exact owner gate and is not implied by first-access source readiness.
+8. Backup/restore and any destructive data recovery remain separately gated; application rollback never implies DB rollback.
+9. Meaningful measured rankings and bootstrap intervals require enough real common-sample corpus.
 
 A read-only audit on 2026-09-08 found no deployed weather container, no `weather_data` volume and no weather systemd service/timer on the RPi5 at that time. This is point-in-time runtime evidence, not durable source truth; future LIVE work must refresh it.
 

@@ -193,31 +193,86 @@ Required postconditions include exact deployed source SHA identity, target/opera
 
 Evidence is rejected if it contains fields for home coordinates, credentials, raw logs, database path, host path or environment payload, or string values exposing `/home/`, `/opt/` or `/root/` paths. The validator emits only a sanitized summary.
 
-## WeatherNext first-live preflight
+## WeatherNext first-access gate
 
-After allowlist approval and only in private runtime:
+Canonical source contract and detailed runbook:
 
-```bash
-rozkalns-weather diagnose-weathernext --no-point-query
-rozkalns-weather diagnose-weathernext
-```
+- `deploy/weathernext-first-access.json`
+- `docs/WEATHERNEXT_FIRST_ACCESS.md`
 
-Ready means:
-
-1. linked dataset contains `weathernext_3_0_0_0p05deg` and `weathernext_3_0_0_0p1deg`;
-2. schema validator finds the expected station-head/surface field paths;
-3. query is bounded by `init_time` partition filter and selected columns;
-4. point query returns real provider data.
-
-Only after that and separate data authority:
+Before any private Google access, the exact reviewed checkout can build a **network-free** one-init canary envelope:
 
 ```bash
-rozkalns-weather ingest-weathernext
-rozkalns-weather corpus-check
-rozkalns-weather corpus-stats
+python -m rozkalns_weather.weathernext_access plan \
+  --now <UTC_TIMESTAMP> \
+  --hours-limit 6 \
+  --max-bytes-billed <EXPLICIT_CAP>
 ```
 
-If the newest hourly dissemination window has passed but data is delayed, collector fallback is only to a prior target-disseminated hourly run. Permission/schema errors are not masked by fallback. WeatherNext values are never fabricated.
+This does not read Google credentials, contact BigQuery or inspect/write SQLite. The first canary is pinned to logical benchmark point `station_10416`, not private home coordinates.
+
+After WeatherNext allowlist approval, a **separately authorized private read-only BigQuery gate** may first verify only linked-dataset/schema state:
+
+```bash
+python -m rozkalns_weather.weathernext_access preflight \
+  --schema-only \
+  --max-bytes-billed <EXPLICIT_CAP>
+```
+
+Then, still under an exact read-only BigQuery authorization, dry-run both bounded product queries:
+
+```bash
+python -m rozkalns_weather.weathernext_access preflight \
+  --hours-limit 6 \
+  --max-bytes-billed <EXPLICIT_CAP>
+```
+
+The dry-run path requires both `weathernext_3_0_0_0p05deg` and `weathernext_3_0_0_0p1deg`, exact `init_time` filtering, selected columns only, one init, <=24 forecast hours and explicit `maximum_bytes_billed`. It emits sanitized bytes/cap evidence but not project/dataset IDs, coordinates or SQL. `cost_cap_rejected` stops before a real canary query.
+
+A real bounded canary query is a later explicitly authorized **read-only private BigQuery** step. Source helper `execute_canary_queries(...)` refuses to run unless matching successful dry-run evidence is supplied. Canary completeness requires non-empty 0.05° station temperature/dew-point output plus non-empty 0.1° surface output. Permission, linked-dataset, schema and cost failures are not masked as data latency.
+
+Documented WeatherNext dissemination targets remain expected timing evidence only. They are stored as `expected_available_at_utc`; `upstream_available_at_utc` remains `null` unless a future source supplies defensible observed publication evidence.
+
+Completed sanitized canary evidence can be validated without provider access:
+
+```bash
+python -m rozkalns_weather.weathernext_access validate-evidence < evidence.json
+python -m rozkalns_weather.weathernext_access validate-evidence --write-envelope < evidence.json
+```
+
+The second command only proves `first_snapshot_write_eligible`; it performs no database write. The first actual snapshot remains a distinct `production_sqlite_forecast_snapshot_write` mutation requiring separate exact private LIVE/data authority. Only after that authority may the runtime write a real WeatherNext run and then use corpus integrity/stats checks.
+
+Legacy `rozkalns-weather diagnose-weathernext` remains a diagnostic surface, but it does not replace the first-access dry-run/cost-cap gate above.
+
+## WeatherNext exact private gate template
+
+Freshly bind the exact class before any real WeatherNext access or write:
+
+```text
+allowlist_approved_evidence=<fresh private evidence>
+weather_sha=<current reviewed merged exact SHA>
+weather_exact_sha_ci=<fresh required-check evidence>
+auth_method=<runtime-only ADC/service identity; no credentials in GitHub>
+google_project=<private runtime binding>
+linked_dataset=<private runtime binding>
+linked_dataset_location=<fresh private evidence>
+schema_required_fingerprint=<current source contract>
+schema_observed_fingerprint=<fresh sanitized evidence>
+selected_init_utc=<one exact init>
+forecast_hours_limit=<1..24>
+maximum_bytes_billed_per_query=<explicit cap>
+query_scope=station_10416
+home_scope=disabled_for_first_canary
+dry_run_required=true
+canary_required_surfaces=0p05_station,0p1_surface
+first_snapshot_target=<exact production SQLite target>
+mutation_classes=<read_only_bigquery and/or production_sqlite_write explicitly named>
+verification=<schema/dry-run/canary/provenance/corpus postconditions>
+failure=<STOP; no undeclared retry/link/credential/data mutation>
+rollback=<no implicit SQLite delete/restore/cleanup>
+```
+
+Credential/IAM/ADC setup, Analytics Hub subscription/link mutation, private-home coordinates and production SQLite write remain distinct gates. Source merge is not authorization for any of them.
 
 ## Trusted RPi5 boundary
 
@@ -263,6 +318,8 @@ Merge does not authorize this step. Separate explicit LIVE authorization is mand
 ## Fail-closed failure matrix
 
 `deploy/rollout-readiness.json` freezes failure behavior for application release, volume ensure, schema init, truth backfill, forecast backfill, integrity and schedule activation. Once a future mutation starts, unexpected state means STOP with minimum read-only evidence. There is no undeclared retry, alternate scheduler, automatic repair, volume cleanup, corpus delete or restore.
+
+`deploy/weathernext-first-access.json` separately freezes WeatherNext first-access failures including pending allowlist, permission denied, dataset unlinked, schema changed, cost-cap reject, data latency, empty canary and write-stage failure. No stage silently broadens from read-only Google access to credential/IAM/link or SQLite mutation authority.
 
 ## Backup / recovery
 

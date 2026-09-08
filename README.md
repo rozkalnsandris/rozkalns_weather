@@ -56,11 +56,19 @@ rozkalns-weather rollout-preflight --source-sha <MERGED_SHA> --start YYYY-MM-DD 
 rozkalns-weather rollout-evidence-validate < sanitized-evidence.json
 rozkalns-weather diagnose-weathernext
 rozkalns-weather report-monthly --month YYYY-MM
+python -m rozkalns_weather.weathernext_access plan --now <UTC_TIMESTAMP> --hours-limit 6 --max-bytes-billed <CAP>
+python -m rozkalns_weather.weathernext_access preflight --schema-only --max-bytes-billed <CAP>
+python -m rozkalns_weather.weathernext_access preflight --hours-limit 6 --max-bytes-billed <CAP>
+python -m rozkalns_weather.weathernext_access validate-evidence < sanitized-first-access-evidence.json
 ```
 
 `rollout-preflight` ir **source-checkout-only read-only** validators: tas neveic tīkla pieprasījumus, nelasa production runtime un neko nemutē. Tas pārbauda fixed descriptor/Compose/schedule identities, exact 40-char SHA formu, WMO `10416`, exact `icon_d2/ecmwf_ifs/ecmwf_aifs` + `00/06/12/18` scope, ne vairāk kā 180 inclusive dienas, ordered checkpoint prefix un explicit recovery decision. Tas pats neapstiprina, ka SHA patiešām ir current merged `main` vai ka exact-SHA CI ir green — to vēlāk svaigi pierāda GitHub/LIVE gate.
 
 `rollout-evidence-validate` no stdin pieņem tikai privacy-safe pēc-rollout evidence un fail-closed, ja nav `/health`, `/ready`, provider-health, schema/storage/corpus integrity postconditions vai ja evidence satur private path/log/coordinate/credential laukus.
+
+WeatherNext first-access source contract ir `deploy/weathernext-first-access.json` + `docs/WEATHERNEXT_FIRST_ACCESS.md`. Network-free `weathernext_access plan` izvēlas vienu target-disseminated init un bounded forecast-hour/cost envelope. `preflight --schema-only` un dry-run preflight ir paredzēti tikai vēlākai atsevišķi autorizētai private BigQuery read-only pārbaudei; source AUTO-FULL tos neizpilda. Dry-run evidence ir obligāta pirms bounded canary query, un production SQLite first-snapshot write paliek atsevišķa mutation class.
+
+WeatherNext dokumentētais dissemination target tiek glabāts kā `expected_available_at_utc`, nevis kā novērots publication timestamp. `upstream_available_at_utc` paliek `null`, kamēr upstream nav devis defensible observed publication evidence.
 
 `init-database` ir explicit SQLite write operācija. RPi5 production candidate izmanto `DATABASE_INIT_MODE=require-existing`, tāpēc aplikācijas startup pats neizveido production DB. `readiness` ir privacy-safe un neveic tīkla pieprasījumus vai implicit schema creation.
 
@@ -103,7 +111,7 @@ Fixed runtime mode ir `WEATHER_RUNTIME_MODE=public-only`; application service iz
 
 `Dockerfile`, `deploy/` un `docs/OPERATIONS.md` ir source-level deploy preparation. `rozkalns_weather` pats neiegūst RPi5 root/sudo/deploy authority. `RPi5_main` static weather operation/adapter source darbs un deterministic first-bootstrap source composition ir merged (`RPi5_main` Issue #408 / PR #409 un Issue #410 / PR #415), bet trusted execution un host wiring paliek disabled līdz atsevišķam exact LIVE gate.
 
-RPi5, systemd/Docker, Cloudflare, credentials, production SQLite/corpus writes un runtime mutation prasa atsevišķu LIVE autorizāciju.
+RPi5, systemd/Docker, Cloudflare, credentials, private Google Cloud/BigQuery access, production SQLite/corpus writes un runtime mutation prasa atsevišķu LIVE autorizāciju.
 
 ## Dokumentācija
 
@@ -111,6 +119,7 @@ RPi5, systemd/Docker, Cloudflare, credentials, production SQLite/corpus writes u
 - `docs/PUBLIC_BACKFILL_PROBABILISTIC_V3.md`
 - `docs/RPI5_PUBLIC_RUNTIME_HANDOFF.md`
 - `docs/WEATHERNEXT3.md`
+- `docs/WEATHERNEXT_FIRST_ACCESS.md`
 - `docs/VERIFICATION.md`
 - `docs/ROADMAP.md`
 - `docs/IMPLEMENTATION_STATUS.md`
