@@ -73,7 +73,7 @@ def test_failed_public_provider_is_visible_but_does_not_break_runtime_readiness(
 
 def test_fixed_deploy_descriptor_is_public_safe_and_non_destructive() -> None:
     descriptor = json.loads(Path("deploy/runtime-descriptor.json").read_text())
-    assert descriptor["schema_version"] == 1
+    assert descriptor["schema_version"] == 2
     assert descriptor["repository"] == "rozkalnsandris/rozkalns_weather"
     assert descriptor["target_alias"] == "rozkalns-weather-public-rpi5"
     assert descriptor["operation_id_candidate"] == "rozkalns-weather.public-runtime-release.v1"
@@ -83,6 +83,9 @@ def test_fixed_deploy_descriptor_is_public_safe_and_non_destructive() -> None:
     assert descriptor["runtime_contract"]["home_coordinates_required"] is False
     assert descriptor["persistent_data"]["implicit_backfill_on_start"] is False
     assert descriptor["persistent_data"]["corpus_deletion_allowed"] is False
+    assert descriptor["rollout_readiness"]["descriptor"] == "deploy/rollout-readiness.json"
+    assert descriptor["rollout_readiness"]["source_preflight_is_read_only"] is True
+    assert descriptor["rollout_readiness"]["source_preflight_grants_live_authority"] is False
     assert "sqlite.schema-init" in descriptor["future_rpi5_adapter"]["explicitly_separate_data_mutations"]
     serialized = json.dumps(descriptor)
     assert "HOME_LAT" in serialized  # only appears in the explicit exclusion list
