@@ -223,13 +223,22 @@ def rows_to_run(
                     unit=unit, native_value=native_value, native_unit=native_unit,
                     accumulation_window_minutes=accumulation,
                 ))
+    expected = expected_available_at(init_time)
     return ForecastRun(
         provider="weathernext3", model_provider="Google DeepMind", model_name="WeatherNext 3",
         model_version="3.0.0", init_time_utc=init_time, retrieved_at_utc=retrieved_at,
         source_surface=f"BigQuery WeatherNext 3 {resolution}", transport_provider="Google BigQuery",
         values=tuple(values),
-        source_metadata={"resolution": resolution, "statistics": list(STATS), "run_class": run_class(init_time), "forecast_horizon_hours": forecast_horizon_hours(init_time)},
-        init_time_quality="provider_native", upstream_available_at_utc=expected_available_at(init_time),
+        source_metadata={
+            "resolution": resolution,
+            "statistics": list(STATS),
+            "run_class": run_class(init_time),
+            "forecast_horizon_hours": forecast_horizon_hours(init_time),
+            "expected_available_at_utc": expected.isoformat().replace("+00:00", "Z"),
+            "upstream_available_at_observed": False,
+        },
+        init_time_quality="provider_native",
+        upstream_available_at_utc=None,
     )
 
 
@@ -314,6 +323,7 @@ class WeatherNextBigQueryAdapter:
         run05 = rows_to_run(rows05, resolution="0p05", init_time=init_time, retrieved_at=now)
         run01 = rows_to_run(rows01, resolution="0p1", init_time=init_time, retrieved_at=now)
         surface_values = tuple(value for value in run01.values if value.variable not in {"temperature_2m", "dew_point_2m"})
+        expected = expected_available_at(init_time)
         return ForecastRun(
             provider="weathernext3", model_provider="Google DeepMind", model_name="WeatherNext 3",
             model_version="3.0.0", init_time_utc=init_time, retrieved_at_utc=now,
@@ -322,11 +332,13 @@ class WeatherNextBigQueryAdapter:
             source_metadata={
                 "tables": [q05.table, q01.table], "station_resolution": "0.05deg",
                 "surface_resolution": "0.1deg", "statistics": list(STATS),
-                "expected_available_at_utc": expected_available_at(init_time).isoformat(),
+                "expected_available_at_utc": expected.isoformat().replace("+00:00", "Z"),
+                "upstream_available_at_observed": False,
                 "partition_filter": "init_time", "selected_columns_only": True,
                 "run_class": run_class(init_time), "forecast_horizon_hours": forecast_horizon_hours(init_time),
             },
-            init_time_quality="provider_native", upstream_available_at_utc=expected_available_at(init_time),
+            init_time_quality="provider_native",
+            upstream_available_at_utc=None,
         )
 
     def fetch_latest_with_fallback(
