@@ -72,6 +72,8 @@ WeatherNext first-access source contract ir `deploy/weathernext-first-access.jso
 
 WeatherNext sustained-collection source contract ir `deploy/weathernext-sustained-collection.json` + `docs/WEATHERNEXT_SUSTAINED_COLLECTION.md`. Network-free `weathernext_collection plan` izveido target-disseminated hourly/synoptic init plānu, izmet jau zināmos init un pats neveic BigQuery query, SQLite write vai scheduler activation. Missing-run recovery, model/schema boundary un freshness health ir deterministiski source contracti. Pirmā mēneša mērītā verifikācija paliek tikai `station_10416` common valid-times, atsevišķi pa model version un lead bucket; MAE/RMSE/bias tiek uzskatīti par meaningful tikai pie `n >= 30` attiecīgajā slice. Reāla recurring WeatherNext collection, production corpus accumulation un scheduler activation paliek atsevišķi exact LIVE/data gates.
 
+WeatherNext version-evolution source contract ir `deploy/weathernext-version-evolution.json` + `docs/WEATHERNEXT_VERSION_EVOLUTION.md`. Tas fail-closed validē verificētu model/schema boundary, izvēlas performance-independent before/after calendar windows, intersecto tikai semantiski matched `station_10416` samples un veido MAE/RMSE/bias, summary-quantile calibration, event/notable-case un freshness deltas privacy-safe report payloadā. Tas neizdod globālu “winner”, neizdomā CRPS/Brier/probability no WeatherNext summary kvantilēm un pats nelasa production corpus. Reāls version-change report pret privāto SQLite paliek atsevišķs exact read-only owner gate pēc tam, kad abiem model periods ir defensible corpus.
+
 WeatherNext dokumentētais dissemination target tiek glabāts kā `expected_available_at_utc`, nevis kā novērots publication timestamp. `upstream_available_at_utc` paliek `null`, kamēr upstream nav devis defensible observed publication evidence.
 
 `init-database` ir explicit SQLite write operācija. RPi5 production candidate izmanto `DATABASE_INIT_MODE=require-existing`, tāpēc aplikācijas startup pats neizveido production DB. `readiness` ir privacy-safe un neveic tīkla pieprasījumus vai implicit schema creation.
@@ -125,6 +127,7 @@ RPi5, systemd/Docker, Cloudflare, credentials, private Google Cloud/BigQuery acc
 - `docs/WEATHERNEXT3.md`
 - `docs/WEATHERNEXT_FIRST_ACCESS.md`
 - `docs/WEATHERNEXT_SUSTAINED_COLLECTION.md`
+- `docs/WEATHERNEXT_VERSION_EVOLUTION.md`
 - `docs/VERIFICATION.md`
 - `docs/ROADMAP.md`
 - `docs/IMPLEMENTATION_STATUS.md`
