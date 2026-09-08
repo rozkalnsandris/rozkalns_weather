@@ -58,9 +58,11 @@ forecast snapshot -> observation -> verification -> WeatherNext comparison
 - [x] deterministic public-only RPi5 application packaging + fixed machine-readable deploy descriptor.
 - [x] public collector schedule and explicit non-destructive corpus-bootstrap contract.
 - [x] weather-side trusted-boundary handoff contract for a future `RPi5_main` static adapter.
-- [ ] `RPi5_main` source adapter/operation registration reviewed and merged.
-- [ ] private RPi5 deploy.
-- [ ] production public corpus bootstrap/backfill under explicit LIVE/data authority.
+- [x] `RPi5_main` static source adapter/operation registration reviewed and merged via Issue #408 / PR #409.
+- [x] `RPi5_main` deterministic first-bootstrap source composition merged via Issue #410 / PR #415.
+- [ ] first public-only RPi5 rollout under a separately authorized exact LIVE gate.
+- [ ] production public corpus schema/bootstrap/backfill under explicit LIVE/data authority.
+- [ ] later private-home / WeatherNext runtime activation after private access and configuration are explicitly ready.
 - [ ] optional Cloudflare Access.
 
 ## Phase 5 — DWD safety/radar
