@@ -81,7 +81,8 @@ forecast snapshot -> observation -> verification -> WeatherNext comparison
 - [x] release-note hook without fabricated events.
 - [x] public benchmark runway while WN3 access is pending.
 - [x] first-month verification source readiness: station common-times/model-version/lead-bucket eligibility, summary-quantile calibration and sanitized evidence/report contract.
+- [x] version-change comparative reporting source readiness: verified model/schema boundary, deterministic before/after windows, strict common station samples, skill/quantile/freshness deltas, deterministic notable cases and privacy-safe report contract.
 - [ ] first month of real WeatherNext 3 corpus.
-- [ ] version-change comparative reports.
+- [ ] version-change comparative reports against real corpus.
 
 AQI/pollen/UV and Combined weighting remain lower priority until enough real corpus exists.
