@@ -1,0 +1,427 @@
+from __future__ import annotations
+
+from datetime import date
+import hashlib
+import json
+from pathlib import Path
+import re
+import sqlite3
+from typing import Iterable, Mapping
+
+RUNTIME_CLASS = "public-only-rpi5"
+TARGET_ALIAS = "rozkalns-weather-public-rpi5"
+OPERATION_ID = "rozkalns-weather.public-runtime-release.v1"
+SOURCE_SHA_PATTERN = re.compile(r"^[0-9a-f]{40}$")
+TRUTH_STATION_ID = "10416"
+TRUTH_LOCATION_ID = "station_10416"
+BOOTSTRAP_MODELS = ("icon_d2", "ecmwf_ifs", "ecmwf_aifs")
+BOOTSTRAP_RUN_HOURS_UTC = (0, 6, 12, 18)
+COMMON_BENCHMARK_START = date(2026, 4, 2)
+MAX_BOOTSTRAP_INCLUSIVE_DAYS = 180
+RECOVERY_DECISIONS = (
+    "verified_backup_available",
+    "owner_accepts_proceeding_without_prewrite_backup",
+)
+BOOTSTRAP_STAGE_ORDER = (
+    "volume_ensure",
+    "explicit_schema_init",
+    "readiness_check",
+    "public_smoke_read_only",
+    "bounded_dwd_truth_backfill",
+    "bounded_forecast_backfill",
+    "corpus_integrity_check",
+    "enable_recurring_public_ingest",
+)
+REQUIRED_EVIDENCE_PROVIDERS = (
+    "dwd_mosmix_l",
+    "dwd_observations",
+    "icon_d2",
+    "ecmwf_ifs",
+    "ecmwf_aifs",
+    "weathernext3",
+)
+REQUIRED_SQLITE_TABLES = frozenset(
+    {
+        "locations",
+        "forecast_runs",
+        "forecast_values",
+        "observations",
+        "provider_ingest_status",
+        "model_events",
+    }
+)
+FORBIDDEN_EVIDENCE_KEYS = frozenset(
+    {
+        "home_lat",
+        "home_lon",
+        "credentials",
+        "credential",
+        "raw_logs",
+        "raw_log",
+        "database_path",
+        "host_path",
+        "env",
+        "environment",
+    }
+)
+
+
+def _load_json(root: Path, relative_path: str) -> dict[str, object]:
+    path = root / relative_path
+    if not path.is_file():
+        raise ValueError(f"required rollout source file is missing: {relative_path}")
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise ValueError(f"rollout source file must contain a JSON object: {relative_path}")
+    return payload
+
+
+def _require(condition: bool, message: str) -> None:
+    if not condition:
+        raise ValueError(message)
+
+
+def _parse_models(value: str | Iterable[str]) -> tuple[str, ...]:
+    if isinstance(value, str):
+        items = tuple(item.strip() for item in value.split(",") if item.strip())
+    else:
+        items = tuple(str(item).strip() for item in value if str(item).strip())
+    if len(items) != len(set(items)):
+        raise ValueError("bootstrap models must not contain duplicates")
+    if set(items) != set(BOOTSTRAP_MODELS):
+        raise ValueError(f"bootstrap models must be exactly: {','.join(BOOTSTRAP_MODELS)}")
+    return BOOTSTRAP_MODELS
+
+
+def _parse_run_hours(value: str | Iterable[int]) -> tuple[int, ...]:
+    if isinstance(value, str):
+        try:
+            items = tuple(int(item.strip()) for item in value.split(",") if item.strip())
+        except ValueError as exc:
+            raise ValueError("run hours must be comma-separated UTC integers") from exc
+    else:
+        items = tuple(int(item) for item in value)
+    if len(items) != len(set(items)):
+        raise ValueError("bootstrap run hours must not contain duplicates")
+    if set(items) != set(BOOTSTRAP_RUN_HOURS_UTC):
+        raise ValueError("bootstrap run hours must be exactly 0,6,12,18 UTC")
+    return BOOTSTRAP_RUN_HOURS_UTC
+
+
+def validate_bootstrap_inputs(
+    *,
+    start: date,
+    end: date,
+    models: str | Iterable[str],
+    run_hours_utc: str | Iterable[int],
+) -> dict[str, object]:
+    if end < start:
+        raise ValueError("bootstrap end date must not be before start date")
+    inclusive_days = (end - start).days + 1
+    if inclusive_days > MAX_BOOTSTRAP_INCLUSIVE_DAYS:
+        raise ValueError(f"bootstrap window exceeds {MAX_BOOTSTRAP_INCLUSIVE_DAYS} inclusive days")
+    if start < COMMON_BENCHMARK_START:
+        raise ValueError(f"three-model common benchmark starts at {COMMON_BENCHMARK_START.isoformat()}")
+    canonical_models = _parse_models(models)
+    canonical_hours = _parse_run_hours(run_hours_utc)
+    return {
+        "start_date": start.isoformat(),
+        "end_date": end.isoformat(),
+        "inclusive_days": inclusive_days,
+        "models": list(canonical_models),
+        "run_hours_utc": list(canonical_hours),
+        "truth_station_id": TRUTH_STATION_ID,
+        "truth_location_id": TRUTH_LOCATION_ID,
+        "max_inclusive_days": MAX_BOOTSTRAP_INCLUSIVE_DAYS,
+    }
+
+
+def validate_completed_stages(completed_stages: Iterable[str]) -> dict[str, object]:
+    completed = tuple(str(stage) for stage in completed_stages)
+    if len(completed) != len(set(completed)):
+        raise ValueError("completed bootstrap stages must not contain duplicates")
+    expected_prefix = BOOTSTRAP_STAGE_ORDER[: len(completed)]
+    if completed != expected_prefix:
+        raise ValueError("completed bootstrap stages must form an exact ordered prefix; skipping or reordering stages is forbidden")
+    next_stage = BOOTSTRAP_STAGE_ORDER[len(completed)] if len(completed) < len(BOOTSTRAP_STAGE_ORDER) else None
+    return {
+        "completed_stages": list(completed),
+        "next_stage": next_stage,
+        "complete": next_stage is None,
+        "hidden_retry_allowed": False,
+        "implicit_stage_advance_allowed": False,
+    }
+
+
+def validate_source_package(root: Path | None = None) -> dict[str, object]:
+    root = root or Path.cwd()
+    descriptor = _load_json(root, "deploy/runtime-descriptor.json")
+    readiness = _load_json(root, "deploy/rollout-readiness.json")
+    schedule = _load_json(root, "deploy/public-ingest-schedule.json")
+    compose_path = root / "deploy/docker-compose.public.yml"
+    if not compose_path.is_file():
+        raise ValueError("required rollout source file is missing: deploy/docker-compose.public.yml")
+    compose = compose_path.read_text(encoding="utf-8")
+
+    _require(descriptor.get("runtime_class") == RUNTIME_CLASS, "runtime descriptor class mismatch")
+    _require(descriptor.get("target_alias") == TARGET_ALIAS, "runtime descriptor target mismatch")
+    _require(descriptor.get("operation_id_candidate") == OPERATION_ID, "runtime descriptor operation mismatch")
+    runtime_contract = descriptor.get("runtime_contract")
+    _require(isinstance(runtime_contract, dict), "runtime descriptor contract missing")
+    assert isinstance(runtime_contract, dict)
+    _require(runtime_contract.get("runtime_mode") == "public-only", "runtime must be public-only")
+    _require(runtime_contract.get("database_init_mode") == "require-existing", "database init mode must be require-existing")
+    persistent = descriptor.get("persistent_data")
+    _require(isinstance(persistent, dict), "persistent data contract missing")
+    assert isinstance(persistent, dict)
+    _require(persistent.get("logical_name") == "weather_data", "persistent volume identity mismatch")
+    _require(persistent.get("implicit_backfill_on_start") is False, "implicit backfill must remain disabled")
+    _require(persistent.get("corpus_deletion_allowed") is False, "corpus deletion must remain disabled")
+
+    _require(readiness.get("schema_version") == 1, "rollout readiness schema mismatch")
+    _require(readiness.get("runtime_class") == RUNTIME_CLASS, "rollout readiness class mismatch")
+    _require(readiness.get("target_alias") == TARGET_ALIAS, "rollout readiness target mismatch")
+    _require(readiness.get("operation_id") == OPERATION_ID, "rollout readiness operation mismatch")
+    bootstrap = readiness.get("bootstrap_contract")
+    _require(isinstance(bootstrap, dict), "bootstrap contract missing")
+    assert isinstance(bootstrap, dict)
+    _require(bootstrap.get("truth_station_id") == TRUTH_STATION_ID, "bootstrap truth station mismatch")
+    _require(tuple(bootstrap.get("models", [])) == BOOTSTRAP_MODELS, "bootstrap model contract mismatch")
+    _require(tuple(bootstrap.get("run_hours_utc", [])) == BOOTSTRAP_RUN_HOURS_UTC, "bootstrap run-hour contract mismatch")
+    _require(bootstrap.get("max_inclusive_days") == MAX_BOOTSTRAP_INCLUSIVE_DAYS, "bootstrap window contract mismatch")
+    _require(tuple(bootstrap.get("stage_order", [])) == BOOTSTRAP_STAGE_ORDER, "bootstrap stage order mismatch")
+
+    _require(schedule.get("runtime_class") == RUNTIME_CLASS, "schedule runtime class mismatch")
+    systemd = schedule.get("systemd_timer")
+    _require(isinstance(systemd, dict), "systemd timer handoff contract missing")
+    assert isinstance(systemd, dict)
+    _require(systemd.get("timer_unit") == "rozkalns-weather-public-ingest.timer", "timer unit identity mismatch")
+    _require(systemd.get("service_unit") == "rozkalns-weather-public-ingest.service", "service unit identity mismatch")
+    _require(systemd.get("on_calendar") == "*:0/30", "timer cadence mismatch")
+    _require(systemd.get("persistent") is True, "timer Persistent semantics must be enabled")
+    _require(systemd.get("randomized_delay_seconds") == 60, "timer jitter contract mismatch")
+    _require(systemd.get("enable_order") == "last_after_corpus_integrity", "timer must be enabled last")
+    weathernext = schedule.get("weathernext")
+    _require(isinstance(weathernext, dict) and weathernext.get("enabled") is False, "WeatherNext scheduling must remain disabled")
+
+    fixed_tokens = (
+        'command: ["rozkalns-weather", "init-database"]',
+        'command: ["rozkalns-weather", "ingest-public"]',
+        'command: ["rozkalns-weather", "readiness"]',
+        'command: ["rozkalns-weather", "corpus-check"]',
+        "DATABASE_INIT_MODE: require-existing",
+        "WEATHER_RUNTIME_MODE: public-only",
+        "weather_data:/app/data",
+        "no-new-privileges:true",
+        "cap_drop:",
+        "/ready",
+    )
+    for token in fixed_tokens:
+        _require(token in compose, f"compose contract missing fixed token: {token}")
+    for forbidden in ("env_file:", "HOME_LAT", "HOME_LON", "depends_on:"):
+        _require(forbidden not in compose, f"compose contract contains forbidden implicit/private wiring: {forbidden}")
+
+    return {
+        "ok": True,
+        "validated_files": [
+            "deploy/runtime-descriptor.json",
+            "deploy/rollout-readiness.json",
+            "deploy/public-ingest-schedule.json",
+            "deploy/docker-compose.public.yml",
+        ],
+        "runtime_class": RUNTIME_CLASS,
+        "target_alias": TARGET_ALIAS,
+        "operation_id": OPERATION_ID,
+        "privacy": {
+            "coordinates_exposed": False,
+            "credentials_exposed": False,
+            "host_private_paths_exposed": False,
+        },
+    }
+
+
+def _bootstrap_fingerprint(
+    *,
+    source_sha: str,
+    bootstrap: Mapping[str, object],
+    recovery_decision: str,
+) -> str:
+    payload = {
+        "source_sha": source_sha,
+        "target_alias": TARGET_ALIAS,
+        "operation_id": OPERATION_ID,
+        "bootstrap": dict(bootstrap),
+        "recovery_decision": recovery_decision,
+    }
+    return hashlib.sha256(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
+
+
+def build_rollout_plan(
+    *,
+    source_sha: str,
+    start: date,
+    end: date,
+    models: str | Iterable[str],
+    run_hours_utc: str | Iterable[int],
+    recovery_decision: str,
+    completed_stages: Iterable[str] = (),
+    root: Path | None = None,
+) -> dict[str, object]:
+    if not SOURCE_SHA_PATTERN.fullmatch(source_sha):
+        raise ValueError("source SHA must be an exact lowercase 40-character commit SHA")
+    if recovery_decision not in RECOVERY_DECISIONS:
+        raise ValueError("unsupported recovery decision")
+    package = validate_source_package(root)
+    bootstrap = validate_bootstrap_inputs(start=start, end=end, models=models, run_hours_utc=run_hours_utc)
+    stage_state = validate_completed_stages(completed_stages)
+    fingerprint = _bootstrap_fingerprint(source_sha=source_sha, bootstrap=bootstrap, recovery_decision=recovery_decision)
+    return {
+        "schema_version": 1,
+        "state": "source_preflight_ready",
+        "source_identity": {
+            "sha": source_sha,
+            "must_be_merged_to_main": True,
+            "exact_sha_ci_required": True,
+            "main_membership_verified_by_this_command": False,
+        },
+        "runtime_class": RUNTIME_CLASS,
+        "target_alias": TARGET_ALIAS,
+        "operation_id": OPERATION_ID,
+        "package_validation": package,
+        "bootstrap": bootstrap,
+        "bootstrap_fingerprint": fingerprint,
+        "stage_state": stage_state,
+        "recovery": {
+            "decision": recovery_decision,
+            "automatic_restore_allowed": False,
+            "automatic_delete_or_cleanup_allowed": False,
+            "application_rollback_implies_sqlite_rollback": False,
+        },
+        "mutation_classes": {
+            "application_release": "docker.compose-application-apply",
+            "volume_ensure": "docker.named-volume-ensure",
+            "explicit_schema_init": "sqlite.schema-init",
+            "bounded_dwd_truth_backfill": "historical.public-corpus-backfill",
+            "bounded_forecast_backfill": "historical.public-corpus-backfill",
+            "enable_recurring_public_ingest": "systemd.public-ingest-schedule-install-or-update",
+        },
+        "live_authority_granted": False,
+        "production_data_authority_granted": False,
+        "privacy": {
+            "coordinates_exposed": False,
+            "credentials_exposed": False,
+            "database_path_exposed": False,
+            "host_private_paths_exposed": False,
+            "raw_logs_exposed": False,
+        },
+    }
+
+
+def verify_sqlite_backup(backup_path: Path) -> dict[str, object]:
+    if not backup_path.is_file():
+        raise ValueError("backup file does not exist")
+    digest = hashlib.sha256()
+    with backup_path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    try:
+        with sqlite3.connect(f"file:{backup_path}?mode=ro", uri=True) as connection:
+            integrity = [str(row[0]) for row in connection.execute("PRAGMA integrity_check").fetchall()]
+            tables = {
+                str(row[0])
+                for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
+            }
+    except sqlite3.DatabaseError as exc:
+        raise ValueError("backup is not a readable SQLite database") from exc
+    missing = sorted(REQUIRED_SQLITE_TABLES - tables)
+    return {
+        "schema_version": 1,
+        "state": "verified" if integrity == ["ok"] and not missing else "invalid",
+        "integrity_ok": integrity == ["ok"],
+        "required_tables_present": not missing,
+        "missing_tables": missing,
+        "sha256": digest.hexdigest(),
+        "size_bytes": backup_path.stat().st_size,
+        "path_exposed": False,
+    }
+
+
+def _walk_evidence(value: object) -> None:
+    if isinstance(value, Mapping):
+        for key, item in value.items():
+            if str(key).lower() in FORBIDDEN_EVIDENCE_KEYS:
+                raise ValueError(f"evidence contains forbidden private field: {key}")
+            _walk_evidence(item)
+    elif isinstance(value, list):
+        for item in value:
+            _walk_evidence(item)
+    elif isinstance(value, str):
+        lowered = value.lower()
+        if lowered.startswith("/home/") or lowered.startswith("/opt/") or lowered.startswith("/root/"):
+            raise ValueError("evidence contains a host-private path")
+
+
+def validate_post_rollout_evidence(payload: Mapping[str, object]) -> dict[str, object]:
+    _walk_evidence(payload)
+    source_sha = str(payload.get("source_sha", ""))
+    if not SOURCE_SHA_PATTERN.fullmatch(source_sha):
+        raise ValueError("evidence source SHA is invalid")
+    _require(payload.get("target_alias") == TARGET_ALIAS, "evidence target mismatch")
+    _require(payload.get("operation_id") == OPERATION_ID, "evidence operation mismatch")
+    _require(payload.get("runtime_mode") == "public-only", "evidence runtime mode mismatch")
+    _require(payload.get("storage_class") == "docker_named_volume", "evidence storage class mismatch")
+    _require(payload.get("weather_data_retained") is True, "persistent weather_data retention not proven")
+
+    endpoints = payload.get("endpoints")
+    _require(isinstance(endpoints, Mapping), "endpoint evidence missing")
+    assert isinstance(endpoints, Mapping)
+    for key in ("health_status", "ready_status", "provider_health_status"):
+        _require(endpoints.get(key) == 200, f"endpoint postcondition failed: {key}")
+
+    readiness = payload.get("readiness")
+    _require(isinstance(readiness, Mapping), "readiness evidence missing")
+    assert isinstance(readiness, Mapping)
+    _require(readiness.get("ready") is True, "runtime readiness is not true")
+    _require(readiness.get("database_state") == "ready", "database schema readiness not proven")
+    _require(readiness.get("storage_class") == "persistent_sqlite_file", "SQLite storage class mismatch")
+    for key in ("coordinates_exposed", "credentials_exposed", "database_path_exposed"):
+        _require(readiness.get(key) is False, f"privacy postcondition failed: {key}")
+
+    corpus = payload.get("corpus_integrity")
+    _require(isinstance(corpus, Mapping) and corpus.get("ok") is True, "corpus integrity postcondition failed")
+
+    providers = payload.get("providers")
+    _require(isinstance(providers, list), "provider freshness evidence missing")
+    provider_map = {
+        str(item.get("id")): item
+        for item in providers
+        if isinstance(item, Mapping) and item.get("id") is not None
+    }
+    missing_providers = [provider for provider in REQUIRED_EVIDENCE_PROVIDERS if provider not in provider_map]
+    _require(not missing_providers, f"provider evidence missing: {','.join(missing_providers)}")
+    for provider in REQUIRED_EVIDENCE_PROVIDERS:
+        state = str(provider_map[provider].get("state", ""))
+        _require(bool(state), f"provider state missing: {provider}")
+
+    weathernext = provider_map["weathernext3"]
+    _require(weathernext.get("required_for_runtime") is False, "WeatherNext must remain optional in public-only runtime")
+    _require(weathernext.get("values_fabricated") is False, "WeatherNext values must never be fabricated")
+
+    return {
+        "schema_version": 1,
+        "state": "verified",
+        "source_sha": source_sha,
+        "target_alias": TARGET_ALIAS,
+        "operation_id": OPERATION_ID,
+        "providers": [
+            {"id": provider, "state": str(provider_map[provider].get("state"))}
+            for provider in REQUIRED_EVIDENCE_PROVIDERS
+        ],
+        "privacy": {
+            "coordinates_exposed": False,
+            "credentials_exposed": False,
+            "database_path_exposed": False,
+            "host_private_paths_exposed": False,
+            "raw_logs_exposed": False,
+        },
+    }
