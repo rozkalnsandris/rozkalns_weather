@@ -59,6 +59,8 @@ Pamatojums:
 - nav jālejupielādē pilns globālais Zarr;
 - vienai mājas lokācijai ir vienkāršāks ingestion ceļš.
 
+Pirmās piekļuves source contract ir `deploy/weathernext-first-access.json` un `docs/WEATHERNEXT_FIRST_ACCESS.md`. Tas gatavo drošu linked-dataset/schema/dry-run/canary/provenance plūsmu, bet source merge pats nedod Google Cloud, BigQuery vai production SQLite authority.
+
 ## BigQuery query discipline
 
 Google iesaka:
@@ -67,7 +69,9 @@ Google iesaka:
 - atlasīt tikai nepieciešamās kolonnas, nevis `SELECT *`;
 - point/spatial selection izmantot BigQuery GIS (`ST_INTERSECTS`, `ST_DWITHIN` u.c.).
 
-Mūsu adapterim jāsaņem precīzs home point no runtime config un jāizvēlas atbilstošais WeatherNext spatial element.
+Mūsu first-access contract papildus prasa BigQuery dry-run pirms bounded canary query un explicit `maximum_bytes_billed` limitu katram 0.05°/0.1° query. Pirmais canary izmanto reproducējamo `station_10416` benchmark punktu, vienu init un ne vairāk kā 24 forecast stundas. Private home point paliek vēlākai runtime-only aktivācijai.
+
+Mūsu adapterim privātam home režīmam jāsaņem precīzs home point tikai no runtime config un jāizvēlas atbilstošais WeatherNext spatial element.
 
 ## Ensemble statistics
 
@@ -104,12 +108,15 @@ Google target dissemination BigQuery/Earth Engine 15-day synoptic runs:
 
 Interim hourly runs BigQuery/Earth Engine target ir aptuveni `init + 7h25m`.
 
+Šie ir **target dissemination** laiki, nevis provider-observed publication timestamps. Source tos saglabā kā `expected_available_at_utc`; `upstream_available_at_utc` paliek `null`, kamēr upstream nav devis defensible novērotu availability/publication evidence. Retrieval laiks nekad netiek izmantots kā publication aizvietotājs.
+
 Sekas:
 
 - WeatherNext 3 nevar automātiski uzskatīt par “svaigāko nowcast” tikai tāpēc, ka tas initialized hourly;
 - UI obligāti rāda init/freshness;
 - 0–6 h situācijās DWD radar/ICON-D2 var būt praktiski svarīgāki;
-- modelu salīdzinājumā jāizmanto forecast, kas reāli bija pieejams lēmuma brīdī, nevis vēlāk publicēts run.
+- modelu salīdzinājumā jāizmanto forecast, kas reāli bija pieejams lēmuma brīdī, nevis vēlāk publicēts run;
+- latency fallback drīkst mēģināt agrāku target-disseminated run tikai genuine `data_latency` gadījumā; permission/link/schema/cost kļūdas nedrīkst maskēt kā latency.
 
 ## Resolution
 
@@ -119,7 +126,7 @@ Google publicē vairākus WeatherNext 3 produktus:
 - ~0.05° station-oriented surface product;
 - ~0.25° pressure-level fields GCS full ensemble kontekstā.
 
-Implementācijas laikā nedrīkst pieņemt, ka visi mainīgie ir pieejami visās resolution/product kombinācijās. Adapterim jābalstās uz aktuālo Google schema un jātestē konkrētās kolonnas pirms provider tiek uzskatīts par Ready.
+Implementācijas laikā nedrīkst pieņemt, ka visi mainīgie ir pieejami visās resolution/product kombinācijās. Adapterim jābalstās uz aktuālo Google schema un jātestē konkrētās kolonnas pirms provider tiek uzskatīts par Ready. First-access schema fingerprint attiecas tikai uz WeatherNext 3 expected field paths; WeatherNext 2/Gen/Graph netiek klusi pieņemti kā aizvietotāji.
 
 ## Precipitation
 
