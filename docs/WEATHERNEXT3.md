@@ -61,6 +61,8 @@ Pamatojums:
 
 Pirmās piekļuves source contract ir `deploy/weathernext-first-access.json` un `docs/WEATHERNEXT_FIRST_ACCESS.md`. Tas gatavo drošu linked-dataset/schema/dry-run/canary/provenance plūsmu, bet source merge pats nedod Google Cloud, BigQuery vai production SQLite authority.
 
+Sustained collection source contract ir `deploy/weathernext-sustained-collection.json` un `docs/WEATHERNEXT_SUSTAINED_COLLECTION.md`. Tas sākas tikai pēc validēta first-access canary/snapshot admission un definē deterministic cadence, dedupe, missing-run ledger/recovery, model/schema boundaries, freshness health un first-month verification readiness. Tas pats neveic nevienu real BigQuery query, production SQLite write vai scheduler activation.
+
 ## BigQuery query discipline
 
 Google iesaka:
@@ -118,6 +120,8 @@ Sekas:
 - modelu salīdzinājumā jāizmanto forecast, kas reāli bija pieejams lēmuma brīdī, nevis vēlāk publicēts run;
 - latency fallback drīkst mēģināt agrāku target-disseminated run tikai genuine `data_latency` gadījumā; permission/link/schema/cost kļūdas nedrīkst maskēt kā latency.
 
+Sustained collection ledger šos stāvokļus tur explicit kā `expected`, `target_disseminated`, `retrieved`, `missing`, `delayed` un `superseded`. Bounded recovery source plāns drīkst atlasīt tikai jau missing init ierobežotā logā; real recovery query un corpus write paliek atsevišķi owner gates.
+
 ## Resolution
 
 Google publicē vairākus WeatherNext 3 produktus:
@@ -132,6 +136,8 @@ Implementācijas laikā nedrīkst pieņemt, ka visi mainīgie ir pieejami visās
 
 WeatherNext 3 dokumentācija norāda 1-hour precipitation output, nevis vecāko WeatherNext paaudžu 6-hour accumulation konvenciju. Mūsu normalization jāglabā accumulation window metadata, lai nepieļautu kļūdainu salīdzinājumu ar DWD/ECMWF.
 
+Summary kvantiles `p10/p25/p50/p75/p90` drīkst izmantot empirical interval coverage/width un p50 error verifikācijai, bet tās **nedrīkst** pārvērst precipitation event probability. Brier/reliability vai full-ensemble CRPS WeatherNext 3 tiek atļauti tikai tad, ja vēlāk ir defensible genuine probability/member source.
+
 ## Licensing / privāts projekts
 
 Google nošķir:
@@ -139,7 +145,7 @@ Google nošķir:
 - real-time/future data — governed by GDM Real-Time Weather Forecasting Experimental Data Terms;
 - historical data (time at least 1 h in the past) — CC BY 4.0.
 
-Šis projekts sākotnēji ir privāts un nav paredzēts publiskai WeatherNext datu redistribūcijai. Pirms jebkādas publiskošanas terms jāpārbauda no jauna.
+Šis projekts sākotnēji ir privāts un nav paredzēts publiskai WeatherNext datu redistribūcijai. Pirms jebkādas publiskošanas terms jāpārbauda no jauna. First-month sanitized evidence contract tāpēc defaultā tur `publication_allowed=false` un `terms_recheck_required_before_publication=true`.
 
 ## Benchmarking princips
 
@@ -157,6 +163,8 @@ Mēs vērtējam lokāli:
 - season;
 - convective vs stratiform/rainy events, kad datu apjoms to atļauj.
 
+Pirmā mēneša WeatherNext measured eligibility ir stingri `station_10416` + DWD WMO 10416 truth, tikai explicit common valid-times, atsevišķi pa `model_version` un lead bucket. MAE/RMSE/bias tiek saukti par meaningful tikai slice ar `n >= 30`; private `home` šajā measured station accuracy netiek iekļauts.
+
 Salīdzinājuma provider minimum:
 
 1. WeatherNext 3;
@@ -173,6 +181,8 @@ Saglabājam model version/provider metadata. Ja Google maina WeatherNext versiju
 - accuracy dashboard rādīt `model_version` split;
 - pierakstīt migration/change date;
 - regression/improvement analīzē izmantot salīdzināmu periodu.
+
+Sustained collection contract model version un schema fingerprint tur kā atsevišķus collection dimensions. Jebkura neatbilstība rada `version_boundary`; current source atbalsts ir `3.0.0`, un unknown future version neprasa automātisku coercion — tas prasa explicit adapter/version lēmumu.
 
 ## Official references
 

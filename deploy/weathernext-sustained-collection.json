@@ -1,0 +1,125 @@
+{
+  "schema_version": 1,
+  "contract": "weathernext3-sustained-collection.v1",
+  "depends_on": "weathernext3-first-access.v1",
+  "provider": {
+    "id": "weathernext3",
+    "model_name": "WeatherNext 3",
+    "supported_model_versions": ["3.0.0"],
+    "primary_research": true,
+    "warning_authority": false
+  },
+  "lifecycle": {
+    "states": [
+      "access_ready",
+      "snapshot_admissible",
+      "collecting",
+      "degraded",
+      "version_boundary",
+      "sample_insufficient",
+      "first_month_ready"
+    ],
+    "terminal_source_readiness_state": "first_month_ready",
+    "evidence_driven_transitions_only": true,
+    "fabricated_values_forbidden": true
+  },
+  "snapshot_admission": {
+    "requires_first_access_canary": true,
+    "requires_complete_provenance": true,
+    "required_product_surfaces": ["0p05", "0p1"],
+    "statistics": ["mean", "p10", "p25", "p50", "p75", "p90"],
+    "immutable_revision_required": true,
+    "idempotency_required": true,
+    "write_mutation_class": "production_sqlite_forecast_snapshot_write",
+    "write_authorized_by_source_auto_full": false
+  },
+  "cadence": {
+    "planner_frequency": "hourly",
+    "run_classes": {
+      "interim_48h": {
+        "init_frequency_hours": 1,
+        "forecast_horizon_hours": 48
+      },
+      "synoptic_360h": {
+        "init_hours_utc": [0, 6, 12, 18],
+        "forecast_horizon_hours": 360
+      }
+    },
+    "selection": "target_disseminated_only",
+    "dedupe_key": "provider+model_version+init_time_utc+location_id+source_surface",
+    "scheduler_activation_authorized": false
+  },
+  "run_ledger": {
+    "states": ["expected", "target_disseminated", "retrieved", "missing", "delayed", "superseded"],
+    "latency_grace_minutes": 90,
+    "permission_schema_link_failures_are_not_latency": true,
+    "automatic_cleanup": false
+  },
+  "bounded_recovery": {
+    "maximum_age_hours": 168,
+    "maximum_inits_per_plan": 24,
+    "read_only_bigquery_authority_required": true,
+    "production_write_authority_required": true,
+    "source_auto_full_executes_recovery": false
+  },
+  "version_boundary": {
+    "model_version_first_class": true,
+    "schema_fingerprint_first_class": true,
+    "unknown_or_unsupported_version_requires_adapter_decision": true,
+    "silent_cross_version_aggregation_forbidden": true,
+    "weathernext2_gen_graph_coercion_forbidden": true
+  },
+  "health": {
+    "expected_availability_separate_from_observed_publication": true,
+    "observed_publication_separate_from_retrieval": true,
+    "degraded_after_consecutive_missing_runs": 2,
+    "privacy_safe_only": true
+  },
+  "first_month_verification": {
+    "location_id": "station_10416",
+    "truth_source": "DWD WMO 10416",
+    "minimum_meaningful_samples_per_model_version_lead_bucket": 30,
+    "common_valid_times_required": true,
+    "model_version_boundaries_required": true,
+    "lead_bucket_boundaries_required": true,
+    "home_measured_accuracy_allowed": false
+  },
+  "probabilistic_verification": {
+    "statistics": ["mean", "p10", "p25", "p50", "p75", "p90"],
+    "p10_p90_coverage_and_width": true,
+    "p25_p75_coverage_and_width": true,
+    "p50_error": true,
+    "precipitation_accumulation_minutes": 60,
+    "quantiles_imply_precipitation_event_probability": false,
+    "full_64_member_crps_brier_in_scope": false
+  },
+  "first_month_evidence": {
+    "sanitized_aggregates_only": true,
+    "raw_realtime_provider_payload_allowed": false,
+    "private_project_dataset_credentials_coordinates_paths_logs_allowed": false,
+    "publication_allowed_by_default": false,
+    "terms_recheck_required_before_publication": true,
+    "dwd_warning_authority_preserved": true
+  },
+  "later_exact_gates": {
+    "recurring_private_bigquery_collection": {
+      "requires_allowlist_evidence": true,
+      "requires_auth_runtime_identity": true,
+      "requires_reviewed_source_sha_and_exact_sha_ci": true,
+      "requires_dataset_schema_fingerprint": true,
+      "requires_run_classes_cadence_and_cost_caps": true,
+      "source_auto_full_authorizes": false
+    },
+    "production_sqlite_first_month_accumulation": {
+      "requires_exact_target_sqlite_authority": true,
+      "requires_verification_failure_and_rollback_semantics": true,
+      "source_auto_full_authorizes": false
+    }
+  },
+  "authority": {
+    "source_auto_full_authorizes_real_bigquery_reads": false,
+    "source_auto_full_authorizes_production_corpus_writes": false,
+    "source_auto_full_authorizes_private_scheduler_activation": false,
+    "source_auto_full_authorizes_rpi5_runtime_mutation": false
+  }
+}

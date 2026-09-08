@@ -1,6 +1,6 @@
 # Implementation status
 
-Status reconciled after `AUDIT-HANDOFF` on 2026-09-08 and extended by Issue #19 and Issue #22 source work.
+Status reconciled after `AUDIT-HANDOFF` on 2026-09-08 and extended by Issue #19, Issue #22 and Issue #24 source work.
 
 ## Source-complete
 - FastAPI + SQLite immutable forecast corpus.
@@ -66,6 +66,18 @@ Status reconciled after `AUDIT-HANDOFF` on 2026-09-08 and extended by Issue #19 
 - Access/schema/dry-run/canary/provenance stages are distinct from `production_sqlite_forecast_snapshot_write`. A validated write envelope proves only eligibility and never performs the write.
 - `docs/WEATHERNEXT_FIRST_ACCESS.md` defines privacy-safe evidence and the later exact private gate fields. Fixture-driven tests use fake BigQuery clients and make no network request.
 
+## Issue #24 WeatherNext sustained-collection / first-month readiness package
+- `deploy/weathernext-sustained-collection.json` freezes the post-canary lifecycle, two-surface snapshot admission, hourly/synoptic cadence, missing-run ledger, bounded recovery, model/schema boundary, privacy-safe health, station verification and later gate contracts.
+- `src/rozkalns_weather/weathernext_collection.py` provides network-free collection planning, immutable snapshot-admission validation, run-ledger reconciliation, bounded recovery planning, version-boundary evaluation and sanitized provider-health evidence.
+- Target dissemination, observed upstream publication and retrieval timestamps remain separate. Two consecutive missing expected runs enter `degraded`; permission/schema/link/cost failures are never reclassified as ordinary latency.
+- Recovery planning is capped at 168 hours and 24 init times per plan, performs neither BigQuery reads nor SQLite writes, and declares no automatic cleanup or hidden retry.
+- Model version and schema fingerprint are first-class collection dimensions. Current source support is `WeatherNext 3.0.0`; unknown versions or schema drift require an explicit adapter decision before collection continues.
+- First-month measured verification is pinned to `station_10416` / DWD WMO 10416 common valid-times, grouped by model version + lead bucket, with MAE/RMSE/bias emitted only when a slice has `n >= 30`. Private `home` is excluded from measured station accuracy.
+- WeatherNext summary-statistic verification checks monotonic `p10/p25/p50/p75/p90`, p10-p90 and p25-p75 coverage/width, and p50 error. `precipitation_1h` remains a 60-minute amount; summary quantiles do not imply event probability or full-ensemble CRPS/Brier.
+- First-month evidence is aggregate/sanitized, rejects private project/dataset/credential/coordinate/path/log/raw-payload fields, defaults `publication_allowed=false`, requires terms recheck before publication and preserves DWD warning authority.
+- `docs/WEATHERNEXT_SUSTAINED_COLLECTION.md` contains the exact later recurring-private-BigQuery and production-SQLite accumulation gate templates. Source merge does not activate either gate.
+- Fixture-driven tests cover lifecycle/admission/cadence/dedupe/ledger/recovery/version/freshness/verification/quantile/privacy contracts without provider network access.
+
 ## RPi5_main trusted-boundary source integration
 - `RPi5_main` Issue #408 / PR #409 is merged and registers the static `rozkalns-weather.public-runtime-release.v1` operation plus dedicated execution-disabled weather adapter.
 - The operation remains `STRICT` and not ordinary `LIVE-ALL` eligible; source registration is not LIVE authority.
@@ -81,9 +93,11 @@ Status reconciled after `AUDIT-HANDOFF` on 2026-09-08 and extended by Issue #19 
 4. WeatherNext allowlist/access approval for private WeatherNext activation.
 5. Private runtime `HOME_LAT` / `HOME_LON` if/when private-home forecasts are activated.
 6. Google Cloud project/linked dataset/credentials, any real schema/dry-run/canary BigQuery request, and the first real WeatherNext snapshot remain private LIVE/data gates.
-7. Analytics Hub linked-dataset creation/deletion or IAM/credential mutation remains a distinct exact owner gate and is not implied by first-access source readiness.
-8. Backup/restore and any destructive data recovery remain separately gated; application rollback never implies DB rollback.
-9. Meaningful measured rankings and bootstrap intervals require enough real common-sample corpus.
+7. Recurring private WeatherNext BigQuery collection and any private scheduler/timer activation remain distinct exact owner gates; the source cadence planner does not authorize them.
+8. Production accumulation of WeatherNext snapshots and the first real month of corpus remain data-write/LIVE outcomes, not source-readiness claims.
+9. Analytics Hub linked-dataset creation/deletion or IAM/credential mutation remains a distinct exact owner gate and is not implied by first-access or sustained-collection source readiness.
+10. Backup/restore and any destructive data recovery remain separately gated; application rollback never implies DB rollback.
+11. Meaningful measured rankings and bootstrap intervals require enough real common-sample corpus.
 
 A read-only audit on 2026-09-08 found no deployed weather container, no `weather_data` volume and no weather systemd service/timer on the RPi5 at that time. This is point-in-time runtime evidence, not durable source truth; future LIVE work must refresh it.
 
