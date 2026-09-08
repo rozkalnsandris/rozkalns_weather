@@ -98,6 +98,26 @@ Default precipitation occurrence candidate ir `>= 0.1 mm/h`. Probability tiek r�
 
 WeatherNext 3 summary distribution jāsaglabā kā `mean/p10/p25/p50/p75/p90` ar model version/init/retrieval/valid/lead provenance. Summary intervalam var vērtēt coverage/width, bet CRPS/Brier nedrīkst izlikties par full-ensemble score, ja genuine members/probability nav pieejami.
 
+Issue #24 source contract papildus validē quantile monotonicity un atsevišķi rēķina p10-p90 coverage/width, p25-p75 coverage/width un p50 MAE/bias. `precipitation_1h` kvantiles ir 60-minūšu amount distribution; no tām netiek izdomāta precipitation event probability.
+
+## First-month WeatherNext eligibility
+
+`src/rozkalns_weather/weathernext_collection.py` definē source-only first-month eligibility, bet pati source readiness nav pierādījums, ka reāls WeatherNext mēnesis jau ir savākts.
+
+Measured WeatherNext slice ir eligible tikai tad, ja:
+
+- provider ir `weathernext3`;
+- location ir `station_10416`;
+- truth ir DWD WMO 10416;
+- forecast valid-time ir explicit common comparison timestamp;
+- `model_version` boundary nav sajaukta ar citu versiju;
+- lead bucket paliek atsevišķs;
+- attiecīgajā `(model_version, lead_bucket)` slice ir vismaz `n >= 30`.
+
+Pirms `n >= 30` state paliek `sample_insufficient`; MAE/RMSE/bias šajā readiness payload netiek publicēti kā meaningful metrics. `home` vienmēr tiek izslēgts no station measured accuracy, kamēr nav defensible home observation truth.
+
+Model-version vai schema fingerprint change rada explicit `version_boundary`. Vecā un jaunā perioda samples netiek automātiski sapooloti vienā metric periodā.
+
 ## Event verification
 
 Temperature extreme, precipitation event un wind/gust event verification lieto tikai semantiski matched forecast/truth variable un explicit threshold/direction.
@@ -118,6 +138,8 @@ Event summary rāda:
 
 Missing observation vai forecast nav automātiski forecast error. Missing values netiek imputētas tikai metric aizpildīšanai. Member data, kas vairs nav pieejami retention dēļ, tiek atzīmēti kā unavailable, nevis rekonstruēti/fabricēti.
 
+WeatherNext sustained collection missing-run ledger atdala `expected`, `target_disseminated`, `retrieved`, `missing`, `delayed` un `superseded`. Permission/schema/link/cost failures nav publication latency un nedrīkst tikt ieskaitīti kā forecast skill error.
+
 ## Accuracy v3 UI
 
 PWA Accuracy/Models skati atdala:
@@ -136,3 +158,5 @@ Weighted Combined forecast paliek ārpus scope, kamēr nav pietiekams common-per
 ## WeatherNext evolution report
 
 Kad ir reāls corpus, periodiskais report rāda WeatherNext version, sample period, lead-time skill vs public baselines, change vs previous period, uncertainty calibration un notable misses. Release/model events tiek piesaistīti tikai verificētam provenance; nekas netiek fabricēts.
+
+Issue #24 first-month evidence ir tikai sanitized aggregate payload. Tas nesatur raw WeatherNext real-time provider payload, private Google/dataset identity, credentials, home coordinates, SQL, private paths vai raw logs. Default ir `publication_allowed=false` un pirms jebkādas publiskošanas jāveic fresh upstream terms pārbaude.
