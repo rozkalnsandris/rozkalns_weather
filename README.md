@@ -115,7 +115,9 @@ Fixed runtime mode ir `WEATHER_RUNTIME_MODE=public-only`; application service iz
 
 ## Deployment
 
-`Dockerfile`, `deploy/` un `docs/OPERATIONS.md` ir source-level deploy preparation. `rozkalns_weather` pats neiegūst RPi5 root/sudo/deploy authority. `RPi5_main` static weather operation/adapter source darbs un deterministic first-bootstrap source composition ir merged (`RPi5_main` Issue #408 / PR #409 un Issue #410 / PR #415), bet trusted execution un host wiring paliek disabled līdz atsevišķam exact LIVE gate.
+`Dockerfile`, `deploy/` un `docs/OPERATIONS.md` ir source-level deploy preparation. `rozkalns_weather` pats neiegūst RPi5 root/sudo/deploy authority. `RPi5_main` static Weather operation, deterministic first-bootstrap composition, source-only LIVE-AUTH/READY pre-activation bridge un trusted host-wiring/helper source bridge ir merged (Issue #408 / PR #409, Issue #410 / PR #415, Issue #432 / PR #433 un Issue #435 / PR #436). Host-wiring source ir klātesošs, bet Weather joprojām ir `STRICT`, nav ordinary `LIVE-ALL` eligible, un global execution/privileged dispatch/live host wiring/helper invocation/production mutation paliek disabled līdz atsevišķai exact owner LIVE autorizācijai.
+
+Pirmajam public-only rollout pirms jebkuras mutation svaigi jāpiesaista exact merged Weather SHA + exact-SHA CI, current `RPi5_main` SHA, trusted host/target, sanitized runtime baseline, reviewed helper identities, bounded dates/models/run hours, WMO `10416`, recovery decision, exact mutation budgets un postconditions. Read-only preflight nepatērē LIVE autorizāciju; pirmā autorizētā mutation to patērē.
 
 RPi5, systemd/Docker, Cloudflare, credentials, private Google Cloud/BigQuery access, production SQLite/corpus writes un runtime mutation prasa atsevišķu LIVE autorizāciju.
 

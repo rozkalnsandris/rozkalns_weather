@@ -1,6 +1,6 @@
 # Implementation status
 
-Status reconciled after `AUDIT-HANDOFF` on 2026-09-08 and extended by Issue #19, Issue #22, Issue #24 and Issue #26 source work.
+Status reconciled after `AUDIT-HANDOFF` on 2026-09-09 and extended by Issue #19, Issue #22, Issue #24 and Issue #26 source work.
 
 ## Source-complete
 - FastAPI + SQLite immutable forecast corpus.
@@ -51,7 +51,7 @@ Status reconciled after `AUDIT-HANDOFF` on 2026-09-08 and extended by Issue #19,
 - SQLite backup verification uses read-only `PRAGMA integrity_check`, required-table verification and SHA-256 metadata without exposing the path; production backup/restore remains a separate gated mutation class.
 - Recovery decision is machine-readable: `verified_backup_available` or `owner_accepts_proceeding_without_prewrite_backup`; neither authorizes restore/delete/cleanup.
 - `rollout-evidence-validate` accepts sanitized stdin evidence for exact deployed SHA identity, `/health`, `/ready`, provider-health, schema/storage, provider states, WeatherNext non-fabrication, volume retention and corpus-integrity postconditions, and rejects private paths/log/coordinate/credential fields.
-- `deploy/rollout-readiness.json` contains stage-specific fail-closed behavior and explicitly preserves the already-merged `RPi5_main` #408/#409 + #410/#415 interface without enabling trusted execution/host wiring.
+- `deploy/rollout-readiness.json` contains stage-specific fail-closed behavior and preserves the merged `RPi5_main` #408/#409 + #410/#415 + #432/#433 + #435/#436 source interfaces without enabling host/runtime activation.
 - Fixture-driven tests cover contract consistency, bounds/model/run-hour rejection, checkpoint ordering, disposable SQLite backup verification, evidence privacy and CLI behavior without runtime environment.
 
 ## Issue #22 WeatherNext first-access readiness package
@@ -92,14 +92,16 @@ Status reconciled after `AUDIT-HANDOFF` on 2026-09-08 and extended by Issue #19,
 
 ## RPi5_main trusted-boundary source integration
 - `RPi5_main` Issue #408 / PR #409 is merged and registers the static `rozkalns-weather.public-runtime-release.v1` operation plus dedicated execution-disabled weather adapter.
-- The operation remains `STRICT` and not ordinary `LIVE-ALL` eligible; source registration is not LIVE authority.
 - `RPi5_main` Issue #410 / PR #415 is merged and adds the deterministic first-bootstrap composition for application release, volume ensure, explicit schema init, readiness, optional public smoke, bounded DWD truth and deterministic forecast backfill, integrity, and recurring public ingest scheduling.
+- `RPi5_main` Issue #432 / PR #433 is merged and composes the existing owner LIVE-AUTH/READY/replay protocol with the Weather bootstrap planner while keeping pre-activation execution disabled.
+- `RPi5_main` Issue #435 / PR #436 is merged and adds the capability-specific trusted Weather host-wiring/helper source bridge with fixed stage/helper identities and whole-preactivation-envelope binding.
+- The operation remains `STRICT` and not ordinary `LIVE-ALL` eligible. Global executor execution, privileged dispatch, live host wiring, helper installation/invocation, production mutation and process launch remain disabled on source/runtime until a separately authorized exact LIVE gate activates only the reviewed envelope.
 - Application, schema, corpus-write and schedule mutation classes remain distinct even when a later exact LIVE authorization composes them into one bounded rollout.
 - The source contracts do not provide arbitrary shell/path/argv/environment authority and do not include private runtime data.
-- Trusted execution/host wiring remains disabled until separately authorized and freshly revalidated; mutable `RPi5_main` executor/runtime state must always be refreshed before any LIVE action.
+- Mutable `RPi5_main` source/executor/runtime state must always be freshly revalidated before any LIVE action.
 
 ## Still external/live gated
-1. First public-only RPi5 rollout under a separate exact LIVE authorization after fresh source/host/target preflight.
+1. First public-only RPi5 rollout under a separate exact STRICT LIVE authorization after fresh source/host/target/helper preflight.
 2. Production SQLite schema initialization and historical/public corpus population under separately bounded data-write/LIVE authority, with explicit date/model bounds and recovery decision.
 3. Any Docker/systemd/timer activation or host/filesystem/network mutation remains separately gated.
 4. WeatherNext allowlist/access approval for private WeatherNext activation.
@@ -112,6 +114,6 @@ Status reconciled after `AUDIT-HANDOFF` on 2026-09-08 and extended by Issue #19,
 11. Backup/restore and any destructive data recovery remain separately gated; application rollback never implies DB rollback.
 12. Meaningful measured rankings and bootstrap intervals require enough real common-sample corpus.
 
-A read-only audit on 2026-09-08 found no deployed weather container, no `weather_data` volume and no weather systemd service/timer on the RPi5 at that time. This is point-in-time runtime evidence, not durable source truth; future LIVE work must refresh it.
+A fresh read-only audit on 2026-09-09 found no deployed Weather container, no `weather_data` volume and no Weather systemd service/timer on the RPi5 at that time. This is point-in-time runtime evidence, not durable source truth; future LIVE work must refresh it.
 
 Home forecasts are not verified against DWD 10416 as if they were the same physical point. Measured accuracy uses the station benchmark. WeatherNext 3 real values remain absent until private access is explicitly ready; no placeholder values are fabricated.
