@@ -123,7 +123,7 @@ The evidence validator rejects home-coordinate, credential, raw-log, database-pa
 - Issue #408 / PR #409 registered static operation `rozkalns-weather.public-runtime-release.v1` and a dedicated execution-disabled weather adapter;
 - Issue #410 / PR #415 added deterministic first-bootstrap composition for application release, volume ensure, schema init, readiness, optional smoke, bounded DWD truth/forecast backfill, integrity and recurring schedule handoff;
 - Issue #432 / PR #433 added the source-only Weather LIVE-AUTH/READY pre-activation composition, reusing the owner authorization/queue/replay protocol without enabling execution;
-- Issue #435 / PR #436 added the capability-specific trusted host-wiring/helper source bridge and whole-pactivation-envelope binding while keeping all host/runtime activation disabled.
+- Issue #435 / PR #436 added the capability-specific trusted host-wiring/helper source bridge and whole-preactivation-envelope binding while keeping all host/runtime activation disabled.
 
 These are source interfaces, not deployment proof. After #435, the helper interface is present in source, but Weather remains `STRICT`, `ordinary_live_all_eligible=false`, and global executor execution, privileged dispatch, live host wiring, helper installation/invocation, production mutation and process launch remain disabled. This weather repo does not mutate or activate `RPi5_main`.
 
