@@ -121,11 +121,13 @@ The evidence validator rejects home-coordinate, credential, raw-log, database-pa
 `RPi5_main` source integration already exists and must be refreshed before LIVE rather than re-created here:
 
 - Issue #408 / PR #409 registered static operation `rozkalns-weather.public-runtime-release.v1` and a dedicated execution-disabled weather adapter;
-- Issue #410 / PR #415 added deterministic first-bootstrap composition for application release, volume ensure, schema init, readiness, optional smoke, bounded DWD truth/forecast backfill, integrity and recurring schedule handoff.
+- Issue #410 / PR #415 added deterministic first-bootstrap composition for application release, volume ensure, schema init, readiness, optional smoke, bounded DWD truth/forecast backfill, integrity and recurring schedule handoff;
+- Issue #432 / PR #433 added the source-only Weather LIVE-AUTH/READY pre-activation composition, reusing the owner authorization/queue/replay protocol without enabling execution;
+- Issue #435 / PR #436 added the capability-specific trusted host-wiring/helper source bridge and whole-pactivation-envelope binding while keeping all host/runtime activation disabled.
 
-These are source interfaces, not deployment proof. Trusted execution/host wiring remains a separate runtime fact and must be freshly revalidated. This weather issue does not mutate `RPi5_main`.
+These are source interfaces, not deployment proof. After #435, the helper interface is present in source, but Weather remains `STRICT`, `ordinary_live_all_eligible=false`, and global executor execution, privileged dispatch, live host wiring, helper installation/invocation, production mutation and process launch remain disabled. This weather repo does not mutate or activate `RPi5_main`.
 
-The operation remains `STRICT` and not ordinary `LIVE-ALL` eligible. A future LIVE envelope must bind an exact merged weather SHA and exact-SHA CI, independently resolve the current RPi5 target baseline, and enforce fixed mutation categories/counts. It must not accept generic shell/path/argv/environment authority from GitHub text.
+A future exact LIVE envelope must freshly bind the trusted host and target alias, exact merged weather SHA and exact-SHA CI, current `RPi5_main` SHA, sanitized current runtime baseline, exact reviewed host-wiring/helper identities, whole preactivation SHA-256, bounded dates/models/run hours and WMO `10416`, recovery decision, exact mutation budgets and postconditions. It must not accept generic shell/path/argv/environment authority from GitHub text.
 
 Database schema initialization, historical corpus backfill, backup/restore, private home configuration, Google Cloud/WeatherNext credentials, Cloudflare/network changes and package/root permission changes remain separate mutation classes. They must not be smuggled into an ordinary application-release adapter.
 
@@ -141,6 +143,7 @@ Before the first live mutation, freshly bind:
 - reviewed **merged** weather SHA and exact-SHA required CI;
 - current `RPi5_main` SHA and exact static operation identity;
 - current sanitized runtime baseline;
+- exact reviewed host-wiring/helper identities and whole preactivation SHA-256;
 - bounded start/end dates, exact three-model set, UTC run hours and WMO `10416` truth;
 - recovery decision;
 - exact mutation classes and budgets;
