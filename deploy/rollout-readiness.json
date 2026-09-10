@@ -35,7 +35,12 @@
       "ecmwf_ifs",
       "ecmwf_aifs"
     ],
-    "run_hours_utc": [0, 6, 12, 18],
+    "run_hours_utc": [
+      0,
+      6,
+      12,
+      18
+    ],
     "common_benchmark_start": "2026-04-02",
     "max_inclusive_days": 180,
     "bounded_dates_required": true,
@@ -171,7 +176,18 @@
     "arbitrary_shell_authority": false,
     "arbitrary_host_path_authority": false,
     "arbitrary_argv_authority": false,
-    "runtime_environment_authority": false
+    "runtime_environment_authority": false,
+    "source_binding_descriptor": "deploy/rpi5-source-binding.json",
+    "preactivation_source": "RPi5_main issue #432 / PR #433",
+    "host_wiring_source": "RPi5_main issue #435 / PR #436",
+    "privileged_install_source": "RPi5_main issue #455",
+    "composite_operator_source": "RPi5_main issue #454 / PR #460",
+    "canonical_successor_trusted_checkout_contract": "ops/deploy/rpi5-main-weather-public-runtime-install-trusted-checkout-bootstrap.json",
+    "legacy_trusted_checkout_is_current_authority": false,
+    "operator_source_ready": true,
+    "operator_host_installed": false,
+    "source_merge_proves_deployment": false,
+    "source_merge_authorizes_live": false
   },
   "live_gate_required_fields": [
     "exact_host_and_target",

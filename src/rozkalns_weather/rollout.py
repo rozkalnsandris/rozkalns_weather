@@ -157,6 +157,7 @@ def validate_source_package(root: Path | None = None) -> dict[str, object]:
     root = root or Path.cwd()
     descriptor = _load_json(root, "deploy/runtime-descriptor.json")
     readiness = _load_json(root, "deploy/rollout-readiness.json")
+    source_binding = _load_json(root, "deploy/rpi5-source-binding.json")
     schedule = _load_json(root, "deploy/public-ingest-schedule.json")
     compose_path = root / "deploy/docker-compose.public.yml"
     if not compose_path.is_file():
@@ -190,6 +191,35 @@ def validate_source_package(root: Path | None = None) -> dict[str, object]:
     _require(tuple(bootstrap.get("run_hours_utc", [])) == BOOTSTRAP_RUN_HOURS_UTC, "bootstrap run-hour contract mismatch")
     _require(bootstrap.get("max_inclusive_days") == MAX_BOOTSTRAP_INCLUSIVE_DAYS, "bootstrap window contract mismatch")
     _require(tuple(bootstrap.get("stage_order", [])) == BOOTSTRAP_STAGE_ORDER, "bootstrap stage order mismatch")
+
+    _require(source_binding.get("contract") == "rozkalns-weather.rpi5-source-binding.v1", "RPi5 source binding contract mismatch")
+    _require(source_binding.get("status") == "SOURCE_RECONCILED_RUNTIME_UNPROVEN", "RPi5 source binding must remain runtime-unproven")
+    _require(source_binding.get("target_alias") == TARGET_ALIAS, "RPi5 source binding target mismatch")
+    _require(source_binding.get("operation_id") == OPERATION_ID, "RPi5 source binding operation mismatch")
+    weather_binding = source_binding.get("weather_source")
+    rpi_binding = source_binding.get("rpi5_main_source")
+    source_safety = source_binding.get("source_safety")
+    legacy_checkout = source_binding.get("legacy_checkout")
+    research_safety = source_binding.get("research_and_safety")
+    _require(isinstance(weather_binding, dict), "Weather source binding missing")
+    _require(isinstance(rpi_binding, dict), "RPi5 source snapshot missing")
+    _require(isinstance(source_safety, dict), "RPi5 source safety contract missing")
+    _require(isinstance(legacy_checkout, dict), "legacy checkout evidence contract missing")
+    _require(isinstance(research_safety, dict), "research safety contract missing")
+    assert isinstance(weather_binding, dict) and isinstance(rpi_binding, dict)
+    assert isinstance(source_safety, dict) and isinstance(legacy_checkout, dict) and isinstance(research_safety, dict)
+    _require(bool(SOURCE_SHA_PATTERN.fullmatch(str(weather_binding.get("candidate_sha_at_reconciliation", "")))), "Weather source binding SHA invalid")
+    _require(bool(SOURCE_SHA_PATTERN.fullmatch(str(rpi_binding.get("main_sha_at_reconciliation", "")))), "RPi5 source binding SHA invalid")
+    for field in ("source_merge_authorizes_live", "source_merge_proves_host_ready", "source_merge_proves_deployment", "operator_host_installed", "helper_installation_enabled", "operator_installation_enabled", "privileged_install_invocation_enabled", "production_mutation_enabled", "production_mutation_started"):
+        _require(source_safety.get(field) is False, f"source binding safety flag must remain false: {field}")
+    _require(source_safety.get("fresh_human_composite_strict_live_authorization_required") is True, "fresh Composite STRICT LIVE authorization must remain required")
+    _require(source_safety.get("fresh_sanitized_runtime_baseline_required") is True, "fresh sanitized runtime baseline must remain required")
+    _require(legacy_checkout.get("historical_evidence_only") is True, "legacy checkout must remain evidence-only")
+    _require(legacy_checkout.get("authority_source") is False, "legacy checkout cannot be an authority source")
+    _require(legacy_checkout.get("mutation_allowed") is False, "legacy checkout mutation must remain forbidden")
+    _require(research_safety.get("dwd_severe_weather_warning_authority") == "DWD", "DWD warning authority drifted")
+    _require(research_safety.get("weathernext3_role") == "primary_research", "WeatherNext 3 research role drifted")
+    _require(research_safety.get("weathernext_real_values_fabricated") is False, "WeatherNext values must never be fabricated")
 
     _require(schedule.get("runtime_class") == RUNTIME_CLASS, "schedule runtime class mismatch")
     systemd = schedule.get("systemd_timer")
@@ -226,6 +256,7 @@ def validate_source_package(root: Path | None = None) -> dict[str, object]:
         "validated_files": [
             "deploy/runtime-descriptor.json",
             "deploy/rollout-readiness.json",
+            "deploy/rpi5-source-binding.json",
             "deploy/public-ingest-schedule.json",
             "deploy/docker-compose.public.yml",
         ],
