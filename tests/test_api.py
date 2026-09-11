@@ -1,11 +1,12 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from fastapi.testclient import TestClient
 
 from rozkalns_weather.app import create_app
 from rozkalns_weather.config import Settings
 from rozkalns_weather.db import Database
-from rozkalns_weather.models import ForecastRun, ForecastValue
+from rozkalns_weather.locations import DWD_10416
+from rozkalns_weather.models import ForecastRun, ForecastValue, Observation
 
 
 def _client(tmp_path, *, with_home: bool = True) -> tuple[TestClient, Database]:
@@ -71,3 +72,95 @@ def test_hourly_returns_latest_provider_snapshot(tmp_path) -> None:
     payload = response.json()
     assert payload["location"]["coordinates_exposed"] is False
     assert payload["series"][0]["provider"] == "weathernext3"
+
+
+def test_verification_api_uses_common_samples_and_exposes_missingness(tmp_path) -> None:
+    client, database = _client(tmp_path)
+    first = datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0) - timedelta(hours=2)
+    second = first + timedelta(hours=1)
+    database.insert_observations(
+        [
+            Observation(
+                source_provider="DWD",
+                station_id="10416",
+                location_id=DWD_10416.id,
+                observed_at_utc=valid,
+                variable="temperature_2m",
+                value=value,
+                unit="degC",
+            )
+            for valid, value in ((first, 10.0), (second, 11.0))
+        ]
+    )
+
+    database.insert_forecast_run(
+        ForecastRun(
+            provider="icon_d2",
+            model_provider="DWD",
+            model_name="ICON-D2",
+            model_version="icon-v1",
+            init_time_utc=first - timedelta(hours=6),
+            retrieved_at_utc=first - timedelta(hours=5),
+            source_surface="fixture",
+            values=(
+                ForecastValue(
+                    valid_time_utc=first,
+                    lead_hours=6,
+                    variable="temperature_2m",
+                    statistic="deterministic",
+                    value=11.0,
+                    unit="degC",
+                ),
+                ForecastValue(
+                    valid_time_utc=second,
+                    lead_hours=7,
+                    variable="temperature_2m",
+                    statistic="deterministic",
+                    value=12.0,
+                    unit="degC",
+                ),
+            ),
+        ),
+        location_id=DWD_10416.id,
+    )
+    database.insert_forecast_run(
+        ForecastRun(
+            provider="ecmwf_ifs",
+            model_provider="ECMWF",
+            model_name="IFS HRES",
+            model_version="ifs-v1",
+            init_time_utc=first - timedelta(hours=6),
+            retrieved_at_utc=first - timedelta(hours=5),
+            source_surface="fixture",
+            values=(
+                ForecastValue(
+                    valid_time_utc=first,
+                    lead_hours=6,
+                    variable="temperature_2m",
+                    statistic="deterministic",
+                    value=10.5,
+                    unit="degC",
+                ),
+            ),
+        ),
+        location_id=DWD_10416.id,
+    )
+
+    response = client.get("/api/verification/summary?days=30")
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["sample_sufficiency_contract"] == "common-sample-sufficiency-v1"
+    assert len(payload["common_sample_slices"]) == 2
+    rows = {row["provider"]: row for row in payload["common_sample_slices"]}
+    assert rows["icon_d2"]["n"] == 1
+    assert rows["icon_d2"]["missingness"]["expected_n"] == 2
+    assert rows["icon_d2"]["missingness"]["missing_n"] == 0
+    assert rows["icon_d2"]["missingness"]["excluded_non_common_n"] == 1
+    assert rows["ecmwf_ifs"]["missingness"]["missing_n"] == 1
+    assert rows["ecmwf_ifs"]["sample_sufficiency_state"] == "insufficient_sample"
+    assert payload["providers"]["icon_d2"]["descriptive_only"] is True
+
+    script = client.get("/static/app.js").text
+    assert "common_sample_slices" in script
+    assert "sample_sufficiency_state" in script
+    assert "missingness" in script
