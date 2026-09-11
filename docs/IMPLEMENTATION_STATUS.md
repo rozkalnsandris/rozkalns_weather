@@ -22,6 +22,7 @@ Status reconciled after `AUDIT-HANDOFF` on 2026-09-09 and extended by Issue #19,
 - Historical exact runs preserve explicit `run=` init provenance and do not fabricate upstream availability metadata when the historical surface does not expose it.
 - Historical DWD truth path is pinned to WMO `10416`; Bright Sky is transport only and rows without explicit 10416 source identity are rejected.
 - Backfill reconciliation reports missing/unexpected runs and immutable revisions; idempotent inserts reuse existing identical snapshots.
+- Issue #32 adds `rozkalns-weather corpus-report --start ... --end ...`: a privacy-safe SQLite read-only/query-only PASS/WARN/BLOCKED report for expected/present model runs, UTC run hours, model-horizon lead buckets, valid-time bounds, revision/duplicate/provenance anomalies and DWD WMO 10416 forecast-valid truth coverage; pre-2026-04-02 IFS-only history is reported separately from common readiness.
 - Public ensemble adapters exist for ICON-D2-EPS, IFS ENS 0.25° and AIFS ENS 0.25° with control/member identities and explicit three-day individual-member retention boundary.
 - WeatherNext 2 exists only as `legacy_ai_context`; the Open-Meteo transport surface is marked non-eligible for strict run-to-run ranking without defensible exact init provenance.
 - Genuine ensemble verification primitives include CRPS, empirical quantiles, interval coverage/width, WIS-style scoring, member-fraction precipitation probability, Brier and reliability.
