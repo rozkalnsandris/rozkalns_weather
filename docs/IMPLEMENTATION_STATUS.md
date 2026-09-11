@@ -8,6 +8,7 @@ Status reconciled after `AUDIT-HANDOFF` on 2026-09-09 and extended by Issue #19,
 - DWD MOSMIX-L 10416 and DWD observation truth.
 - ICON-D2 / ECMWF IFS HRES / AIFS Single Runs with explicit run provenance and Open-Meteo availability metadata contract.
 - Provider runner with bounded read retry, failure isolation, single-cycle file lock, idempotent content hashing and revision tracking.
+- Issue #33 adds provider-freshness-v1 for DWD observations/MOSMIX, ICON-D2, IFS and AIFS: read-only freshness evidence, separate local scheduler/ingest versus upstream/transport/data domains, stable reason codes and PWA/API provenance without private runtime fields.
 - Corpus integrity/stats/SQLite backup commands.
 - WeatherNext BigQuery schema/query validator, 0.05° station-head + 0.1° surface, six summary statistics and hourly cycle handling.
 - WeatherNext readiness diagnostics.

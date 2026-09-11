@@ -21,8 +21,14 @@ function providersCard(items) {
     <div class="provider">
       <strong>${provider.model_name}</strong>
       <small>
-        ${provider.state}
+        ingest ${provider.ingest_state || provider.state}
+        <br>freshness ${provider.freshness_state || "unknown"}
+        ${provider.failure_domain && provider.failure_domain !== "none" ? `<br>domain ${provider.failure_domain}` : ""}
+        ${provider.reason_code ? `<br>${provider.reason_code}` : ""}
         ${provider.last_init_time_utc ? `<br>init ${provider.last_init_time_utc}` : ""}
+        ${provider.last_retrieved_at_utc ? `<br>retrieved ${provider.last_retrieved_at_utc}` : ""}
+        ${provider.latest_valid_time_utc ? `<br>valid through ${provider.latest_valid_time_utc}` : ""}
+        ${provider.last_observed_at_utc ? `<br>observed ${provider.last_observed_at_utc}` : ""}
         ${provider.last_success_at_utc ? `<br>success ${provider.last_success_at_utc}` : ""}
       </small>
     </div>

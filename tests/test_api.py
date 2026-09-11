@@ -41,6 +41,22 @@ def test_provider_health_does_not_expose_home_coordinates(tmp_path) -> None:
     assert payload["location"]["coordinates_exposed"] is False
     assert "51.5" not in response.text
     assert "7.6" not in response.text
+    tracked = {item["id"]: item for item in payload["providers"]}
+    assert payload["health_contract"] == "provider-freshness-v1"
+    for provider_id in ("dwd_observations", "dwd_mosmix_l", "icon_d2", "ecmwf_ifs", "ecmwf_aifs"):
+        assert tracked[provider_id]["tracked"] is True
+        assert tracked[provider_id]["freshness_state"] == "not_ingested"
+        assert tracked[provider_id]["failure_domain"] == "local_ingest_not_started"
+    assert tracked["weathernext3"]["tracked"] is False
+
+
+def test_provider_health_pwa_exposes_freshness_and_failure_domain(tmp_path) -> None:
+    client, _ = _client(tmp_path)
+    script = client.get("/static/app.js")
+    assert script.status_code == 200
+    assert "freshness_state" in script.text
+    assert "failure_domain" in script.text
+    assert "last_retrieved_at_utc" in script.text
 
 
 def test_hourly_returns_latest_provider_snapshot(tmp_path) -> None:

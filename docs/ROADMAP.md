@@ -24,6 +24,7 @@ forecast snapshot -> observation -> verification -> WeatherNext comparison
 - [x] Missing-run/revision/integrity reconciliation for immutable backfill snapshots.
 - [x] Explicit SQLite schema-init + privacy-safe readiness commands; RPi5 candidate can require an existing schema instead of creating it on app startup.
 - [x] Issue #32 read-only public corpus completeness/integrity report with expected/present provider, run-hour and lead-bucket coverage, provenance/revision/truth-gap classification and separate historical IFS-only context.
+- [x] Issue #33 provider freshness + ingest-health observability with separate local-scheduler vs upstream/transport failure domains and privacy-safe API/PWA provenance.
 
 ## Phase 2 — WeatherNext 3
 - [x] BigQuery 0.05°/0.1° schema/query contract.
