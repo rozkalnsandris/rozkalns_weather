@@ -9,6 +9,7 @@ from rozkalns_weather.verification import (
     forecast_was_available,
     lead_bucket,
     reliability_bins,
+    sample_evidence,
     summarize,
 )
 
@@ -23,7 +24,24 @@ def test_metrics_and_weather_next_interval_coverage() -> None:
     assert result["mae"] == 1.5
     assert result["bias"] == -0.5
     assert result["p10_p90_coverage"] == 0.5
+    assert result["coverage_n"] == 2
+    assert result["sample_sufficiency_state"] == "insufficient_sample"
+    assert result["missingness"]["state"] == "not_assessed"
     assert lead_bucket(12) == "12-24h"
+
+
+def test_sample_evidence_reports_assessed_missingness() -> None:
+    evidence = sample_evidence(30, expected_n=40)
+    assert evidence["sample_sufficiency_state"] == "limited_sample"
+    assert evidence["missingness"] == {
+        "state": "assessed",
+        "expected_n": 40,
+        "available_n": 30,
+        "missing_n": 10,
+        "missing_fraction": 0.25,
+    }
+    with pytest.raises(ValueError, match="expected_n"):
+        sample_evidence(4, expected_n=3)
 
 
 def test_user_available_skill_requires_upstream_and_local_retrieval() -> None:
@@ -49,6 +67,8 @@ def test_probability_metrics_never_accept_percent_or_amount_as_probability() -> 
     result = brier_score(pairs)
     assert result["n"] == 2
     assert result["brier_score"] == pytest.approx(0.04)
+    assert result["sample_sufficiency_state"] == "insufficient_sample"
+    assert result["missingness"]["state"] == "not_assessed"
     bins = reliability_bins(pairs, bins=5)
     assert sum(int(item["n"]) for item in bins) == 2
     with pytest.raises(ValueError, match="probability"):
