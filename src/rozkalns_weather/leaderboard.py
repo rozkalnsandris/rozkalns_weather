@@ -94,7 +94,7 @@ def common_sample_leaderboard(samples: Iterable[SkillSample]) -> list[dict[str, 
     assigned to one cohort containing the exact model version for every compared
     provider. This prevents a row from silently pooling peer model-version periods.
     Missingness is reported against the union of timestamps seen in the comparison
-    slice; metrics themselves use only the intersection.
+    slice; metrics themselves use only the exact cohort intersection.
     """
 
     items = list(samples)
@@ -143,14 +143,15 @@ def common_sample_leaderboard(samples: Iterable[SkillSample]) -> list[dict[str, 
                 provider_ids = ids_by_provider[provider]
                 expected_n = len(expected_ids)
                 available_n = len(provider_ids)
-                common_n = len(common_ids)
+                cohort_common_n = len(cohort_ids)
                 missing_n = expected_n - available_n
                 missingness: dict[str, int | float] = {
                     "expected_n": expected_n,
                     "available_n": available_n,
                     "missing_n": missing_n,
-                    "common_n": common_n,
-                    "excluded_non_common_n": available_n - common_n,
+                    "common_n": cohort_common_n,
+                    "total_common_n": len(common_ids),
+                    "excluded_non_common_n": available_n - len(common_ids),
                     "missing_fraction": (missing_n / expected_n) if expected_n else 0.0,
                 }
                 provider_items = [
