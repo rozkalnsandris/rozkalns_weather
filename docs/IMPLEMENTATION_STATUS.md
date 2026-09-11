@@ -111,6 +111,13 @@ Status reconciled after `AUDIT-HANDOFF` on 2026-09-09 and extended by Issue #19,
 - Current build-time assessment is intentionally `BLOCKED`: queue #46 is still READY for old Weather SHA `52d3fd0f...`, no fresh runtime baseline has been supplied, and no human Composite LIVE authorization is supplied. These are expected pre-LIVE blockers.
 - The exact next runtime owner gate is **operator installation only**: fresh current `RPi5_main` SHA, host `rpi5`, target alias, successor checkout contract and exact zero-argument 23-artifact installer closure. Its success must be followed by fresh read-only installed-artifact proof; it does not authorize the Composite rollout.
 
+## Issue #31 production public corpus bootstrap source contract
+- `deploy/production-public-corpus-bootstrap.json` freezes first production corpus source scope at WMO `10416`, `2026-04-02..2026-09-10` (162 days, max 180), exact `icon_d2/ecmwf_ifs/ecmwf_aifs`, `00/06/12/18 UTC` and 14-day DWD truth chunks.
+- `src/rozkalns_weather/production_bootstrap.py` builds a source-SHA/bounds/recovery fingerprint and validates sanitized resume/completion evidence without network or DB access; PASS never grants production-data authority.
+- Backfill checkpoint loading rejects malformed schema, duplicates and non-prefix/skipped progress. Forecast integrity now fails closed on missing, unexpected or revised runs. Interrupted DB-ahead-of-checkpoint evidence requires explicit resume instead of silent repair.
+- `python -m rozkalns_weather.backfill` no longer initializes/migrates schema or creates the benchmark location implicitly; explicit `rozkalns-weather init-database` must have established a ready schema first.
+- No delete, restore, automatic repair, implicit migration or corpus rollback is authorized. Production schema/corpus writes remain a separate exact LIVE/data gate.
+
 ## Still external/live gated
 1. Before the first public-only rollout, separately authorize and verify the exact 23-artifact operator installation, independently refresh the READY queue to the final merged Weather SHA, then obtain a new Composite STRICT LIVE authorization after fresh source/CI/host/target/baseline preflight.
 2. Production SQLite schema initialization and historical/public corpus population under separately bounded data-write/LIVE authority, with explicit date/model bounds and recovery decision.

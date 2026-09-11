@@ -22,7 +22,8 @@
     "jit_live_preflight_command": "rozkalns-weather rollout-live-preflight-validate",
     "jit_live_preflight_is_read_only": true,
     "jit_live_preflight_creates_or_consumes_authorization": false,
-    "current_source_assessment": "BLOCKED_QUEUE_WEATHER_SHA_MISMATCH"
+    "current_source_assessment": "BLOCKED_QUEUE_WEATHER_SHA_MISMATCH",
+    "production_public_corpus_bootstrap_descriptor": "deploy/production-public-corpus-bootstrap.json"
   },
   "packaging": {
     "kind": "docker-compose",

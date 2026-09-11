@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 from datetime import date, datetime, timezone
+import json
 from pathlib import Path
 
-from rozkalns_weather.backfill import PublicBackfillRunner, forecast_integrity, iter_run_times
+import pytest
+
+from rozkalns_weather.backfill import BackfillCheckpoint, PublicBackfillRunner, _require_ready_station_database, forecast_integrity, iter_run_times
 from rozkalns_weather.db import Database
 from rozkalns_weather.locations import DWD_10416
 from rozkalns_weather.models import ForecastRun, ForecastValue, Observation
@@ -157,3 +160,40 @@ def test_truth_backfill_chunks_and_resumes(tmp_path: Path) -> None:
     assert first["inserted_observations"] == 2
     assert second["inserted_observations"] == 0
     assert stub.calls == [(date(2026, 4, 1), date(2026, 4, 2)), (date(2026, 4, 3), date(2026, 4, 3))]
+
+
+def test_checkpoint_rejects_duplicates_and_skipped_prefix(tmp_path: Path) -> None:
+    duplicate = tmp_path / "duplicate.json"
+    duplicate.write_text(json.dumps({"schema_version": 1, "completed": ["a", "a"]}), encoding="utf-8")
+    with pytest.raises(ValueError, match="duplicates"):
+        BackfillCheckpoint.load(duplicate)
+
+    reordered = tmp_path / "reordered.json"
+    reordered.write_text(json.dumps({"schema_version": 1, "completed": ["b", "a"]}), encoding="utf-8")
+    with pytest.raises(ValueError, match="chronological order"):
+        BackfillCheckpoint.load(reordered)
+
+    skipped = tmp_path / "skipped.json"
+    skipped.write_text(
+        json.dumps({"schema_version": 1, "completed": ["2026-04-02T00:00:00Z", "2026-04-02T12:00:00Z"]}),
+        encoding="utf-8",
+    )
+    database = _db(tmp_path)
+    with pytest.raises(ValueError, match="exact ordered prefix"):
+        PublicBackfillRunner(database).forecast_runs(
+            model=ICON_D2,
+            start=date(2026, 4, 2),
+            end=date(2026, 4, 2),
+            run_hours=(0, 6, 12),
+            checkpoint_path=skipped,
+            dry_run=True,
+            adapter=ForecastStub(),
+        )
+
+
+def test_backfill_requires_explicit_preexisting_schema(tmp_path: Path) -> None:
+    path = tmp_path / "missing.db"
+    database = Database(f"sqlite:///{path}")
+    with pytest.raises(RuntimeError, match="explicit `rozkalns-weather init-database`"):
+        _require_ready_station_database(database)
+    assert not path.exists()

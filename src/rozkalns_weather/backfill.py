@@ -12,6 +12,7 @@ from .db import Database
 from .locations import DWD_10416
 from .models import utc_iso
 from .providers.dwd_observations import DwdObservationAdapter
+from .runtime import database_schema_state
 from .providers.open_meteo import (
     ECMWF_AIFS,
     ECMWF_IFS,
@@ -68,14 +69,38 @@ class BackfillCheckpoint:
         if not path.exists():
             return cls(path=path, completed=set())
         payload = json.loads(path.read_text(encoding="utf-8"))
-        values = payload.get("completed", []) if isinstance(payload, dict) else []
-        return cls(path=path, completed={str(value) for value in values})
+        if not isinstance(payload, dict) or payload.get("schema_version") != 1:
+            raise ValueError("checkpoint must be a schema_version=1 JSON object")
+        values = payload.get("completed")
+        if not isinstance(values, list) or any(not isinstance(value, str) for value in values):
+            raise ValueError("checkpoint completed entries must be strings")
+        if len(values) != len(set(values)):
+            raise ValueError("checkpoint completed entries must not contain duplicates")
+        if values != sorted(values):
+            raise ValueError("checkpoint completed entries must remain in chronological order")
+        return cls(path=path, completed=set(values))
 
     def save(self) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         tmp = self.path.with_suffix(self.path.suffix + ".tmp")
         tmp.write_text(json.dumps({"schema_version": 1, "completed": sorted(self.completed)}, indent=2) + "\n", encoding="utf-8")
         tmp.replace(self.path)
+
+
+def _validate_completed_prefix(expected_keys: tuple[str, ...], completed: set[str]) -> None:
+    expected_prefix = set(expected_keys[: len(completed)])
+    if completed != expected_prefix:
+        raise ValueError("checkpoint completed entries must form the exact ordered prefix")
+
+
+def _require_ready_station_database(database: Database) -> None:
+    state = database_schema_state(database)
+    if state.get("state") != "ready":
+        raise RuntimeError("database schema is not initialized; run explicit `rozkalns-weather init-database` first")
+    with database.connect() as connection:
+        row = connection.execute("SELECT id FROM locations WHERE id=?", (DWD_10416.id,)).fetchone()
+    if row is None:
+        raise RuntimeError("station_10416 location is missing; explicit schema initialization must establish it before backfill")
 
 
 class PublicBackfillRunner:
@@ -98,7 +123,9 @@ class PublicBackfillRunner:
         if start < ARCHIVE_START[model.provider_id]:
             raise ValueError(f"{model.provider_id} archive starts at {ARCHIVE_START[model.provider_id].isoformat()}")
         runs = iter_run_times(start, end, run_hours)
+        run_keys = tuple(utc_iso(run) for run in runs)
         checkpoint = BackfillCheckpoint.load(checkpoint_path)
+        _validate_completed_prefix(run_keys, checkpoint.completed)
         adapter = adapter or OpenMeteoSingleRunAdapter(model)
         planned = [run for run in runs if utc_iso(run) not in checkpoint.completed]
         if dry_run:
@@ -149,14 +176,15 @@ class PublicBackfillRunner:
             raise ValueError("chunk_days must be between 1 and 31")
         checkpoint = BackfillCheckpoint.load(checkpoint_path)
         adapter = adapter or DwdObservationAdapter()
-        chunks: list[tuple[date, date]] = []
+        all_chunks: list[tuple[date, date]] = []
         cursor = start
         while cursor <= end:
             chunk_end = min(end, cursor + timedelta(days=chunk_days - 1))
-            key = f"{cursor.isoformat()}..{chunk_end.isoformat()}"
-            if key not in checkpoint.completed:
-                chunks.append((cursor, chunk_end))
+            all_chunks.append((cursor, chunk_end))
             cursor = chunk_end + timedelta(days=1)
+        expected_keys = tuple(f"{a.isoformat()}..{b.isoformat()}" for a, b in all_chunks)
+        _validate_completed_prefix(expected_keys, checkpoint.completed)
+        chunks = [(a, b) for a, b in all_chunks if f"{a.isoformat()}..{b.isoformat()}" not in checkpoint.completed]
         if dry_run:
             return {
                 "state": "dry_run",
@@ -207,7 +235,7 @@ def forecast_integrity(
     present = {str(row["init_time_utc"]) for row in rows}
     revisions = {str(row["init_time_utc"]): int(row["revisions"]) for row in rows if int(row["revisions"]) > 1}
     return {
-        "ok": not (expected - present),
+        "ok": not (expected - present) and not (present - expected) and not revisions,
         "model": model.provider_id,
         "expected_runs": len(expected),
         "present_runs": len(expected & present),
@@ -248,15 +276,7 @@ def main() -> None:
 
     args = parser.parse_args()
     database = Database(args.database_url)
-    database.initialize()
-    database.ensure_location(
-        location_id=DWD_10416.id,
-        label=DWD_10416.label,
-        lat=DWD_10416.lat,
-        lon=DWD_10416.lon,
-        elevation_m=DWD_10416.elevation_m,
-        timezone=DWD_10416.timezone,
-    )
+    _require_ready_station_database(database)
     runner = PublicBackfillRunner(database)
     if args.command == "forecast":
         result = runner.forecast_runs(
