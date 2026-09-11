@@ -84,6 +84,10 @@ def retry_read_only(action: Callable[[], T], *, attempts: int, sleeper: Callable
     raise last
 
 
+def _failure_detail(domain: str, phase: str, exc: Exception) -> str:
+    return f"{domain}:{phase}:{type(exc).__name__}"
+
+
 class IngestOrchestrator:
     def __init__(self, settings: Settings, database: Database, *, timeout_seconds: float | None = None, retry_attempts: int | None = None, sleeper: Callable[[float], None] = time.sleep) -> None:
         self.settings = settings
@@ -101,10 +105,13 @@ class IngestOrchestrator:
     def _record_one_forecast(self, provider: str, action: Callable[[], ForecastRun], now: datetime, *, location_id: str) -> tuple[ForecastRun | None, int, str | None]:
         try:
             run, attempts = retry_read_only(action, attempts=self.retry_attempts, sleeper=self.sleeper)
-            self.database.insert_forecast_run(run, location_id=location_id)
-            return run, attempts, None
         except Exception as exc:
-            return None, self.retry_attempts, type(exc).__name__
+            return None, self.retry_attempts, _failure_detail("upstream_or_transport", "forecast_fetch", exc)
+        try:
+            self.database.insert_forecast_run(run, location_id=location_id)
+        except Exception as exc:
+            return None, attempts, _failure_detail("local_persistence", "forecast_write", exc)
+        return run, attempts, None
 
     def _record_forecast_locations(self, provider: str, actions: list[tuple[str, Callable[[], ForecastRun]]], now: datetime) -> ProviderOutcome:
         successes: list[tuple[str, ForecastRun, int]] = []
@@ -130,20 +137,25 @@ class IngestOrchestrator:
     def _record_observations(self, provider: str, action: Callable[[], list[Observation]], now: datetime) -> ProviderOutcome:
         try:
             observations, attempts = retry_read_only(action, attempts=self.retry_attempts, sleeper=self.sleeper)
-            self.database.insert_observations(observations)
-            self.database.set_provider_status(provider, state="ok", now=now, model_name="DWD Observations")
-            return ProviderOutcome(provider, "ok", attempts, locations=(DWD_10416.id,))
         except Exception as exc:
-            detail = type(exc).__name__
+            detail = _failure_detail("upstream_or_transport", "observation_fetch", exc)
             self.database.set_provider_status(provider, state="error", now=now, detail=detail)
             return ProviderOutcome(provider, "error", self.retry_attempts, detail=detail)
+        try:
+            self.database.insert_observations(observations)
+        except Exception as exc:
+            detail = _failure_detail("local_persistence", "observation_write", exc)
+            self.database.set_provider_status(provider, state="error", now=now, detail=detail)
+            return ProviderOutcome(provider, "error", attempts, detail=detail)
+        self.database.set_provider_status(provider, state="ok", now=now, model_name="DWD Observations")
+        return ProviderOutcome(provider, "ok", attempts, locations=(DWD_10416.id,))
 
     def _collect_open_meteo_model(self, model, now: datetime) -> ProviderOutcome:
         adapter = OpenMeteoSingleRunAdapter(model, fetcher=json_fetcher(self.timeout_seconds))
         try:
             metadata, meta_attempts = retry_read_only(lambda: adapter.latest_metadata(now=now), attempts=self.retry_attempts, sleeper=self.sleeper)
         except Exception as exc:
-            detail = f"metadata:{type(exc).__name__}"
+            detail = _failure_detail("upstream_or_transport", "metadata_fetch", exc)
             self.database.set_provider_status(model.provider_id, state="error", now=now, detail=detail)
             return ProviderOutcome(model.provider_id, "error", self.retry_attempts, detail=detail)
         actions: list[tuple[str, Callable[[], ForecastRun]]] = [(DWD_10416.id, lambda a=adapter, m=metadata: a.fetch(lat=DWD_10416.lat, lon=DWD_10416.lon, init_time=m.init_time_utc, availability_time=m.availability_time_utc, retrieved_at=now))]

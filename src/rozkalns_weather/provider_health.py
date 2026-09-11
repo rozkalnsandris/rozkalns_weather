@@ -37,6 +37,35 @@ def _rounded(value: float | None) -> float | None:
     return None if value is None else round(value, 3)
 
 
+def _failure_domain_from_detail(value: object) -> str | None:
+    if not isinstance(value, str) or not value:
+        return None
+    domains: set[str] = set()
+    for item in value.split(";"):
+        for token in item.split(":"):
+            if token in {"upstream_or_transport", "local_persistence"}:
+                domains.add(token)
+    if not domains:
+        return None
+    if len(domains) > 1:
+        return "mixed"
+    return next(iter(domains))
+
+
+def _reason_for_recent_failure(*, partial: bool, failure_domain: str) -> str:
+    if partial:
+        return {
+            "upstream_or_transport": "PARTIAL_INGEST_UPSTREAM_OR_TRANSPORT",
+            "local_persistence": "PARTIAL_INGEST_LOCAL_PERSISTENCE",
+            "mixed": "PARTIAL_INGEST_MIXED_FAILURES",
+        }.get(failure_domain, "PARTIAL_INGEST_UNCLASSIFIED")
+    return {
+        "upstream_or_transport": "RECENT_UPSTREAM_OR_TRANSPORT_ERROR",
+        "local_persistence": "RECENT_LOCAL_PERSISTENCE_ERROR",
+        "mixed": "RECENT_MIXED_INGEST_ERROR",
+    }.get(failure_domain, "RECENT_INGEST_ERROR_UNCLASSIFIED")
+
+
 def classify_public_provider_health(
     provider: str,
     saved: Mapping[str, object] | None,
@@ -63,6 +92,7 @@ def classify_public_provider_health(
     success_age = _age_hours(last_success, now=now)
     source_age = _age_hours(source_time, now=now)
     ingest_state = str(saved.get("state") or "adapter_ready_not_ingested")
+    recorded_failure_domain = _failure_domain_from_detail(saved.get("detail"))
 
     freshness_state = "fresh"
     failure_domain = "none"
@@ -78,12 +108,12 @@ def classify_public_provider_health(
         reason_code = "INGEST_ATTEMPT_STALE"
     elif ingest_state == "error":
         freshness_state = "error"
-        failure_domain = "upstream_or_transport"
-        reason_code = "RECENT_INGEST_ERROR"
+        failure_domain = recorded_failure_domain or "unknown_ingest_error"
+        reason_code = _reason_for_recent_failure(partial=False, failure_domain=failure_domain)
     elif ingest_state == "partial":
         freshness_state = "degraded"
-        failure_domain = "upstream_or_transport"
-        reason_code = "PARTIAL_INGEST"
+        failure_domain = recorded_failure_domain or "unknown_ingest_error"
+        reason_code = _reason_for_recent_failure(partial=True, failure_domain=failure_domain)
     elif last_success is None:
         freshness_state = "error"
         failure_domain = "local_ingest"
