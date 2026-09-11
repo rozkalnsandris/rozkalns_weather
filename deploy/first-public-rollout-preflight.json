@@ -1,0 +1,267 @@
+{
+  "schema_version": 1,
+  "contract": "rozkalns-weather.first-public-rollout-preflight.v1",
+  "status": "SOURCE_READY_PREFLIGHT_CURRENTLY_BLOCKED",
+  "repository": "rozkalnsandris/rozkalns_weather",
+  "runtime_class": "public-only-rpi5",
+  "host_alias": "rpi5",
+  "target_alias": "rozkalns-weather-public-rpi5",
+  "operation_id": "rozkalns-weather.public-runtime-release.v1",
+  "source_snapshot_at_build": {
+    "weather_main_sha": "7b188d56ef083f60289bf34297199a42f13e1048",
+    "weather_governance_run": 34557811416,
+    "weather_backend_tests_run": 34557810930,
+    "rpi5_main_sha": "2672451d1f3ddc6cffcc70a3627c6b758db8abe0",
+    "rpi5_validate_run": 34571359393,
+    "point_in_time_only": true,
+    "fresh_revalidation_required_before_live": true
+  },
+  "deploy_queue": {
+    "repository": "rozkalnsandris/ops-workflows",
+    "issue": 46,
+    "required_state": "OPEN_READY",
+    "observed_source_sha_at_build": "52d3fd0ff946d3d5a0e1379f6c4362bf834a1aa9",
+    "required_source_sha_at_build": "7b188d56ef083f60289bf34297199a42f13e1048",
+    "observed_target_alias_at_build": "rozkalns-weather-public-rpi5",
+    "eligibility_only": true,
+    "grants_live_authority": false,
+    "current_source_assessment": "BLOCKED",
+    "current_block_reasons": [
+      "QUEUE_WEATHER_SHA_MISMATCH",
+      "FRESH_RUNTIME_BASELINE_REQUIRED",
+      "LIVE_AUTHORIZATION_NOT_SUPPLIED"
+    ],
+    "queue_refresh_authorized_by_this_source_issue": false
+  },
+  "rpi5_contracts": {
+    "composite_operator": "ops/deploy/weather-public-runtime-operator.json",
+    "composite_operator_status": "SOURCE_READY_HOST_NOT_INSTALLED",
+    "operator_install": "ops/deploy/weather-public-runtime-operator-install.json",
+    "operator_install_status": "SOURCE_READY_INSTALL_DISABLED",
+    "operator_installer_issue": 462,
+    "operator_installer_status": "SOURCE_ONLY_INSTALLER_BRIDGE_INACTIVE",
+    "operator_installer_entrypoint": "RPi5_CHECKOUT_PARENT/RPi5_main-weather-public-runtime-install-trusted/ops/bin/rozkalns-weather-public-runtime-operator-install",
+    "operator_installer_caller_arguments": [],
+    "operator_artifact_count": 23,
+    "helper_install": "ops/deploy/weather-public-runtime-helper-install.json",
+    "helper_artifact_count": 13,
+    "composite_authority": "ops/deploy/weather-public-runtime-composite-live.json",
+    "execution": "ops/deploy/weather-public-runtime-execution.json",
+    "successor_trusted_checkout": "ops/deploy/rpi5-main-weather-public-runtime-install-trusted-checkout-bootstrap.json"
+  },
+  "bootstrap": {
+    "start_date": "2026-04-02",
+    "end_date": "2026-09-10",
+    "inclusive_days": 162,
+    "max_inclusive_days": 180,
+    "truth_station_id": "10416",
+    "truth_location_id": "station_10416",
+    "models": [
+      "icon_d2",
+      "ecmwf_ifs",
+      "ecmwf_aifs"
+    ],
+    "run_hours_utc": [
+      0,
+      6,
+      12,
+      18
+    ],
+    "source_package_change_requires_refresh": true
+  },
+  "recovery": {
+    "required": true,
+    "source_default": null,
+    "allowed_weather_values": [
+      "verified_backup_available",
+      "owner_accepts_proceeding_without_prewrite_backup"
+    ],
+    "rpi5_value_mapping": {
+      "verified_backup_available": "verified-backup-available",
+      "owner_accepts_proceeding_without_prewrite_backup": "owner-accepted-no-prewrite-backup"
+    },
+    "automatic_restore_allowed": false,
+    "automatic_cleanup_allowed": false,
+    "automatic_delete_allowed": false
+  },
+  "mutation_budgets": {
+    "release": [
+      {
+        "category": "filesystem.release-materialization",
+        "max_operations": 1
+      },
+      {
+        "category": "docker.named-volume-ensure",
+        "max_operations": 1
+      },
+      {
+        "category": "docker.compose-build",
+        "max_operations": 1
+      },
+      {
+        "category": "docker.compose-application-apply",
+        "max_operations": 1
+      },
+      {
+        "category": "systemd.public-ingest-schedule-install-or-update",
+        "max_operations": 1
+      }
+    ],
+    "supplemental": [
+      {
+        "category": "git.trusted-checkout-fetch",
+        "max_operations": 1
+      },
+      {
+        "category": "git.trusted-checkout-worktree-add",
+        "max_operations": 1
+      },
+      {
+        "category": "filesystem.weather-helper-install-transaction",
+        "max_operations": 1
+      },
+      {
+        "category": "filesystem.weather-helper-activation-publish",
+        "max_operations": 1
+      },
+      {
+        "category": "sqlite.schema-init",
+        "max_operations": 1
+      },
+      {
+        "category": "sqlite.corpus-truth-backfill",
+        "max_operations": 1
+      },
+      {
+        "category": "sqlite.corpus-forecast-backfill",
+        "max_operations": 3
+      }
+    ],
+    "read_only": [
+      {
+        "stage_id": "readiness_schema_privacy",
+        "max_operations": 1
+      },
+      {
+        "stage_id": "public_smoke_read_only",
+        "max_operations": 1
+      },
+      {
+        "stage_id": "corpus_integrity_check",
+        "max_operations": 3
+      }
+    ],
+    "exact_match_required": true,
+    "undeclared_category_allowed": false
+  },
+  "authorization_evidence": {
+    "schema": "rozkalns.weather-composite-live-auth.v1",
+    "human_owner_identity_required": true,
+    "ttl_valid_required": true,
+    "raw_body_immutable_required": true,
+    "replay_state_before_first_mutation": "AVAILABLE",
+    "authorization_consumed_by_preflight": false,
+    "required_fields": [
+      "host_alias",
+      "rpi5_main_sha",
+      "expected_bootstrap_baseline_token",
+      "start_date",
+      "end_date",
+      "recovery_decision",
+      "helper_install_artifact_count",
+      "additional_mutation_budget"
+    ]
+  },
+  "runtime_evidence": {
+    "sanitized_only": true,
+    "fresh_baseline_required": true,
+    "baseline_token_exact_match_required": true,
+    "operator_installation_proof_required": true,
+    "operator_artifact_count_required": 23,
+    "host_alias_required": "rpi5",
+    "target_alias_required": "rozkalns-weather-public-rpi5",
+    "private_paths_allowed": false,
+    "raw_logs_allowed": false,
+    "credentials_allowed": false,
+    "coordinates_allowed": false
+  },
+  "explicit_exclusions": [
+    "source merge, READY queue or source preflight as standalone LIVE authority",
+    "caller-selected command, executable path, repository URL, argv, environment, helper ID, model, run hour, station, Docker target, systemd unit or database path",
+    "ordinary manager checkout as helper installation source",
+    "generic sudo/root bridge or arbitrary filesystem copy",
+    "credentials, secrets, HOME_LAT, HOME_LON, exact home coordinates, private BigQuery or WeatherNext real data",
+    "Cloudflare, network, firewall, package, user, group or unrelated permission mutation",
+    "backup creation, restore, corpus delete, cleanup or destructive SQLite rollback",
+    "automatic retry, cleanup, rollback, restore, delete or alternate mutation path"
+  ],
+  "machine_result": {
+    "states": [
+      "PASS",
+      "BLOCKED"
+    ],
+    "pass_requires_zero_block_reasons": true,
+    "block_reasons": [
+      "WEATHER_SHA_NOT_CURRENT_MAIN",
+      "WEATHER_EXACT_SHA_CI_NOT_GREEN",
+      "RPI5_SHA_NOT_CURRENT_MAIN",
+      "RPI5_EXACT_SHA_CI_NOT_GREEN",
+      "QUEUE_NOT_READY",
+      "QUEUE_WEATHER_SHA_MISMATCH",
+      "QUEUE_TARGET_MISMATCH",
+      "HOST_ALIAS_MISMATCH",
+      "TARGET_ALIAS_MISMATCH",
+      "OPERATOR_INSTALLATION_PROOF_REQUIRED",
+      "OPERATOR_ARTIFACT_COUNT_MISMATCH",
+      "CONTRACT_IDENTITY_MISMATCH",
+      "BOOTSTRAP_BOUNDS_MISMATCH",
+      "RECOVERY_DECISION_MISSING",
+      "RECOVERY_DECISION_INVALID",
+      "AUTHORIZATION_MISSING",
+      "AUTHORIZATION_SCHEMA_MISMATCH",
+      "AUTHORIZATION_EXPIRED",
+      "AUTHORIZATION_REPLAY_NOT_AVAILABLE",
+      "AUTHORIZATION_OWNER_INVALID",
+      "AUTHORIZATION_BODY_MUTATED",
+      "AUTHORIZATION_SCOPE_MISMATCH",
+      "BASELINE_TOKEN_MISSING",
+      "BASELINE_TOKEN_MISMATCH",
+      "MUTATION_BUDGET_MISMATCH",
+      "EXCLUSION_SAFETY_MISMATCH"
+    ],
+    "live_authority_granted": false,
+    "authorization_consumed": false
+  },
+  "next_owner_live_gate": {
+    "sequence": 1,
+    "name": "INSTALL_WEATHER_PUBLIC_RUNTIME_OPERATOR",
+    "purpose": "install the reviewed 23-artifact Weather Composite operator closure only",
+    "requires_fresh_exact_rpi5_main_sha": true,
+    "host_alias": "rpi5",
+    "target_alias": "rozkalns-weather-public-rpi5",
+    "successor_checkout_contract": "ops/deploy/rpi5-main-weather-public-runtime-install-trusted-checkout-bootstrap.json",
+    "operator_install_contract": "ops/deploy/weather-public-runtime-operator-install.json",
+    "operator_installer_entrypoint": "RPi5_CHECKOUT_PARENT/RPi5_main-weather-public-runtime-install-trusted/ops/bin/rozkalns-weather-public-runtime-operator-install",
+    "operator_installer_caller_arguments": [],
+    "artifact_count": 23,
+    "verification": "fresh read-only proof of exact 23 artifacts, hashes, root ownership and reviewed modes",
+    "does_not_authorize_composite_rollout": true,
+    "created_by_this_source_issue": false,
+    "consumed_by_this_source_issue": false
+  },
+  "later_composite_live_gate": {
+    "requires_operator_installation_proof": true,
+    "requires_fresh_matching_ready_queue": true,
+    "requires_fresh_current_weather_sha_and_ci": true,
+    "requires_fresh_current_rpi5_sha_and_ci": true,
+    "requires_fresh_sanitized_baseline": true,
+    "requires_new_human_composite_strict_live_authorization": true
+  },
+  "authority": {
+    "source_auto_full_authorizes_live": false,
+    "source_merge_authorizes_live": false,
+    "source_preflight_creates_live_authorization": false,
+    "source_preflight_consumes_live_authorization": false,
+    "source_preflight_performs_runtime_mutation": false
+  }
+}

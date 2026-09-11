@@ -158,6 +158,7 @@ def validate_source_package(root: Path | None = None) -> dict[str, object]:
     descriptor = _load_json(root, "deploy/runtime-descriptor.json")
     readiness = _load_json(root, "deploy/rollout-readiness.json")
     source_binding = _load_json(root, "deploy/rpi5-source-binding.json")
+    first_live_preflight = _load_json(root, "deploy/first-public-rollout-preflight.json")
     schedule = _load_json(root, "deploy/public-ingest-schedule.json")
     compose_path = root / "deploy/docker-compose.public.yml"
     if not compose_path.is_file():
@@ -221,6 +222,70 @@ def validate_source_package(root: Path | None = None) -> dict[str, object]:
     _require(research_safety.get("weathernext3_role") == "primary_research", "WeatherNext 3 research role drifted")
     _require(research_safety.get("weathernext_real_values_fabricated") is False, "WeatherNext values must never be fabricated")
 
+    _require(first_live_preflight.get("contract") == "rozkalns-weather.first-public-rollout-preflight.v1", "first public rollout preflight contract mismatch")
+    _require(first_live_preflight.get("runtime_class") == RUNTIME_CLASS, "first public rollout preflight runtime class mismatch")
+    _require(first_live_preflight.get("target_alias") == TARGET_ALIAS, "first public rollout preflight target mismatch")
+    _require(first_live_preflight.get("operation_id") == OPERATION_ID, "first public rollout preflight operation mismatch")
+    _require(first_live_preflight.get("host_alias") == "rpi5", "first public rollout preflight host mismatch")
+    pf_queue = first_live_preflight.get("deploy_queue")
+    pf_rpi = first_live_preflight.get("rpi5_contracts")
+    pf_bootstrap = first_live_preflight.get("bootstrap")
+    pf_recovery = first_live_preflight.get("recovery")
+    pf_budgets = first_live_preflight.get("mutation_budgets")
+    pf_result = first_live_preflight.get("machine_result")
+    pf_authority = first_live_preflight.get("authority")
+    pf_next_gate = first_live_preflight.get("next_owner_live_gate")
+    for label, value in (("queue", pf_queue), ("RPi5 contracts", pf_rpi), ("bootstrap", pf_bootstrap), ("recovery", pf_recovery), ("budgets", pf_budgets), ("result", pf_result), ("authority", pf_authority), ("next LIVE gate", pf_next_gate)):
+        _require(isinstance(value, dict), f"first public rollout preflight {label} contract missing")
+    assert isinstance(pf_queue, dict) and isinstance(pf_rpi, dict) and isinstance(pf_bootstrap, dict)
+    assert isinstance(pf_recovery, dict) and isinstance(pf_budgets, dict) and isinstance(pf_result, dict)
+    assert isinstance(pf_authority, dict) and isinstance(pf_next_gate, dict)
+    _require(pf_queue.get("repository") == "rozkalnsandris/ops-workflows" and pf_queue.get("issue") == 46, "first public rollout queue identity mismatch")
+    _require(pf_queue.get("eligibility_only") is True and pf_queue.get("grants_live_authority") is False, "READY queue must remain eligibility-only")
+    _require(pf_queue.get("queue_refresh_authorized_by_this_source_issue") is False, "Weather source issue cannot authorize queue refresh")
+    _require(pf_rpi.get("operator_artifact_count") == 23, "operator install artifact count mismatch")
+    _require(pf_rpi.get("helper_artifact_count") == 13, "helper install artifact count mismatch")
+    _require(pf_rpi.get("operator_installer_status") == "SOURCE_ONLY_INSTALLER_BRIDGE_INACTIVE", "operator installer source must remain inactive")
+    parsed_pf_bootstrap = validate_bootstrap_inputs(
+        start=date.fromisoformat(str(pf_bootstrap.get("start_date"))),
+        end=date.fromisoformat(str(pf_bootstrap.get("end_date"))),
+        models=pf_bootstrap.get("models", []),
+        run_hours_utc=pf_bootstrap.get("run_hours_utc", []),
+    )
+    _require(parsed_pf_bootstrap.get("inclusive_days") == pf_bootstrap.get("inclusive_days") == 162, "first rollout bootstrap inclusive-day contract mismatch")
+    _require(pf_recovery.get("required") is True and pf_recovery.get("source_default") is None, "recovery decision must remain explicit and owner-bound")
+    _require(tuple(pf_recovery.get("allowed_weather_values", [])) == RECOVERY_DECISIONS, "recovery decision contract mismatch")
+    expected_release_budget = [
+        {"category": "filesystem.release-materialization", "max_operations": 1},
+        {"category": "docker.named-volume-ensure", "max_operations": 1},
+        {"category": "docker.compose-build", "max_operations": 1},
+        {"category": "docker.compose-application-apply", "max_operations": 1},
+        {"category": "systemd.public-ingest-schedule-install-or-update", "max_operations": 1},
+    ]
+    expected_supplemental_budget = [
+        {"category": "git.trusted-checkout-fetch", "max_operations": 1},
+        {"category": "git.trusted-checkout-worktree-add", "max_operations": 1},
+        {"category": "filesystem.weather-helper-install-transaction", "max_operations": 1},
+        {"category": "filesystem.weather-helper-activation-publish", "max_operations": 1},
+        {"category": "sqlite.schema-init", "max_operations": 1},
+        {"category": "sqlite.corpus-truth-backfill", "max_operations": 1},
+        {"category": "sqlite.corpus-forecast-backfill", "max_operations": 3},
+    ]
+    expected_read_only_budget = [
+        {"stage_id": "readiness_schema_privacy", "max_operations": 1},
+        {"stage_id": "public_smoke_read_only", "max_operations": 1},
+        {"stage_id": "corpus_integrity_check", "max_operations": 3},
+    ]
+    _require(pf_budgets.get("release") == expected_release_budget, "release mutation budget mismatch")
+    _require(pf_budgets.get("supplemental") == expected_supplemental_budget, "supplemental mutation budget mismatch")
+    _require(pf_budgets.get("read_only") == expected_read_only_budget, "read-only stage budget mismatch")
+    _require(pf_result.get("states") == ["PASS", "BLOCKED"] and pf_result.get("pass_requires_zero_block_reasons") is True, "preflight PASS/BLOCKED result contract mismatch")
+    _require(pf_result.get("live_authority_granted") is False and pf_result.get("authorization_consumed") is False, "source preflight must not grant or consume LIVE authority")
+    for field in ("source_auto_full_authorizes_live", "source_merge_authorizes_live", "source_preflight_creates_live_authorization", "source_preflight_consumes_live_authorization", "source_preflight_performs_runtime_mutation"):
+        _require(pf_authority.get(field) is False, f"first public rollout authority flag must remain false: {field}")
+    _require(pf_next_gate.get("name") == "INSTALL_WEATHER_PUBLIC_RUNTIME_OPERATOR", "next owner LIVE gate identity mismatch")
+    _require(pf_next_gate.get("artifact_count") == 23 and pf_next_gate.get("created_by_this_source_issue") is False and pf_next_gate.get("consumed_by_this_source_issue") is False, "next owner LIVE gate must remain uncreated and unconsumed")
+
     _require(schedule.get("runtime_class") == RUNTIME_CLASS, "schedule runtime class mismatch")
     systemd = schedule.get("systemd_timer")
     _require(isinstance(systemd, dict), "systemd timer handoff contract missing")
@@ -257,6 +322,7 @@ def validate_source_package(root: Path | None = None) -> dict[str, object]:
             "deploy/runtime-descriptor.json",
             "deploy/rollout-readiness.json",
             "deploy/rpi5-source-binding.json",
+            "deploy/first-public-rollout-preflight.json",
             "deploy/public-ingest-schedule.json",
             "deploy/docker-compose.public.yml",
         ],

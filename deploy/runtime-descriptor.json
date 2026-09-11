@@ -17,7 +17,12 @@
     "post_rollout_evidence_validator": "rozkalns-weather rollout-evidence-validate",
     "source_preflight_is_read_only": true,
     "source_preflight_performs_network_calls": false,
-    "source_preflight_grants_live_authority": false
+    "source_preflight_grants_live_authority": false,
+    "first_public_rollout_preflight_descriptor": "deploy/first-public-rollout-preflight.json",
+    "jit_live_preflight_command": "rozkalns-weather rollout-live-preflight-validate",
+    "jit_live_preflight_is_read_only": true,
+    "jit_live_preflight_creates_or_consumes_authorization": false,
+    "current_source_assessment": "BLOCKED_QUEUE_WEATHER_SHA_MISMATCH"
   },
   "packaging": {
     "kind": "docker-compose",

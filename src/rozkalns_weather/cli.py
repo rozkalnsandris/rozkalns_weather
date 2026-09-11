@@ -13,6 +13,7 @@ from .orchestrator import IngestAlreadyRunning, IngestOrchestrator
 from .providers.weathernext import WeatherNextBigQueryAdapter
 from .reporting import monthly_weather_next_report
 from .rollout import RECOVERY_DECISIONS, build_rollout_plan, validate_post_rollout_evidence
+from .rollout_live_preflight import evaluate_first_public_rollout_preflight
 from .runtime import database_schema_state, readiness_payload
 from .smoke import smoke_public
 
@@ -102,6 +103,10 @@ def main() -> None:
         "rollout-evidence-validate",
         help="read a privacy-safe post-rollout evidence JSON object from stdin and validate public-only pass/fail postconditions",
     )
+    sub.add_parser(
+        "rollout-live-preflight-validate",
+        help="read sanitized JIT evidence from stdin and emit PASS/BLOCKED for the later first public rollout without creating or consuming LIVE authority",
+    )
     diagnose = sub.add_parser("diagnose-weathernext", help="BigQuery access/schema diagnostic without logging credentials or coordinates")
     diagnose.add_argument("--no-point-query", action="store_true", help="schema-only diagnostic")
     report = sub.add_parser("report-monthly", help="generate WeatherNext station-skill monthly report")
@@ -137,6 +142,20 @@ def main() -> None:
             _invalid_rollout(exc)
             raise SystemExit(2)
         _print(payload)
+        return
+
+    if args.command == "rollout-live-preflight-validate":
+        try:
+            evidence = json.load(sys.stdin)
+            if not isinstance(evidence, dict):
+                raise ValueError("rollout live preflight evidence must be a JSON object")
+            payload = evaluate_first_public_rollout_preflight(evidence)
+        except (ValueError, json.JSONDecodeError) as exc:
+            _invalid_rollout(exc)
+            raise SystemExit(2)
+        _print(payload)
+        if payload["state"] == "BLOCKED":
+            raise SystemExit(3)
         return
 
     settings = Settings.from_env()

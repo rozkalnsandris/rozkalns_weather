@@ -187,7 +187,12 @@
     "operator_source_ready": true,
     "operator_host_installed": false,
     "source_merge_proves_deployment": false,
-    "source_merge_authorizes_live": false
+    "source_merge_authorizes_live": false,
+    "operator_installer_source": "RPi5_main issue #462",
+    "operator_installer_bridge_status": "SOURCE_ONLY_INSTALLER_BRIDGE_INACTIVE",
+    "operator_install_artifact_count": 23,
+    "helper_install_artifact_count": 13,
+    "first_public_rollout_preflight_descriptor": "deploy/first-public-rollout-preflight.json"
   },
   "live_gate_required_fields": [
     "exact_host_and_target",
@@ -200,8 +205,14 @@
     "recovery_decision",
     "exact_mutation_classes_and_budgets",
     "verification_postconditions",
-    "rollback_semantics"
+    "rollback_semantics",
+    "fresh_ready_queue_exact_weather_sha",
+    "operator_installation_proof",
+    "human_live_authorization_owner_ttl_body_replay",
+    "baseline_token_exact_match",
+    "release_supplemental_and_read_only_budgets"
   ],
   "source_full_grants_live_authority": false,
-  "source_full_grants_production_data_authority": false
+  "source_full_grants_production_data_authority": false,
+  "first_public_rollout_preflight_descriptor": "deploy/first-public-rollout-preflight.json"
 }
