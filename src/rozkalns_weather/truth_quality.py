@@ -113,37 +113,29 @@ def assess_dwd_truth(
             suspect.add(timestamp_reason)
         elif timestamp_reason:
             blocking.add(timestamp_reason)
-        if timestamp is None:
-            continue
-        timestamps.append(timestamp)
+        if timestamp is not None:
+            timestamps.append(timestamp)
 
         variable = str(item.get("variable") or "")
         variables.add(variable)
         definition = VARIABLES.get(variable)
         if definition is None or variable == "precipitation_probability_1h":
             blocking.add("VARIABLE_UNSUPPORTED_FOR_TRUTH")
-        else:
-            if str(item.get("unit") or "") != str(definition["unit"]):
-                blocking.add("UNIT_MISMATCH")
+        elif str(item.get("unit") or "") != str(definition["unit"]):
+            blocking.add("UNIT_MISMATCH")
 
+        value: float | None
         try:
             value = float(item.get("value"))
         except (TypeError, ValueError):
             blocking.add("VALUE_INVALID")
-            continue
-        if not isfinite(value):
-            blocking.add("VALUE_NONFINITE")
-        bounds = _VALUE_BOUNDS.get(variable)
-        if bounds is not None and not bounds[0] <= value <= bounds[1]:
-            blocking.add("VALUE_OUT_OF_BOUNDS")
-
-        previous = previous_by_variable.get(variable)
-        if previous is not None and timestamp < previous:
-            suspect.add("TIMESTAMP_OUT_OF_ORDER")
-        previous_by_variable[variable] = timestamp
-
-        if variable == "temperature_2m":
-            temperature_times.add(timestamp)
+            value = None
+        if value is not None:
+            if not isfinite(value):
+                blocking.add("VALUE_NONFINITE")
+            bounds = _VALUE_BOUNDS.get(variable)
+            if bounds is not None and not bounds[0] <= value <= bounds[1]:
+                blocking.add("VALUE_OUT_OF_BOUNDS")
 
         quality = item.get("quality_status")
         normalized_quality = None if quality is None else str(quality).strip().lower()
@@ -153,17 +145,6 @@ def assess_dwd_truth(
             blocking.add("QUALITY_STATUS_REJECTED")
         elif normalized_quality not in _ACCEPTED_QUALITY:
             suspect.add("QUALITY_STATUS_UNKNOWN")
-
-        key = (expected_station_id, utc_iso(timestamp), variable)
-        identity = (value, str(item.get("unit") or ""), normalized_quality)
-        existing = identity_rows.get(key)
-        if existing is not None:
-            if existing == identity:
-                suspect.add("DUPLICATE_OBSERVATION")
-            else:
-                blocking.add("CONFLICTING_DUPLICATE")
-        else:
-            identity_rows[key] = identity
 
         metadata = item.get("source_metadata")
         if isinstance(metadata, dict):
@@ -184,6 +165,31 @@ def assess_dwd_truth(
             dwd_station_id = metadata.get("dwd_station_id")
             if dwd_station_id:
                 dwd_station_ids.add(str(dwd_station_id))
+
+        if timestamp is None:
+            continue
+
+        previous = previous_by_variable.get(variable)
+        if previous is not None and timestamp < previous:
+            suspect.add("TIMESTAMP_OUT_OF_ORDER")
+        previous_by_variable[variable] = timestamp
+
+        if variable == "temperature_2m":
+            temperature_times.add(timestamp)
+
+        if value is None:
+            continue
+
+        key = (expected_station_id, utc_iso(timestamp), variable)
+        identity = (value, str(item.get("unit") or ""), normalized_quality)
+        existing = identity_rows.get(key)
+        if existing is not None:
+            if existing == identity:
+                suspect.add("DUPLICATE_OBSERVATION")
+            else:
+                blocking.add("CONFLICTING_DUPLICATE")
+        else:
+            identity_rows[key] = identity
 
     if len(quality_statuses) > 1:
         suspect.add("QUALITY_STATUS_DRIFT")
