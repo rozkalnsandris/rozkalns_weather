@@ -61,7 +61,8 @@
       "implicit_stage_advance_forbidden": true,
       "public_smoke_may_be_explicitly_recorded_as_skipped": true,
       "resume_requires_same_bootstrap_fingerprint": true
-    }
+    },
+    "production_corpus_bootstrap_descriptor": "deploy/production-public-corpus-bootstrap.json"
   },
   "recovery_contract": {
     "required_before_first_production_corpus_write": true,

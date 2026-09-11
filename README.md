@@ -86,7 +86,9 @@ python -m rozkalns_weather.backfill --database-url sqlite:///<path> truth ... --
 python -m rozkalns_weather.backfill --database-url sqlite:///<path> integrity ...
 ```
 
-Production corpus write joprojām ir atsevišķs LIVE/data gate; source availability nav write autorizācija.
+Production backfill CLI tagad fail-closed prasa jau explicit inicializētu/current schema un pats vairs neizsauc `Database.initialize()` vai implicit migration. Issue #31 source contract ir `deploy/production-public-corpus-bootstrap.json` + `docs/PRODUCTION_PUBLIC_CORPUS_BOOTSTRAP.md`: first window `2026-04-02..2026-09-10`, WMO `10416`, exact `icon_d2/ecmwf_ifs/ecmwf_aifs`, `00/06/12/18 UTC`, 14-day truth chunks, ordered-prefix checkpoints un zero revision drift. `production-bootstrap-plan` un `production-bootstrap-resume-validate` ir network/DB-free source validators.
+
+Production corpus write joprojām ir atsevišķs LIVE/data gate; source availability vai PASS validator output nav write autorizācija. Delete/restore/implicit migration nav deklarēti recovery ceļi.
 
 Mandatory CI ir fixture-driven un network-independent. `smoke-public` ir operatora izvēles read-only live contract check.
 
@@ -109,6 +111,7 @@ Pirmais RPi5 rollout kandidāts ir intentionally public-only un neprasa WeatherN
 - `deploy/runtime-descriptor.json` — machine-readable trusted deploy handoff;
 - `deploy/rollout-readiness.json` — canonical bounded rollout/state/recovery/evidence/failure contract;
 - `deploy/first-public-rollout-preflight.json` — deterministic JIT PASS/BLOCKED contract for exact source/CI/queue/host/operator/baseline/auth/budget evidence;
+- `deploy/production-public-corpus-bootstrap.json` — deterministic first production schema/truth/forecast bootstrap + checkpoint/recovery/integrity source contract;
 - `deploy/public-ingest-schedule.json` — explicit systemd timer identity, 30-minute cadence, `Persistent=true`, bounded jitter, overlap semantics un enable-last ordering;
 - `docs/RPI5_PUBLIC_RUNTIME_HANDOFF.md` — trust-boundary, corpus retention un reviewed `RPi5_main` adapter/bootstrap handoff contract.
 

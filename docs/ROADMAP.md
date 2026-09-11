@@ -69,6 +69,7 @@ forecast snapshot -> observation -> verification -> WeatherNext comparison
 - [x] `RPi5_main` source-only zero-input 23-artifact Weather operator installer bridge completed via Issue #462; source status remains install-disabled and requires a separate exact LIVE gate.
 - [x] Weather-side rollout source binding reconciled via Issue #29 without claiming host readiness or deployment.
 - [x] Issue #30 deterministic first-rollout JIT preflight package: exact SHA/CI/queue/host/operator/baseline/auth/budget PASS/BLOCKED validation, with stale queue binding exposed as a blocker and no LIVE authorization creation/consumption.
+- [x] Issue #31 production public corpus bootstrap source contract: explicit schema-init separation, WMO 10416 14-day truth chunks, exact ICON-D2/IFS/AIFS 00/06/12/18 scope, <=180-day bounds, ordered-prefix checkpoint/resume, revision-drift fail-closed and no delete/restore/implicit migration.
 - [x] deterministic rollout-readiness package: source-only preflight, <=180-day WMO 10416 + ICON-D2/IFS/AIFS bootstrap envelope, ordered checkpoint/resume, recovery decision, explicit systemd timer semantics, post-rollout evidence validator and fail-closed stage matrix.
 - [ ] first public-only RPi5 rollout under a separately authorized exact STRICT LIVE gate using freshly bound host/source/CI/helper/bounds/recovery/mutation-budget fields.
 - [ ] production public corpus schema/bootstrap/backfill under explicit LIVE/data authority.

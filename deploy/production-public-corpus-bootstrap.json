@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "contract": "rozkalns-weather.production-public-corpus-bootstrap.v1",
+  "status": "SOURCE_READY_DATA_WRITE_NOT_AUTHORIZED",
+  "repository": "rozkalnsandris/rozkalns_weather",
+  "target_alias": "rozkalns-weather-public-rpi5",
+  "location": {"location_id": "station_10416", "truth_station_id": "10416"},
+  "first_window": {"start_date": "2026-04-02", "end_date": "2026-09-10", "inclusive_days": 162, "max_inclusive_days": 180},
+  "forecast_scope": {"models": ["icon_d2", "ecmwf_ifs", "ecmwf_aifs"], "run_hours_utc": [0, 6, 12, 18]},
+  "truth_scope": {"chunk_days": 14, "transport": "Bright Sky", "source_authority": "DWD", "nearest_station_fallback_allowed": false},
+  "schema_init": {"explicit_command_only": "rozkalns-weather init-database", "implicit_init_or_migration_from_backfill": false, "require_existing_ready_schema_before_backfill": true},
+  "checkpoint": {"schema_version": 1, "atomic_replace": true, "duplicate_entries_allowed": false, "ordered_prefix_required": true, "skip_ahead_allowed": false, "resume_requires_same_bootstrap_fingerprint": true, "database_ahead_requires_explicit_resume": true},
+  "integrity": {"missing_runs_allowed": false, "unexpected_runs_allowed": false, "revision_drift_allowed": false, "immutable_snapshots_required": true, "idempotent_same_payload_dedupe_required": true},
+  "recovery": {"required": true, "allowed_decisions": ["verified_backup_available", "owner_accepts_proceeding_without_prewrite_backup"], "automatic_restore_allowed": false, "automatic_delete_allowed": false, "automatic_cleanup_allowed": false},
+  "destructive_behavior": {"delete_allowed": false, "restore_allowed": false, "implicit_migration_allowed": false, "automatic_repair_allowed": false},
+  "authority": {"source_auto_full_authorizes_production_write": false, "source_merge_authorizes_production_write": false, "production_sqlite_or_corpus_write_requires_separate_exact_live_data_authority": true, "host_runtime_mutation_authorized": false, "weathernext_real_data_authorized": false}
+}

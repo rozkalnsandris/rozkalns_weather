@@ -159,6 +159,7 @@ def validate_source_package(root: Path | None = None) -> dict[str, object]:
     readiness = _load_json(root, "deploy/rollout-readiness.json")
     source_binding = _load_json(root, "deploy/rpi5-source-binding.json")
     first_live_preflight = _load_json(root, "deploy/first-public-rollout-preflight.json")
+    production_bootstrap = _load_json(root, "deploy/production-public-corpus-bootstrap.json")
     schedule = _load_json(root, "deploy/public-ingest-schedule.json")
     compose_path = root / "deploy/docker-compose.public.yml"
     if not compose_path.is_file():
@@ -168,6 +169,10 @@ def validate_source_package(root: Path | None = None) -> dict[str, object]:
     _require(descriptor.get("runtime_class") == RUNTIME_CLASS, "runtime descriptor class mismatch")
     _require(descriptor.get("target_alias") == TARGET_ALIAS, "runtime descriptor target mismatch")
     _require(descriptor.get("operation_id_candidate") == OPERATION_ID, "runtime descriptor operation mismatch")
+    rollout_refs = descriptor.get("rollout_readiness")
+    _require(isinstance(rollout_refs, dict), "runtime rollout references missing")
+    assert isinstance(rollout_refs, dict)
+    _require(rollout_refs.get("production_public_corpus_bootstrap_descriptor") == "deploy/production-public-corpus-bootstrap.json", "runtime production bootstrap descriptor reference mismatch")
     runtime_contract = descriptor.get("runtime_contract")
     _require(isinstance(runtime_contract, dict), "runtime descriptor contract missing")
     assert isinstance(runtime_contract, dict)
@@ -192,6 +197,7 @@ def validate_source_package(root: Path | None = None) -> dict[str, object]:
     _require(tuple(bootstrap.get("run_hours_utc", [])) == BOOTSTRAP_RUN_HOURS_UTC, "bootstrap run-hour contract mismatch")
     _require(bootstrap.get("max_inclusive_days") == MAX_BOOTSTRAP_INCLUSIVE_DAYS, "bootstrap window contract mismatch")
     _require(tuple(bootstrap.get("stage_order", [])) == BOOTSTRAP_STAGE_ORDER, "bootstrap stage order mismatch")
+    _require(bootstrap.get("production_corpus_bootstrap_descriptor") == "deploy/production-public-corpus-bootstrap.json", "rollout production bootstrap descriptor reference mismatch")
 
     _require(source_binding.get("contract") == "rozkalns-weather.rpi5-source-binding.v1", "RPi5 source binding contract mismatch")
     _require(source_binding.get("status") == "SOURCE_RECONCILED_RUNTIME_UNPROVEN", "RPi5 source binding must remain runtime-unproven")
@@ -286,6 +292,32 @@ def validate_source_package(root: Path | None = None) -> dict[str, object]:
     _require(pf_next_gate.get("name") == "INSTALL_WEATHER_PUBLIC_RUNTIME_OPERATOR", "next owner LIVE gate identity mismatch")
     _require(pf_next_gate.get("artifact_count") == 23 and pf_next_gate.get("created_by_this_source_issue") is False and pf_next_gate.get("consumed_by_this_source_issue") is False, "next owner LIVE gate must remain uncreated and unconsumed")
 
+    _require(production_bootstrap.get("contract") == "rozkalns-weather.production-public-corpus-bootstrap.v1", "production bootstrap contract mismatch")
+    _require(production_bootstrap.get("status") == "SOURCE_READY_DATA_WRITE_NOT_AUTHORIZED", "production bootstrap status mismatch")
+    pb_window = production_bootstrap.get("first_window")
+    pb_forecast = production_bootstrap.get("forecast_scope")
+    pb_truth = production_bootstrap.get("truth_scope")
+    pb_schema = production_bootstrap.get("schema_init")
+    pb_recovery = production_bootstrap.get("recovery")
+    pb_destructive = production_bootstrap.get("destructive_behavior")
+    pb_authority = production_bootstrap.get("authority")
+    for label, value in (("window", pb_window), ("forecast", pb_forecast), ("truth", pb_truth), ("schema", pb_schema), ("recovery", pb_recovery), ("destructive", pb_destructive), ("authority", pb_authority)):
+        _require(isinstance(value, dict), f"production bootstrap {label} contract missing")
+    assert isinstance(pb_window, dict) and isinstance(pb_forecast, dict) and isinstance(pb_truth, dict)
+    assert isinstance(pb_schema, dict) and isinstance(pb_recovery, dict) and isinstance(pb_destructive, dict) and isinstance(pb_authority, dict)
+    _require(pb_window.get("start_date") == "2026-04-02" and pb_window.get("end_date") == "2026-09-10", "production bootstrap first window mismatch")
+    _require(pb_window.get("inclusive_days") == 162 and pb_window.get("max_inclusive_days") == MAX_BOOTSTRAP_INCLUSIVE_DAYS, "production bootstrap window bounds mismatch")
+    _require(tuple(pb_forecast.get("models", [])) == BOOTSTRAP_MODELS and tuple(pb_forecast.get("run_hours_utc", [])) == BOOTSTRAP_RUN_HOURS_UTC, "production bootstrap forecast scope mismatch")
+    _require(pb_truth.get("chunk_days") == 14 and pb_truth.get("source_authority") == "DWD" and pb_truth.get("nearest_station_fallback_allowed") is False, "production bootstrap truth scope mismatch")
+    _require(pb_schema.get("implicit_init_or_migration_from_backfill") is False and pb_schema.get("require_existing_ready_schema_before_backfill") is True, "production bootstrap schema separation mismatch")
+    _require(tuple(pb_recovery.get("allowed_decisions", [])) == RECOVERY_DECISIONS, "production bootstrap recovery choices mismatch")
+    for field in ("automatic_restore_allowed", "automatic_delete_allowed", "automatic_cleanup_allowed"):
+        _require(pb_recovery.get(field) is False, f"production bootstrap recovery flag must remain false: {field}")
+    for field in ("delete_allowed", "restore_allowed", "implicit_migration_allowed", "automatic_repair_allowed"):
+        _require(pb_destructive.get(field) is False, f"production bootstrap destructive flag must remain false: {field}")
+    _require(pb_authority.get("source_auto_full_authorizes_production_write") is False and pb_authority.get("source_merge_authorizes_production_write") is False, "source must not authorize production corpus writes")
+    _require(pb_authority.get("production_sqlite_or_corpus_write_requires_separate_exact_live_data_authority") is True, "separate production data authority must remain required")
+
     _require(schedule.get("runtime_class") == RUNTIME_CLASS, "schedule runtime class mismatch")
     systemd = schedule.get("systemd_timer")
     _require(isinstance(systemd, dict), "systemd timer handoff contract missing")
@@ -323,6 +355,7 @@ def validate_source_package(root: Path | None = None) -> dict[str, object]:
             "deploy/rollout-readiness.json",
             "deploy/rpi5-source-binding.json",
             "deploy/first-public-rollout-preflight.json",
+            "deploy/production-public-corpus-bootstrap.json",
             "deploy/public-ingest-schedule.json",
             "deploy/docker-compose.public.yml",
         ],
