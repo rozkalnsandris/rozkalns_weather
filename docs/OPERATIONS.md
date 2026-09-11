@@ -286,7 +286,7 @@ Current source-side integration identity:
 - authorization class `STRICT`;
 - no arbitrary command/path/argv/environment authority from GitHub prose.
 
-`RPi5_main` Issue #408 / PR #409 registered the static execution-disabled weather operation/adapter; Issue #410 / PR #415 added deterministic bootstrap composition. Those merged source interfaces do not prove current runtime enablement and do not grant LIVE authority. Current `RPi5_main` and host state must be freshly read before a real rollout.
+`RPi5_main` Issue #408 / PR #409 registered the static operation, #410 / PR #415 added deterministic bootstrap composition, #432 / PR #433 added preactivation, #435 / PR #436 added host-wiring/helper source, #455 added the successor privileged install/activation bridge, and #454 / PR #460 added the source-ready Composite operator. The canonical current checkout contract uses `RPi5_main-weather-public-runtime-install-trusted`; the earlier checkout is historical evidence only. These source interfaces do not prove host installation, runtime enablement or deployment and do not grant LIVE authority. `deploy/rpi5-source-binding.json` is a timestamped source reconciliation only; current `RPi5_main`, queue eligibility, exact-SHA CI and host state must still be freshly read before a real rollout.
 
 ## Exact LIVE gate template
 

@@ -57,11 +57,26 @@
     "ordinary_live_all_eligible": false,
     "baseline_resolver_candidate": "rozkalns-weather.public-runtime-baseline.v1",
     "mutation_budget_candidates": [
-      {"category": "filesystem.release-materialization", "max_operations": 1},
-      {"category": "docker.named-volume-ensure", "max_operations": 1},
-      {"category": "docker.compose-build", "max_operations": 1},
-      {"category": "docker.compose-application-apply", "max_operations": 1},
-      {"category": "systemd.public-ingest-schedule-install-or-update", "max_operations": 1}
+      {
+        "category": "filesystem.release-materialization",
+        "max_operations": 1
+      },
+      {
+        "category": "docker.named-volume-ensure",
+        "max_operations": 1
+      },
+      {
+        "category": "docker.compose-build",
+        "max_operations": 1
+      },
+      {
+        "category": "docker.compose-application-apply",
+        "max_operations": 1
+      },
+      {
+        "category": "systemd.public-ingest-schedule-install-or-update",
+        "max_operations": 1
+      }
     ],
     "explicitly_separate_data_mutations": [
       "sqlite.schema-init",
@@ -84,6 +99,7 @@
       "WeatherNext remains access_pending/not-required until separately activated",
       "public ingest scheduling is independent of WeatherNext scheduling",
       "corpus integrity passes before recurring schedule activation"
-    ]
+    ],
+    "source_binding_descriptor": "deploy/rpi5-source-binding.json"
   }
 }

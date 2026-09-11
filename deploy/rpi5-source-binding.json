@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "contract": "rozkalns-weather.rpi5-source-binding.v1",
+  "status": "SOURCE_RECONCILED_RUNTIME_UNPROVEN",
+  "repository": "rozkalnsandris/rozkalns_weather",
+  "target_alias": "rozkalns-weather-public-rpi5",
+  "operation_id": "rozkalns-weather.public-runtime-release.v1",
+  "reconciled_on": "2026-09-10",
+  "weather_source": {
+    "candidate_sha_at_reconciliation": "52d3fd0ff946d3d5a0e1379f6c4362bf834a1aa9",
+    "exact_sha_governance_run": 34374733571,
+    "exact_sha_backend_tests_run": 34374732821,
+    "queue_binding_sha": "52d3fd0ff946d3d5a0e1379f6c4362bf834a1aa9",
+    "candidate_is_runtime_deployment_proof": false
+  },
+  "deploy_queue": {
+    "repository": "rozkalnsandris/ops-workflows",
+    "issue": 46,
+    "observed_state_at_reconciliation": "OPEN_READY",
+    "eligibility_only": true,
+    "grants_live_authority": false,
+    "embedded_rpi5_snapshot_is_current_authority": false,
+    "fresh_rpi5_revalidation_required_before_live": true
+  },
+  "rpi5_main_source": {
+    "main_sha_at_reconciliation": "6711ef153ae6b8636ea0c77fd4224ea2dd3d8d3a",
+    "exact_main_validate_run": 34514438900,
+    "issue_454": "DONE_VIA_PR460",
+    "issue_455": "DONE_SUCCESSOR_PRIVILEGED_INSTALL_BRIDGE",
+    "must_refresh_before_live": true,
+    "source_state_proves_host_installation": false,
+    "source_state_proves_deployment": false
+  },
+  "canonical_current_contracts": {
+    "successor_trusted_checkout": "ops/deploy/rpi5-main-weather-public-runtime-install-trusted-checkout-bootstrap.json",
+    "composite_operator": "ops/deploy/weather-public-runtime-operator.json",
+    "operator_install": "ops/deploy/weather-public-runtime-operator-install.json",
+    "helper_install": "ops/deploy/weather-public-runtime-helper-install.json",
+    "privileged_install_activation": "ops/deploy/weather-public-runtime-privileged-install-activation.json",
+    "execution": "ops/deploy/weather-public-runtime-execution.json",
+    "composite_authority": "ops/deploy/weather-public-runtime-composite-live.json"
+  },
+  "legacy_checkout": {
+    "contract": "ops/deploy/rpi5-main-weather-public-runtime-trusted-checkout-bootstrap.json",
+    "identity": "RPi5_CHECKOUT_PARENT/RPi5_main-weather-public-runtime-trusted",
+    "historical_evidence_only": true,
+    "authority_source": false,
+    "mutation_allowed": false,
+    "cleanup_allowed": false
+  },
+  "source_safety": {
+    "source_merge_authorizes_live": false,
+    "source_merge_proves_host_ready": false,
+    "source_merge_proves_deployment": false,
+    "operator_host_installed": false,
+    "helper_installation_enabled": false,
+    "operator_installation_enabled": false,
+    "privileged_install_invocation_enabled": false,
+    "production_mutation_enabled": false,
+    "production_mutation_started": false,
+    "fresh_human_composite_strict_live_authorization_required": true,
+    "fresh_sanitized_runtime_baseline_required": true
+  },
+  "research_and_safety": {
+    "dwd_severe_weather_warning_authority": "DWD",
+    "weathernext3_role": "primary_research",
+    "weathernext3_required_for_public_runtime": false,
+    "weathernext_real_values_fabricated": false
+  }
+}

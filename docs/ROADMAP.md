@@ -63,7 +63,10 @@ forecast snapshot -> observation -> verification -> WeatherNext comparison
 - [x] `RPi5_main` static source adapter/operation registration reviewed and merged via Issue #408 / PR #409.
 - [x] `RPi5_main` deterministic first-bootstrap source composition merged via Issue #410 / PR #415.
 - [x] `RPi5_main` source-only Weather LIVE-AUTH/READY pre-activation composition merged via Issue #432 / PR #433.
-- [x] `RPi5_main` trusted Weather host-wiring/helper source bridge merged via Issue #435 / PR #436; execution and production mutation remain disabled until a separate exact STRICT LIVE gate.
+- [x] `RPi5_main` trusted Weather host-wiring/helper source bridge merged via Issue #435 / PR #436; at that milestone host/runtime activation and production mutation remained disabled pending later reviewed operator/install source and a separate exact STRICT LIVE gate.
+- [x] `RPi5_main` successor privileged helper install/activation bridge completed via Issue #455; the legacy trusted checkout is evidence-only and the successor install-trusted checkout is canonical.
+- [x] `RPi5_main` source-ready Weather Composite operator merged via Issue #454 / PR #460; operator host installation, LIVE authority and production mutation remain separate gates.
+- [x] Weather-side rollout source binding reconciled via Issue #29 without claiming host readiness or deployment.
 - [x] deterministic rollout-readiness package: source-only preflight, <=180-day WMO 10416 + ICON-D2/IFS/AIFS bootstrap envelope, ordered checkpoint/resume, recovery decision, explicit systemd timer semantics, post-rollout evidence validator and fail-closed stage matrix.
 - [ ] first public-only RPi5 rollout under a separately authorized exact STRICT LIVE gate using freshly bound host/source/CI/helper/bounds/recovery/mutation-budget fields.
 - [ ] production public corpus schema/bootstrap/backfill under explicit LIVE/data authority.
