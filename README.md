@@ -52,6 +52,7 @@ rozkalns-weather ingest-weathernext
 rozkalns-weather smoke-public
 rozkalns-weather corpus-stats
 rozkalns-weather corpus-check
+rozkalns-weather corpus-report --start YYYY-MM-DD --end YYYY-MM-DD
 rozkalns-weather rollout-preflight --source-sha <MERGED_SHA> --start YYYY-MM-DD --end YYYY-MM-DD --models icon_d2,ecmwf_ifs,ecmwf_aifs --run-hours 0,6,12,18 --recovery-decision <DECISION>
 rozkalns-weather rollout-evidence-validate < sanitized-evidence.json
 rozkalns-weather diagnose-weathernext
@@ -89,6 +90,8 @@ python -m rozkalns_weather.backfill --database-url sqlite:///<path> integrity ..
 Production backfill CLI tagad fail-closed prasa jau explicit inicializētu/current schema un pats vairs neizsauc `Database.initialize()` vai implicit migration. Issue #31 source contract ir `deploy/production-public-corpus-bootstrap.json` + `docs/PRODUCTION_PUBLIC_CORPUS_BOOTSTRAP.md`: first window `2026-04-02..2026-09-10`, WMO `10416`, exact `icon_d2/ecmwf_ifs/ecmwf_aifs`, `00/06/12/18 UTC`, 14-day truth chunks, ordered-prefix checkpoints un zero revision drift. `production-bootstrap-plan` un `production-bootstrap-resume-validate` ir network/DB-free source validators.
 
 Production corpus write joprojām ir atsevišķs LIVE/data gate; source availability vai PASS validator output nav write autorizācija. Delete/restore/implicit migration nav deklarēti recovery ceļi.
+
+`corpus-report` atver jau esošu SQLite corpus read-only/query-only režīmā un emitē machine-readable `PASS` / `WARN` / `BLOCKED`. Tas salīdzina expected/present runus pa provider/run-hour, expected/present lead buckets pēc katra modeļa horizon, valid-time robežas, immutable revision/duplicate/provenance anomālijas un DWD WMO `10416` truth coverage. Vecākais IFS-only periods pirms `2026-04-02` tiek uzrādīts atsevišķi un neietekmē common-window readiness. Report pats neveic schema init, backfill, repair vai corpus write.
 
 Mandatory CI ir fixture-driven un network-independent. `smoke-public` ir operatora izvēles read-only live contract check.
 

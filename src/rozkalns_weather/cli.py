@@ -7,6 +7,7 @@ from pathlib import Path
 import sys
 
 from .config import Settings
+from .corpus_reporting import public_corpus_report
 from .db import Database
 from .locations import DWD_10416
 from .orchestrator import IngestAlreadyRunning, IngestOrchestrator
@@ -84,6 +85,9 @@ def main() -> None:
     sub.add_parser("smoke-public", help="optional real-network provider contract smoke checks")
     sub.add_parser("corpus-stats", help="print privacy-safe corpus coverage statistics")
     sub.add_parser("corpus-check", help="run corpus integrity checks")
+    corpus_report = sub.add_parser("corpus-report", help="read-only deterministic public corpus completeness/integrity report")
+    corpus_report.add_argument("--start", required=True, help="report start date YYYY-MM-DD")
+    corpus_report.add_argument("--end", required=True, help="report end date YYYY-MM-DD")
     preflight = sub.add_parser(
         "rollout-preflight",
         help="validate the fixed public-only source package and emit a sanitized later-LIVE rollout envelope without network/runtime mutation",
@@ -199,6 +203,14 @@ def main() -> None:
         return
 
     settings = Settings.from_env()
+
+    if args.command == "corpus-report":
+        database = Database(settings.database_url)
+        payload = public_corpus_report(database, start=date.fromisoformat(args.start), end=date.fromisoformat(args.end))
+        _print(payload)
+        if payload["state"] == "BLOCKED":
+            raise SystemExit(3)
+        return
 
     if args.command == "init-database":
         database = _database(settings, initialize=True)
