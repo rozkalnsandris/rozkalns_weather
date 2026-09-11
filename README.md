@@ -101,6 +101,9 @@ Mandatory CI ir fixture-driven un network-independent. `smoke-public` ir operato
 
 Runtime health/readiness:
 
+`/api/health/providers` uses `provider-freshness-v1`: the five recurring public providers expose separate ingest state, freshness state, failure domain, stable reason code and last attempt/success/init/retrieval/valid-or-observed provenance. A stale local attempt is classified separately from a recent upstream/transport error, and one provider failure never hides healthy provider states.
+
+
 - `/health` — process/app liveness + local DB state summary;
 - `/ready` and `/api/readiness` — machine-readable schema/storage/provider/privacy readiness contract.
 

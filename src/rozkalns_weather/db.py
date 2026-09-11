@@ -270,6 +270,36 @@ class Database:
             rows = connection.execute("SELECT * FROM provider_ingest_status ORDER BY provider").fetchall()
         return {str(row["provider"]): dict(row) for row in rows}
 
+    def provider_freshness_evidence(self, *, location_id: str = "station_10416") -> dict[str, dict[str, object]]:
+        with self.connect() as connection:
+            forecast_rows = connection.execute(
+                """WITH latest AS (
+                    SELECT provider,MAX(retrieved_at_utc) AS retrieved_at_utc FROM forecast_runs
+                    WHERE location_id=? GROUP BY provider
+                ) SELECT r.provider,r.init_time_utc,r.retrieved_at_utc,MAX(v.valid_time_utc) AS latest_valid_time_utc
+                  FROM latest l JOIN forecast_runs r ON r.provider=l.provider AND r.retrieved_at_utc=l.retrieved_at_utc
+                  JOIN forecast_values v ON v.run_id=r.id
+                  WHERE r.location_id=? GROUP BY r.id,r.provider,r.init_time_utc,r.retrieved_at_utc
+                  ORDER BY r.provider""",
+                (location_id, location_id),
+            ).fetchall()
+            observation = connection.execute(
+                """SELECT MAX(observed_at_utc) AS last_observed_at_utc FROM observations
+                   WHERE source_provider='DWD' AND location_id=?""",
+                (location_id,),
+            ).fetchone()
+        result = {
+            str(row["provider"]): {
+                "last_init_time_utc": row["init_time_utc"],
+                "last_retrieved_at_utc": row["retrieved_at_utc"],
+                "latest_valid_time_utc": row["latest_valid_time_utc"],
+            }
+            for row in forecast_rows
+        }
+        if observation and observation["last_observed_at_utc"]:
+            result["dwd_observations"] = {"last_observed_at_utc": observation["last_observed_at_utc"]}
+        return result
+
     def latest_observations(self, *, location_id: str = "station_10416") -> list[dict[str, object]]:
         with self.connect() as connection:
             rows = connection.execute(

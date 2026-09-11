@@ -15,6 +15,7 @@ from .locations import DWD_10416
 from .models import parse_time
 from .providers import PROVIDERS
 from .providers.weathernext import access_state
+from .provider_health import PUBLIC_PROVIDER_HEALTH_POLICIES, classify_public_provider_health
 from .radar_warnings import fetch_dwd_alerts, fetch_radar_point
 from .runtime import database_schema_state, readiness_payload
 from .semantics import PRECIP_EVENT_VERSION
@@ -145,6 +146,7 @@ def create_app(settings: Settings | None = None, database: Database | None = Non
     def provider_health() -> dict[str, object]:
         schema_state = database_schema_state(database)
         stored = database.provider_statuses() if schema_state["state"] == "ready" else {}
+        evidence = database.provider_freshness_evidence() if schema_state["state"] == "ready" else {}
         now = datetime.now(timezone.utc)
         provider_states = []
         for provider in PROVIDERS:
@@ -152,17 +154,28 @@ def create_app(settings: Settings | None = None, database: Database | None = Non
             state = saved.get("state", "adapter_ready_not_ingested")
             if provider.id == "weathernext3" and provider.id not in stored:
                 state = access_state(configured=settings.weathernext_cloud_configured, now=now)
-            provider_states.append(
-                {
-                    "id": provider.id,
-                    "model_name": provider.model_name,
-                    "state": state,
-                    "last_success_at_utc": saved.get("last_success_at_utc"),
+            if provider.id in PUBLIC_PROVIDER_HEALTH_POLICIES:
+                health = classify_public_provider_health(provider.id, saved, evidence.get(provider.id), now=now)
+                state = health["ingest_state"]
+            else:
+                health = {
+                    "tracked": False,
+                    "ingest_state": state,
+                    "freshness_state": "not_tracked",
+                    "failure_domain": "none",
+                    "reason_code": "NOT_IN_PUBLIC_RECURRING_SCOPE",
                     "last_attempt_at_utc": saved.get("last_attempt_at_utc"),
+                    "last_success_at_utc": saved.get("last_success_at_utc"),
                     "last_init_time_utc": saved.get("last_init_time_utc"),
+                    "last_retrieved_at_utc": None,
+                    "latest_valid_time_utc": None,
+                    "last_observed_at_utc": None,
+                    "attempt_age_hours": None,
+                    "success_age_hours": None,
+                    "source_age_hours": None,
                     "detail": saved.get("detail"),
                 }
-            )
+            provider_states.append({"id": provider.id, "model_name": provider.model_name, "state": state, **health})
         home_payload = {
             "id": "home",
             "label": settings.home_label,
@@ -172,6 +185,7 @@ def create_app(settings: Settings | None = None, database: Database | None = Non
         }
         return {
             "runtime_mode": settings.runtime_mode,
+            "health_contract": "provider-freshness-v1",
             "home": home_payload,
             "location": home_payload,
             "verification_reference": {
