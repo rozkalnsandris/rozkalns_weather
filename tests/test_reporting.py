@@ -165,6 +165,7 @@ def test_monthly_v3_has_common_ci_wins_ensemble_calibration_and_events(tmp_path:
 
     report = monthly_weather_next_report(database, month="2026-09")
     assert report["report_type"] == "station_benchmark_monthly_v3"
+    assert report["sample_sufficiency_contract"] == "common-sample-sufficiency-v1"
 
     weather_next = next(
         row
@@ -172,6 +173,9 @@ def test_monthly_v3_has_common_ci_wins_ensemble_calibration_and_events(tmp_path:
         if row["provider"] == "weathernext3" and row["lead_bucket"] == "6-12h"
     )
     assert weather_next["n"] == 30
+    assert weather_next["sample_sufficiency_state"] == "limited_sample"
+    assert weather_next["missingness"]["missing_n"] == 0
+    assert weather_next["missingness"]["common_n"] == 30
     assert weather_next["mae_bootstrap_95_ci"] is not None
 
     wins = next(
@@ -183,8 +187,12 @@ def test_monthly_v3_has_common_ci_wins_ensemble_calibration_and_events(tmp_path:
     assert wins["losses"] == 0
 
     ensemble = report["ensemble_calibration"]["icon_d2_eps"]
+    assert ensemble["sample_sufficiency_state"] == "insufficient_sample"
+    assert ensemble["crps_sample_evidence_by_variable"]["temperature_2m"]["n"] == 2
     assert ensemble["temperature_80_interval"]["n"] == 2
+    assert ensemble["temperature_80_interval"]["sample_sufficiency_state"] == "insufficient_sample"
     assert ensemble["precipitation_probability"]["n"] == 2
+    assert ensemble["precipitation_probability"]["sample_sufficiency_state"] == "insufficient_sample"
     assert ensemble["precipitation_probability"]["brier_score"] is not None
 
     event_variables = {row["variable"] for row in report["event_summaries"]}
