@@ -66,7 +66,9 @@ forecast snapshot -> observation -> verification -> WeatherNext comparison
 - [x] `RPi5_main` trusted Weather host-wiring/helper source bridge merged via Issue #435 / PR #436; at that milestone host/runtime activation and production mutation remained disabled pending later reviewed operator/install source and a separate exact STRICT LIVE gate.
 - [x] `RPi5_main` successor privileged helper install/activation bridge completed via Issue #455; the legacy trusted checkout is evidence-only and the successor install-trusted checkout is canonical.
 - [x] `RPi5_main` source-ready Weather Composite operator merged via Issue #454 / PR #460; operator host installation, LIVE authority and production mutation remain separate gates.
+- [x] `RPi5_main` source-only zero-input 23-artifact Weather operator installer bridge completed via Issue #462; source status remains install-disabled and requires a separate exact LIVE gate.
 - [x] Weather-side rollout source binding reconciled via Issue #29 without claiming host readiness or deployment.
+- [x] Issue #30 deterministic first-rollout JIT preflight package: exact SHA/CI/queue/host/operator/baseline/auth/budget PASS/BLOCKED validation, with stale queue binding exposed as a blocker and no LIVE authorization creation/consumption.
 - [x] deterministic rollout-readiness package: source-only preflight, <=180-day WMO 10416 + ICON-D2/IFS/AIFS bootstrap envelope, ordered checkpoint/resume, recovery decision, explicit systemd timer semantics, post-rollout evidence validator and fail-closed stage matrix.
 - [ ] first public-only RPi5 rollout under a separately authorized exact STRICT LIVE gate using freshly bound host/source/CI/helper/bounds/recovery/mutation-budget fields.
 - [ ] production public corpus schema/bootstrap/backfill under explicit LIVE/data authority.

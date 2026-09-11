@@ -6,8 +6,8 @@ from pathlib import Path
 from rozkalns_weather.rollout import validate_source_package
 
 ROOT = Path(__file__).resolve().parents[1]
-WEATHER_SHA = "52d3fd0ff946d3d5a0e1379f6c4362bf834a1aa9"
-RPI5_SHA = "6711ef153ae6b8636ea0c77fd4224ea2dd3d8d3a"
+WEATHER_SHA = "7b188d56ef083f60289bf34297199a42f13e1048"
+RPI5_SHA = "2672451d1f3ddc6cffcc70a3627c6b758db8abe0"
 SUCCESSOR = "ops/deploy/rpi5-main-weather-public-runtime-install-trusted-checkout-bootstrap.json"
 LEGACY = "ops/deploy/rpi5-main-weather-public-runtime-trusted-checkout-bootstrap.json"
 
@@ -20,12 +20,15 @@ def test_reconciliation_binds_exact_source_snapshots_without_deployment_claim() 
     binding = _binding()
     assert binding["status"] == "SOURCE_RECONCILED_RUNTIME_UNPROVEN"
     assert binding["weather_source"]["candidate_sha_at_reconciliation"] == WEATHER_SHA
-    assert binding["weather_source"]["queue_binding_sha"] == WEATHER_SHA
+    assert binding["weather_source"]["queue_binding_sha"] == "52d3fd0ff946d3d5a0e1379f6c4362bf834a1aa9"
+    assert binding["weather_source"]["queue_binding_matches_candidate"] is False
     assert binding["rpi5_main_source"]["main_sha_at_reconciliation"] == RPI5_SHA
-    assert binding["rpi5_main_source"]["exact_main_validate_run"] == 34514438900
+    assert binding["rpi5_main_source"]["exact_main_validate_run"] == 34571359393
+    assert binding["rpi5_main_source"]["issue_462"] == "DONE_SOURCE_ONLY_OPERATOR_INSTALLER_BRIDGE_INACTIVE"
     assert binding["deploy_queue"]["issue"] == 46
     assert binding["deploy_queue"]["eligibility_only"] is True
     assert binding["deploy_queue"]["grants_live_authority"] is False
+    assert binding["deploy_queue"]["current_candidate_binding_status"] == "BLOCKED_SOURCE_SHA_MISMATCH"
 
 
 def test_successor_checkout_is_canonical_and_legacy_is_evidence_only() -> None:
@@ -54,6 +57,8 @@ def test_source_merge_cannot_claim_host_ready_live_or_deployed() -> None:
     assert all(safety[field] is False for field in false_fields)
     assert safety["fresh_human_composite_strict_live_authorization_required"] is True
     assert safety["fresh_sanitized_runtime_baseline_required"] is True
+    assert safety["operator_installer_bridge_active"] is False
+    assert safety["queue_matches_current_weather_candidate"] is False
 
 
 def test_warning_and_research_authority_are_preserved() -> None:

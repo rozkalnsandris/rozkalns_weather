@@ -286,7 +286,21 @@ Current source-side integration identity:
 - authorization class `STRICT`;
 - no arbitrary command/path/argv/environment authority from GitHub prose.
 
-`RPi5_main` Issue #408 / PR #409 registered the static operation, #410 / PR #415 added deterministic bootstrap composition, #432 / PR #433 added preactivation, #435 / PR #436 added host-wiring/helper source, #455 added the successor privileged install/activation bridge, and #454 / PR #460 added the source-ready Composite operator. The canonical current checkout contract uses `RPi5_main-weather-public-runtime-install-trusted`; the earlier checkout is historical evidence only. These source interfaces do not prove host installation, runtime enablement or deployment and do not grant LIVE authority. `deploy/rpi5-source-binding.json` is a timestamped source reconciliation only; current `RPi5_main`, queue eligibility, exact-SHA CI and host state must still be freshly read before a real rollout.
+`RPi5_main` Issue #408 / PR #409 registered the static operation, #410 / PR #415 added deterministic bootstrap composition, #432 / PR #433 added preactivation, #435 / PR #436 added host-wiring/helper source, #455 added the successor privileged install/activation bridge, #454 / PR #460 added the source-ready Composite operator, and #462 added the source-only zero-input 23-artifact operator installer bridge. The canonical current checkout contract uses `RPi5_main-weather-public-runtime-install-trusted`; the earlier checkout is historical evidence only. These source interfaces do not prove host installation, runtime enablement or deployment and do not grant LIVE authority. `deploy/rpi5-source-binding.json` is a timestamped source reconciliation only; current `RPi5_main`, queue eligibility, exact-SHA CI and host state must still be freshly read before a real rollout.
+
+## First public rollout JIT preflight
+
+`deploy/first-public-rollout-preflight.json` is the machine contract. Feed only sanitized JIT evidence to:
+
+```bash
+cat sanitized-preflight-evidence.json | rozkalns-weather rollout-live-preflight-validate
+```
+
+The command emits `PASS` only when exact current Weather/RPi5 SHA + CI, matching READY queue, host/target, reviewed contract identities, verified 23-artifact operator installation, fixed bootstrap bounds, owner-selected recovery, authorization owner/TTL/raw-body/replay state, baseline token and all release/supplemental/read-only budgets match. Expected drift emits `BLOCKED` with reason codes; the command itself creates/consumes no authorization and performs no runtime mutation.
+
+At the Issue #30 source snapshot, `ops-workflows#46` still binds Weather `52d3fd0f...` while current Weather source is `7b188d56...`, so the current machine assessment is intentionally `BLOCKED`. This Weather issue does not have authority to refresh the queue.
+
+The **next owner LIVE gate** is operator installation only: freshly bind current exact `RPi5_main` SHA, host `rpi5`, target `rozkalns-weather-public-rpi5`, successor trusted-checkout bootstrap and `ops/deploy/weather-public-runtime-operator-install.json` / zero-argument installer bridge for exactly 23 artifacts. Verify exact hashes/root ownership/modes afterward. This installation does not authorize the Composite rollout; that later step requires a matching fresh queue plus a new human Composite STRICT LIVE-AUTH.
 
 ## Exact LIVE gate template
 
