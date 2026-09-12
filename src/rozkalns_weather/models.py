@@ -4,6 +4,8 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any
 
+from .semantics import SemanticIdentity, semantic_identity as build_semantic_identity
+
 
 def ensure_utc(value: datetime) -> datetime:
     if value.tzinfo is None:
@@ -40,6 +42,23 @@ class ForecastValue:
         object.__setattr__(self, "valid_time_utc", ensure_utc(self.valid_time_utc))
         if self.lead_hours < 0:
             raise ValueError("lead_hours must be >= 0")
+        build_semantic_identity(
+            variable=self.variable,
+            value=self.value,
+            unit=self.unit,
+            accumulation_window_minutes=self.accumulation_window_minutes,
+            statistic=self.statistic,
+        )
+
+    @property
+    def semantic_identity(self) -> SemanticIdentity:
+        return build_semantic_identity(
+            variable=self.variable,
+            value=self.value,
+            unit=self.unit,
+            accumulation_window_minutes=self.accumulation_window_minutes,
+            statistic=self.statistic,
+        )
 
 
 @dataclass(frozen=True, slots=True)

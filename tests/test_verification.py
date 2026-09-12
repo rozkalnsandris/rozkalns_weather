@@ -73,3 +73,11 @@ def test_probability_metrics_never_accept_percent_or_amount_as_probability() -> 
     assert sum(int(item["n"]) for item in bins) == 2
     with pytest.raises(ValueError, match="probability"):
         ProbabilityPair("invalid", 12, 80.0, 1.0)
+    with pytest.raises(ValueError, match="probability source"):
+        ProbabilityPair(
+            "invalid",
+            12,
+            0.8,
+            1.0,
+            probability_source="deterministic_amount",
+        )
