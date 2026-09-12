@@ -3,7 +3,7 @@
 Issue #52 prepares the **source-side eligibility contract** for a later private-home + WeatherNext runtime. It does not activate runtime, credentials, BigQuery access, production data writes, scheduler state, Cloudflare or RPi5 services.
 
 Canonical machine contract: `deploy/private-runtime-activation.json`.
-Validator: `rozkalns-weather private-runtime-activation-validate`.
+Validator: `python -m rozkalns_weather.private_runtime_activation_cli` (sanitized JSON on stdin).
 
 ## Location semantics
 
