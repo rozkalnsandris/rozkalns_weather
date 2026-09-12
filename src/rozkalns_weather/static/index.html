@@ -24,6 +24,8 @@
     <button data-view="safety">Warnings/Radar</button>
   </nav>
 
+  <div id="networkState" class="surface-state state-loading global-state" role="status" aria-live="polite" aria-atomic="true">LOADING · checking live API evidence</div>
+
   <main>
     <section id="overview" class="view active">
       <div class="panel research">
@@ -33,23 +35,28 @@
       </div>
       <div class="panel">
         <div class="panel-title">DWD 10416 reference observation</div>
+        <div id="currentState" class="surface-state state-loading" role="status" aria-live="polite" aria-atomic="true">LOADING · DWD station truth</div>
         <div id="currentTruth" class="provider-grid">Nav observation datu.</div>
         <div class="muted">Šis ir station truth, nevis mērījums privātajā home punktā.</div>
       </div>
       <div class="panel">
         <div class="panel-title">Home · 48 h temperatūra + WeatherNext p10–p90</div>
+        <div id="overviewTempState" class="surface-state state-loading" role="status" aria-live="polite" aria-atomic="true">LOADING · forecast provenance</div>
         <div id="overviewChart" class="chart empty">Nav ielādētu home forecast snapshotu.</div>
       </div>
       <div class="panel">
         <div class="panel-title">Home · 48 h nokrišņi</div>
+        <div id="overviewPrecipState" class="surface-state state-loading" role="status" aria-live="polite" aria-atomic="true">LOADING · forecast provenance</div>
         <div id="overviewPrecip" class="chart empty">Nav ielādētu precipitation snapshotu.</div>
       </div>
       <div class="panel">
         <div class="panel-title">Daily forecast by provider</div>
+        <div id="dailyState" class="surface-state state-loading" role="status" aria-live="polite" aria-atomic="true">LOADING · daily provider state</div>
         <div id="dailyGrid" class="provider-grid">Nav datu.</div>
       </div>
       <div class="panel">
         <div class="panel-title">Provider freshness</div>
+        <div id="providerState" class="surface-state state-loading" role="status" aria-live="polite" aria-atomic="true">LOADING · provider health</div>
         <div id="providerGrid" class="provider-grid"></div>
       </div>
     </section>
@@ -63,10 +70,12 @@
       <div class="panel">
         <div class="panel-title">Home modeļu salīdzinājums · temperatūra</div>
         <div class="legend"><span>WeatherNext 3</span><span>ICON-D2</span><span>IFS HRES</span><span>AIFS</span></div>
+        <div id="modelsTempState" class="surface-state state-loading" role="status" aria-live="polite" aria-atomic="true">LOADING · model freshness</div>
         <div id="modelsChart" class="chart empty">Prognožu līnijas parādīsies pēc ingest.</div>
       </div>
       <div class="panel">
         <div class="panel-title">Home modeļu salīdzinājums · nokrišņi</div>
+        <div id="modelsPrecipState" class="surface-state state-loading" role="status" aria-live="polite" aria-atomic="true">LOADING · model freshness</div>
         <div id="modelsPrecip" class="chart empty">Nokrišņu stabiņi parādīsies pēc ingest.</div>
       </div>
       <div class="panel research">
@@ -91,15 +100,17 @@
     </section>
 
     <section id="safety" class="view">
-      <div class="panel warning">
+      <div class="panel warning" data-warning-authority="DWD">
         <div class="panel-title">DWD official warnings</div>
         <p>DWD warning slānis ir autoritatīvs un atdalīts no modeļiem.</p>
+        <div id="warningsState" class="surface-state state-loading" role="status" aria-live="polite" aria-atomic="true">LOADING · warning data has not been requested</div>
         <button id="loadWarnings">Ielādēt warnings</button>
         <pre id="warningsOutput"></pre>
       </div>
       <div class="panel">
         <div class="panel-title">DWD radar</div>
         <p class="muted">Radar observed/nowcast nav model forecast.</p>
+        <div id="radarState" class="surface-state state-loading" role="status" aria-live="polite" aria-atomic="true">LOADING · radar data has not been requested</div>
         <button id="loadRadar">Ielādēt radar metadata</button>
         <pre id="radarOutput"></pre>
       </div>
