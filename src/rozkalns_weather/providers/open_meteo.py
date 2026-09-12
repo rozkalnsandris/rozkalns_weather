@@ -6,6 +6,11 @@ from typing import Any
 
 from ..models import ForecastRun, ForecastValue, parse_time
 from .base import JsonFetcher, fetch_json
+from .provider_contracts import (
+    enforce_contract,
+    inspect_open_meteo_metadata,
+    inspect_open_meteo_single,
+)
 
 SINGLE_RUNS_URL = "https://single-runs-api.open-meteo.com/v1/forecast"
 META_URL = "https://api.open-meteo.com/data/{domain}/static/meta.json"
@@ -60,6 +65,7 @@ def _from_unix(value: Any, field: str) -> datetime:
 
 
 def parse_model_metadata(payload: dict[str, Any]) -> ModelRunMetadata:
+    enforce_contract(inspect_open_meteo_metadata(payload))
     return ModelRunMetadata(
         init_time_utc=_from_unix(payload.get("last_run_initialisation_time"), "last_run_initialisation_time"),
         availability_time_utc=_from_unix(payload.get("last_run_availability_time"), "last_run_availability_time"),
@@ -75,7 +81,11 @@ def parse_open_meteo(
     retrieved_at: datetime,
     init_time: datetime,
     availability_time: datetime | None,
+    requested_variables: tuple[str, ...] = HOURLY_VARIABLES,
 ) -> ForecastRun:
+    contract_report = enforce_contract(
+        inspect_open_meteo_single(payload, requested_variables=requested_variables)
+    )
     hourly = payload.get("hourly")
     units = payload.get("hourly_units", {})
     if not isinstance(hourly, dict) or not isinstance(hourly.get("time"), list):
@@ -85,6 +95,8 @@ def parse_open_meteo(
     values: list[ForecastValue] = []
     times = hourly["time"]
     for source_key, (variable, normalized_unit, accumulation) in VARIABLE_MAP.items():
+        if source_key not in requested_variables:
+            continue
         series = hourly.get(source_key)
         if not isinstance(series, list):
             continue
@@ -134,6 +146,7 @@ def parse_open_meteo(
             "native_timestep_interpolation_caveat": "Open-Meteo may interpolate model-native timesteps to requested hourly fields",
             "probability_fields_included": False,
             "generationtime_ms": payload.get("generationtime_ms"),
+            "provider_contract_drift": contract_report.to_metadata(),
         },
     )
 
@@ -185,6 +198,7 @@ class OpenMeteoSingleRunAdapter:
             retrieved_at=retrieved_at,
             init_time=init_time,
             availability_time=availability_time,
+            requested_variables=HOURLY_VARIABLES,
         )
 
     def fetch_latest_available(self, *, lat: float, lon: float, now: datetime | None = None) -> ForecastRun:

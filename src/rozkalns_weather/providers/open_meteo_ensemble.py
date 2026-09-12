@@ -6,6 +6,7 @@ from typing import Any
 
 from ..models import parse_time, utc_iso
 from .base import JsonFetcher, fetch_json
+from .provider_contracts import enforce_contract, inspect_open_meteo_ensemble
 
 ENSEMBLE_URL = "https://ensemble-api.open-meteo.com/v1/ensemble"
 ENSEMBLE_VARIABLES = (
@@ -87,6 +88,9 @@ def parse_ensemble(
     retrieved_at: datetime,
     requested_variables: tuple[str, ...] = ENSEMBLE_VARIABLES,
 ) -> EnsembleSnapshot:
+    contract_report = enforce_contract(
+        inspect_open_meteo_ensemble(payload, requested_variables=requested_variables)
+    )
     hourly = payload.get("hourly")
     units = payload.get("hourly_units", {})
     if not isinstance(hourly, dict) or not isinstance(hourly.get("time"), list):
@@ -133,6 +137,7 @@ def parse_ensemble(
             "retrieved_at_utc": utc_iso(retrieved_at),
             "generationtime_ms": payload.get("generationtime_ms"),
             "native_timestep_caveat": "Open-Meteo may interpolate ensemble output to hourly resolution",
+            "provider_contract_drift": contract_report.to_metadata(),
         },
     )
 

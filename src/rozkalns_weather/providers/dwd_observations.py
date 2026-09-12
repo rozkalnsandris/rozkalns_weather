@@ -6,6 +6,7 @@ from typing import Any
 from ..locations import DWD_10416
 from ..models import Observation, parse_time, utc_iso
 from .base import JsonFetcher, fetch_json
+from .provider_contracts import enforce_contract, inspect_dwd_observations
 
 BRIGHTSKY_WEATHER_URL = "https://api.brightsky.dev/weather"
 WMO_STATION_ID = "10416"
@@ -24,6 +25,9 @@ VARIABLES = {
 
 def parse_brightsky_observations(payload: dict[str, Any], *, retrieved_at: datetime | None = None) -> list[Observation]:
     retrieved_at = (retrieved_at or datetime.now(timezone.utc)).astimezone(timezone.utc)
+    contract_report = enforce_contract(
+        inspect_dwd_observations(payload, expected_wmo_station_id=WMO_STATION_ID)
+    )
     sources = {source.get("id"): source for source in payload.get("sources", []) if isinstance(source, dict)}
     output: list[Observation] = []
     for row in payload.get("weather", []):
@@ -60,6 +64,7 @@ def parse_brightsky_observations(payload: dict[str, Any], *, retrieved_at: datet
                         "reference_location_id": DWD_10416.id,
                         "station_identity_pinned": True,
                         "missing_values_omitted_not_imputed": True,
+                        "provider_contract_drift": contract_report.to_metadata(),
                     },
                 )
             )
