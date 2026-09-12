@@ -38,6 +38,11 @@ Kamēr WeatherNext 3 private allowlist ir pending, public-data lane var veidot r
 
 Detalizēts source/runbook: `docs/PUBLIC_BACKFILL_PROBABILISTIC_V3.md`.
 
+Optional WeatherNext full-member admission and metric eligibility are defined in
+`docs/WEATHERNEXT_FULL_ENSEMBLE.md`. The network-free `weathernext_ensemble` module
+requires a complete reviewed native roster and exact provenance before using
+member metrics; summary-quantile fallback remains separately validated.
+
 ## Privacy
 
 Precīza mājas adrese, `HOME_LAT`, `HOME_LON`, credentials un Cloudflare secrets repo netiek commitoti. `.env` ir runtime-only.
