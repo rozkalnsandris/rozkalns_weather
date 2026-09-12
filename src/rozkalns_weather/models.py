@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any
 
+from .physical_consistency import enforce_forecast_run_physical_consistency
 from .semantics import SemanticIdentity, semantic_identity as build_semantic_identity
 
 
@@ -87,6 +88,11 @@ class ForecastRun:
                 "upstream_available_at_utc",
                 ensure_utc(self.upstream_available_at_utc),
             )
+
+        report = enforce_forecast_run_physical_consistency(self)
+        metadata = dict(self.source_metadata)
+        metadata["physical_consistency"] = report.to_metadata()
+        object.__setattr__(self, "source_metadata", metadata)
 
 
 @dataclass(frozen=True, slots=True)
