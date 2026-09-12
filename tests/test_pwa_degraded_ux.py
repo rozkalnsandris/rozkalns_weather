@@ -40,7 +40,8 @@ def test_pwa_has_accessible_explicit_degraded_state_regions(tmp_path) -> None:
 
     assert 'role="status"' in root
     assert 'aria-live="polite"' in root
-    assert "official-warning" in root
+    assert 'class="panel warning"' in root
+    assert 'data-warning-authority="DWD"' in root
     assert "DWD official warnings" in root
     for state in ("fresh", "stale", "error", "offline"):
         assert f".state-{state}" in css
@@ -116,7 +117,7 @@ def test_dwd_warning_authority_remains_explicit_when_cached_or_offline(tmp_path)
     assert "DWD warning slānis ir autoritatīvs" in root
     assert "DWD official warning" in script
     assert "NOT current official warning status" in script
-    assert "cached warning data is NOT current official warning status" in script
+    assert "DWD remains the authority; reconnect and refresh before relying on warnings." in script
     assert "WeatherNext" not in root.split('<section id="safety"', 1)[1].split("</section>", 1)[0]
 
 
