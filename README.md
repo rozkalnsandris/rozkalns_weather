@@ -57,6 +57,7 @@ rozkalns-weather rollout-preflight --source-sha <MERGED_SHA> --start YYYY-MM-DD 
 rozkalns-weather rollout-evidence-validate < sanitized-evidence.json
 rozkalns-weather diagnose-weathernext
 rozkalns-weather report-monthly --month YYYY-MM
+rozkalns-weather verification-drilldown --month YYYY-MM
 python -m rozkalns_weather.weathernext_access plan --now <UTC_TIMESTAMP> --hours-limit 6 --max-bytes-billed <CAP>
 python -m rozkalns_weather.weathernext_access preflight --schema-only --max-bytes-billed <CAP>
 python -m rozkalns_weather.weathernext_access preflight --hours-limit 6 --max-bytes-billed <CAP>

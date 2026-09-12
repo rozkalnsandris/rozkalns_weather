@@ -63,6 +63,68 @@ function renderCalibration(data) {
   `).join("")}</tbody></table>`;
 }
 
+function drilldownRows(slices) {
+  return (slices || []).flatMap((slice) =>
+    (slice.cohorts || []).flatMap((cohort) => cohort.metrics || [])
+  );
+}
+
+function missingnessLabel(value) {
+  if (!value) return "—";
+  return `${value.missing_n}/${value.expected_n} missing · ${value.excluded_non_common_n || 0} excluded`;
+}
+
+function renderDeterministicDrilldown(data) {
+  const target = document.querySelector("#drilldownDeterministic");
+  if (!target) return;
+  const rows = drilldownRows(data?.deterministic?.slices);
+  if (!rows.length) {
+    target.textContent = "No deterministic common-sample cohort is available for this month.";
+    return;
+  }
+  target.innerHTML = `<table><thead><tr><th>Model</th><th>Version</th><th>Cycle</th><th>Lead</th><th>Variable</th><th>Month</th><th>n</th><th>Missingness</th><th>Sufficiency</th><th>MAE</th><th>RMSE</th><th>Bias</th><th>Events</th></tr></thead><tbody>${rows.map((row) => `
+    <tr>
+      <td>${row.provider}</td><td>${row.model_version}</td><td>${row.init_cycle_utc}</td><td>${row.lead_bucket}</td>
+      <td>${row.variable}</td><td>${row.month}</td><td>${row.n}</td><td>${missingnessLabel(row.missingness)}</td>
+      <td>${row.sample_sufficiency_state}</td>
+      <td>${row.mae == null ? "—" : Number(row.mae).toFixed(2)}</td>
+      <td>${row.rmse == null ? "—" : Number(row.rmse).toFixed(2)}</td>
+      <td>${row.bias == null ? "—" : Number(row.bias).toFixed(2)}</td>
+      <td>${(row.event_summaries || []).map((event) => `${event.event_id}: n=${event.n}`).join(" · ") || "—"}</td>
+    </tr>`).join("")}</tbody></table>`;
+}
+
+function renderEnsembleDrilldown(data) {
+  const target = document.querySelector("#drilldownEnsemble");
+  if (!target) return;
+  const rows = drilldownRows(data?.ensemble?.slices);
+  if (!rows.length) {
+    target.textContent = "No genuine member common-sample cohort is available for this month.";
+    return;
+  }
+  target.innerHTML = `<table><thead><tr><th>Model</th><th>Version</th><th>Cycle</th><th>Lead</th><th>Variable</th><th>n</th><th>Missingness</th><th>Sufficiency</th><th>CRPS</th><th>WIS</th><th>Brier</th></tr></thead><tbody>${rows.map((row) => `
+    <tr>
+      <td>${row.provider}</td><td>${row.model_version}</td><td>${row.init_cycle_utc}</td><td>${row.lead_bucket}</td><td>${row.variable}</td>
+      <td>${row.n}</td><td>${missingnessLabel(row.missingness)}</td><td>${row.sample_sufficiency_state}</td>
+      <td>${row.mean_crps == null ? "—" : Number(row.mean_crps).toFixed(3)}</td>
+      <td>${row.mean_wis == null ? "—" : Number(row.mean_wis).toFixed(3)}</td>
+      <td>${row.brier_score == null ? "—" : Number(row.brier_score).toFixed(3)}</td>
+    </tr>`).join("")}</tbody></table>`;
+}
+
+async function refreshDrilldown(month) {
+  const deterministic = document.querySelector("#drilldownDeterministic");
+  const ensemble = document.querySelector("#drilldownEnsemble");
+  try {
+    const data = await accuracyV3Api(`/api/verification/drilldown?month=${encodeURIComponent(month)}`);
+    renderDeterministicDrilldown(data);
+    renderEnsembleDrilldown(data);
+  } catch (_error) {
+    if (deterministic) deterministic.textContent = "Verification drilldown unavailable.";
+    if (ensemble) ensemble.textContent = "Verification drilldown unavailable.";
+  }
+}
+
 async function refreshAccuracyV3(days = 30) {
   try {
     const [providers, summary, precipitation] = await Promise.all([
@@ -82,6 +144,12 @@ async function refreshAccuracyV3(days = 30) {
 
 document.querySelectorAll("[data-days]").forEach((button) => {
   button.addEventListener("click", () => refreshAccuracyV3(Number(button.dataset.days)));
+});
+
+const drilldownMonth = document.querySelector("#drilldownMonth");
+if (drilldownMonth) drilldownMonth.value = new Date().toISOString().slice(0, 7);
+document.querySelector("#loadDrilldown")?.addEventListener("click", () => {
+  if (drilldownMonth?.value) refreshDrilldown(drilldownMonth.value);
 });
 
 refreshAccuracyV3(30);

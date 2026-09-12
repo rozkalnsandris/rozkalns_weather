@@ -22,6 +22,7 @@ from .runtime import database_schema_state, readiness_payload
 from .semantics import PRECIP_EVENT_VERSION
 from .truth_quality import database_truth_quality
 from .verification import ErrorPair, ProbabilityPair, brier_score, lead_bucket, reliability_bins, summarize
+from .verification_drilldown import verification_drilldown_month
 
 
 def _descriptor(provider) -> dict[str, object]:
@@ -332,6 +333,14 @@ def create_app(settings: Settings | None = None, database: Database | None = Non
             "providers": payload,
             "note": "Only common station valid-times inside one variable/lead bucket and one complete provider model-version cohort are eligible for model-comparison surfaces. Provider aggregates remain descriptive only. Metrics are not clean benchmark evidence unless verification_ready is true. Home forecasts are comparison-only until home observations exist.",
         }
+
+    @app.get("/api/verification/drilldown")
+    def verification_drilldown_api(month: str = Query(..., pattern=r"^\d{4}-\d{2}$")) -> dict[str, object]:
+        require_database_ready()
+        try:
+            return verification_drilldown_month(database, month=month)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     @app.get("/api/verification/precipitation")
     def precipitation_verification(days: int = Query(90, ge=1, le=3650)) -> dict[str, object]:
