@@ -9,6 +9,7 @@ import zipfile
 
 from ..models import ForecastRun, ForecastValue, parse_time
 from .base import BytesFetcher, fetch_bytes
+from .provider_contracts import enforce_contract, inspect_dwd_mosmix_kmz
 
 MOSMIX_STATION_ID = "10416"
 MOSMIX_URL = (
@@ -16,7 +17,6 @@ MOSMIX_URL = (
     "single_stations/10416/kml/MOSMIX_L_LATEST_10416.kmz"
 )
 
-# MOSMIX element names deliberately limited to semantics we can normalize safely.
 ELEMENTS = {
     "TTT": ("temperature_2m", "K", "degC", None),
     "Td": ("dew_point_2m", "K", "degC", None),
@@ -41,6 +41,13 @@ def _convert(value: float, native_unit: str, unit: str) -> float:
 
 
 def parse_mosmix_kmz(payload: bytes, *, retrieved_at: datetime) -> ForecastRun:
+    contract_report = enforce_contract(
+        inspect_dwd_mosmix_kmz(
+            payload,
+            expected_station_id=MOSMIX_STATION_ID,
+            station_id=MOSMIX_STATION_ID,
+        )
+    )
     with zipfile.ZipFile(io.BytesIO(payload)) as archive:
         kml_names = [name for name in archive.namelist() if PurePosixPath(name).suffix.lower() == ".kml"]
         if not kml_names:
@@ -111,7 +118,11 @@ def parse_mosmix_kmz(payload: bytes, *, retrieved_at: datetime) -> ForecastRun:
         transport_provider="DWD Open Data",
         raw_payload_hash=hashlib.sha256(payload).hexdigest(),
         values=tuple(values),
-        source_metadata={"station_id": MOSMIX_STATION_ID, "url": MOSMIX_URL},
+        source_metadata={
+            "station_id": MOSMIX_STATION_ID,
+            "url": MOSMIX_URL,
+            "provider_contract_drift": contract_report.to_metadata(),
+        },
     )
 
 
