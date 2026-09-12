@@ -1,0 +1,92 @@
+{
+  "schema_version": 1,
+  "contract": "weathernext3-first-snapshot-admission.v1",
+  "depends_on": [
+    "weathernext3-first-access.v1",
+    "weathernext3-sustained-collection.v1"
+  ],
+  "provider": {
+    "id": "weathernext3",
+    "model_name": "WeatherNext 3",
+    "supported_model_versions": [
+      "3.0.0"
+    ],
+    "location_id": "station_10416",
+    "warning_authority": false
+  },
+  "admission": {
+    "validated_first_access_canary_required": true,
+    "candidate_schema_fingerprint_must_match_canary": true,
+    "complete_provenance_required": true,
+    "required_product_surfaces": [
+      "0p05",
+      "0p1"
+    ],
+    "combined_surface_allowed_only_as_single_run": true,
+    "statistics_matrix_required_per_variable_valid_time": [
+      "mean",
+      "p10",
+      "p25",
+      "p50",
+      "p75",
+      "p90"
+    ],
+    "temporal_provenance_required": true,
+    "snapshot_identity_deterministic": true,
+    "existing_snapshot_identity_rejected": true,
+    "immutable_revision_required": true
+  },
+  "freshness": {
+    "maximum_candidate_age_hours_must_be_explicit": true,
+    "maximum_supported_candidate_age_hours": 48,
+    "retrieval_before_init_rejected": true,
+    "retrieval_after_admission_rejected": true,
+    "hidden_default_age_forbidden": true
+  },
+  "identity": {
+    "algorithm": "sha256",
+    "includes": [
+      "provider",
+      "model_version",
+      "station_10416",
+      "selected_init_time_utc",
+      "schema_fingerprint",
+      "sorted_semantic_run_hashes"
+    ],
+    "semantic_run_hash_excludes_retrieval_receipt_time": true,
+    "semantic_run_hash_includes_raw_payload_hash_when_present": true,
+    "duplicate_admission_requires_existing_fingerprint_evidence": true
+  },
+  "output": {
+    "state": "snapshot_write_plan_ready",
+    "real_values_exposed": false,
+    "private_fields_exposed": false,
+    "production_write_performed": false,
+    "mutation_class": "production_sqlite_forecast_snapshot_write"
+  },
+  "stable_reason_codes": [
+    "CANARY_EVIDENCE_INVALID",
+    "SCHEMA_FINGERPRINT_MISMATCH",
+    "MODEL_PROVENANCE_MISMATCH",
+    "TEMPORAL_PROVENANCE_INVALID",
+    "SNAPSHOT_STALE",
+    "STATISTICS_MATRIX_INCOMPLETE",
+    "VALUE_IDENTITY_DUPLICATE",
+    "PRODUCT_SURFACE_DUPLICATE",
+    "SNAPSHOT_IDENTITY_DUPLICATE"
+  ],
+  "privacy": {
+    "credentials_allowed": false,
+    "project_dataset_identity_allowed": false,
+    "home_coordinates_allowed": false,
+    "raw_provider_values_in_write_plan_allowed": false,
+    "raw_logs_allowed": false
+  },
+  "authority": {
+    "real_bigquery_query_authorized": false,
+    "production_sqlite_write_authorized": false,
+    "rpi5_runtime_mutation_authorized": false,
+    "credentials_or_iam_mutation_authorized": false,
+    "cloudflare_mutation_authorized": false
+  }
+}
