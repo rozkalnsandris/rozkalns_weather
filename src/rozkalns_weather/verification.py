@@ -6,6 +6,8 @@ from math import sqrt
 from statistics import mean
 from typing import Iterable
 
+from .semantics import PRECIP_EVENT_VERSION
+
 
 @dataclass(frozen=True, slots=True)
 class ErrorPair:
@@ -25,12 +27,23 @@ class ProbabilityPair:
     probability: float
     observed_event: float
     model_version: str | None = None
+    probability_source: str = "explicit_event_probability"
+    event_version: str = PRECIP_EVENT_VERSION
 
     def __post_init__(self) -> None:
         if not 0.0 <= self.probability <= 1.0:
             raise ValueError("probability must be in [0,1]")
         if self.observed_event not in {0.0, 1.0}:
             raise ValueError("observed_event must be 0 or 1")
+        if self.probability_source not in {
+            "explicit_event_probability",
+            "ensemble_member_fraction",
+        }:
+            raise ValueError(
+                "probability source must be explicit event probability or ensemble member fraction"
+            )
+        if self.event_version != PRECIP_EVENT_VERSION:
+            raise ValueError("probability event definition is unsupported")
 
 
 LEAD_BUCKETS = (
