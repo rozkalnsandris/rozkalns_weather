@@ -34,7 +34,6 @@ _PRIVATE_KEYS = frozenset(
         "dataset_id",
         "weathernext_bigquery_dataset",
         "credential",
-        "credentials",
         "token",
         "secret",
         "service_account",
