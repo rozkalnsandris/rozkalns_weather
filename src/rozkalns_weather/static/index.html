@@ -93,6 +93,17 @@
         <div id="leadBucketTable" class="table-wrap"></div>
       </div>
       <div class="panel">
+        <div class="panel-title">Verification drilldown · cycle / lead / variable / model version</div>
+        <div class="switches">
+          <label for="drilldownMonth">Month</label>
+          <input id="drilldownMonth" type="month" min="2026-04">
+          <button id="loadDrilldown" type="button">Load drilldown</button>
+        </div>
+        <div class="muted">Strict common station valid-times only. Each row keeps model version, UTC init cycle, lead bucket, variable, n, missingness and sample sufficiency visible.</div>
+        <div id="drilldownDeterministic" class="table-wrap">Choose a month to inspect deterministic common-sample slices.</div>
+        <div id="drilldownEnsemble" class="table-wrap">Genuine member-only ensemble drilldown appears separately when available.</div>
+      </div>
+      <div class="panel">
         <div class="panel-title">Ensemble calibration · precipitation event</div>
         <div id="calibrationTable" class="table-wrap">Genuine member-derived probability dati vēl nav pieejami.</div>
         <div class="muted">Brier/reliability ir derīgi tikai genuine probability/member input. Deterministic precipitation amount netiek pārveidots par probability.</div>

@@ -17,6 +17,7 @@ from .reporting import monthly_weather_next_report
 from .rollout import RECOVERY_DECISIONS, build_rollout_plan, validate_post_rollout_evidence
 from .rollout_live_preflight import evaluate_first_public_rollout_preflight
 from .runtime import database_schema_state, readiness_payload
+from .verification_drilldown import verification_drilldown_month
 from .smoke import smoke_public
 
 
@@ -132,6 +133,8 @@ def main() -> None:
     diagnose.add_argument("--no-point-query", action="store_true", help="schema-only diagnostic")
     report = sub.add_parser("report-monthly", help="generate WeatherNext station-skill monthly report")
     report.add_argument("--month", required=True, help="YYYY-MM")
+    drilldown = sub.add_parser("verification-drilldown", help="read-only common-sample verification drilldown by cycle/lead/variable/model version")
+    drilldown.add_argument("--month", required=True, help="YYYY-MM")
     backup = sub.add_parser("backup", help="create a consistent SQLite backup at the provided local path")
     backup.add_argument("--output", required=True)
     args = parser.parse_args()
@@ -210,6 +213,11 @@ def main() -> None:
         _print(payload)
         if payload["state"] == "BLOCKED":
             raise SystemExit(3)
+        return
+
+    if args.command == "verification-drilldown":
+        database = Database(settings.database_url)
+        _print(verification_drilldown_month(database, month=args.month))
         return
 
     if args.command == "init-database":
