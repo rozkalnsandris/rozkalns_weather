@@ -73,7 +73,7 @@ def _run(
         values = _values(variable="temperature_2m", unit="degC", base_value=20.0)
         if include_incomplete_second_variable:
             values += _values(
-                variable="dewpoint_2m",
+                variable="dew_point_2m",
                 unit="degC",
                 base_value=15.0,
                 statistics=tuple(stat for stat in STATS if stat != "p90"),
