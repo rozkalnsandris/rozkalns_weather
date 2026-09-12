@@ -166,14 +166,14 @@ async function refresh() {
 async function accuracy(days = 30) {
   try {
     const data = await api(`/api/verification/summary?days=${days}`);
-    const entries = Object.entries(data.providers);
-    if (!entries.length) {
-      qs("#accuracyTable").textContent = "Vēl nav pietiekamu station forecast + observation pāru.";
+    const rows = data.common_sample_slices || [];
+    if (!rows.length) {
+      qs("#accuracyTable").textContent = "Vēl nav pietiekamu kopīgu station sample starp vismaz diviem provider vienā lead bucket/model-version cohort.";
       return;
     }
-    qs("#accuracyTable").innerHTML = `<table><thead><tr><th>Model</th><th>n</th><th>MAE</th><th>RMSE</th><th>Bias</th><th>p10–p90</th></tr></thead><tbody>${entries.map(([provider, value]) => {
-      const metrics = value.overall;
-      return `<tr><td>${provider}</td><td>${metrics.n}</td><td>${metrics.mae?.toFixed(2) ?? "—"}</td><td>${metrics.rmse?.toFixed(2) ?? "—"}</td><td>${metrics.bias?.toFixed(2) ?? "—"}</td><td>${metrics.p10_p90_coverage == null ? "—" : `${(metrics.p10_p90_coverage * 100).toFixed(0)}%`}</td></tr>`;
+    qs("#accuracyTable").innerHTML = `<table><thead><tr><th>Model</th><th>Version</th><th>Lead</th><th>n</th><th>Missing</th><th>Sufficiency</th><th>MAE</th><th>RMSE</th><th>Bias</th><th>p10–p90</th></tr></thead><tbody>${rows.map((metrics) => {
+      const missing = metrics.missingness || {};
+      return `<tr><td>${metrics.provider}</td><td>${metrics.model_version || "unknown"}</td><td>${metrics.lead_bucket}</td><td>${metrics.n}</td><td>${missing.missing_n ?? "—"}/${missing.expected_n ?? "—"}</td><td>${metrics.sample_sufficiency_state}</td><td>${metrics.mae?.toFixed(2) ?? "—"}</td><td>${metrics.rmse?.toFixed(2) ?? "—"}</td><td>${metrics.bias?.toFixed(2) ?? "—"}</td><td>${metrics.p10_p90_coverage == null ? "—" : `${(metrics.p10_p90_coverage * 100).toFixed(0)}% (${metrics.coverage_n})`}</td></tr>`;
     }).join("")}</tbody></table>`;
   } catch (error) {
     qs("#accuracyTable").textContent = "Accuracy API unavailable";

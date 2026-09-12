@@ -11,6 +11,7 @@ from fastapi.staticfiles import StaticFiles
 
 from .config import Settings
 from .db import Database
+from .leaderboard import SkillSample, common_sample_leaderboard
 from .locations import DWD_10416
 from .models import parse_time
 from .providers import PROVIDERS
@@ -70,6 +71,42 @@ def _daily_payload(database: Database, *, days: int, timezone_name: str) -> list
         elif row["variable"] == "precipitation_1h" and row["accumulation_window_minutes"] == 60:
             item["precipitation_total_mm"] = float(item["precipitation_total_mm"]) + float(row["value"])
     return sorted(grouped.values(), key=lambda x: (str(x["date"]), str(x["provider"])))
+
+
+def _temperature_common_samples(rows: list[dict[str, object]]) -> list[SkillSample]:
+    """Choose one defensible run per provider/lead bucket/valid time before comparison."""
+
+    selected: dict[tuple[str, str, str], dict[str, object]] = {}
+    for row in rows:
+        bucket = lead_bucket(float(row["lead_hours"]))
+        key = (str(row["provider"]), bucket, str(row["valid_time_utc"]))
+        rank = (str(row.get("init_time_utc") or ""), str(row.get("retrieved_at_utc") or ""))
+        current = selected.get(key)
+        if current is None:
+            selected[key] = row
+            continue
+        current_rank = (
+            str(current.get("init_time_utc") or ""),
+            str(current.get("retrieved_at_utc") or ""),
+        )
+        if rank > current_rank:
+            selected[key] = row
+
+    return [
+        SkillSample(
+            sample_id=str(row["valid_time_utc"]),
+            provider=str(row["provider"]),
+            model_version=str(row["model_version"]) if row.get("model_version") is not None else None,
+            lead_hours=float(row["lead_hours"]),
+            forecast=float(row["forecast_value"]),
+            observed=float(row["observed_value"]),
+            mode="station_run_skill",
+            variable="temperature_2m",
+            p10=float(row["p10"]) if row.get("p10") is not None else None,
+            p90=float(row["p90"]) if row.get("p90") is not None else None,
+        )
+        for row in selected.values()
+    ]
 
 
 def create_app(settings: Settings | None = None, database: Database | None = None) -> FastAPI:
@@ -256,6 +293,7 @@ def create_app(settings: Settings | None = None, database: Database | None = Non
         require_database_ready()
         truth_quality = database_truth_quality(database, days=days, location_id=DWD_10416.id)
         rows = database.temperature_verification_pairs(days=days, location_id=DWD_10416.id)
+        common_sample_slices = common_sample_leaderboard(_temperature_common_samples(rows))
         by_provider = defaultdict(list)
         by_bucket = defaultdict(lambda: defaultdict(list))
         by_version = defaultdict(lambda: defaultdict(list))
@@ -274,6 +312,7 @@ def create_app(settings: Settings | None = None, database: Database | None = Non
             by_version[pair.provider][pair.model_version or "unknown"].append(pair)
         payload = {
             provider: {
+                "descriptive_only": True,
                 "overall": summarize(pairs),
                 "by_lead_bucket": {bucket: summarize(items) for bucket, items in by_bucket[provider].items()},
                 "by_model_version": {version: summarize(items) for version, items in by_version[provider].items()},
@@ -284,12 +323,14 @@ def create_app(settings: Settings | None = None, database: Database | None = Non
             "window_days": days,
             "variable": "temperature_2m",
             "comparison_mode": "station_run_skill",
+            "sample_sufficiency_contract": "common-sample-sufficiency-v1",
             "comparison_location": {"id": DWD_10416.id, "station_id": "10416"},
             "matching_tolerance_minutes": 0,
             "verification_ready": truth_quality["verification_ready"],
             "truth_quality": truth_quality,
+            "common_sample_slices": common_sample_slices,
             "providers": payload,
-            "note": "Only forecasts stored for the DWD 10416 reference location are verified against DWD 10416 observations. Metrics are not clean benchmark evidence unless verification_ready is true. Home forecasts are comparison-only until home observations exist.",
+            "note": "Only common station valid-times inside one variable/lead bucket and one complete provider model-version cohort are eligible for model-comparison surfaces. Provider aggregates remain descriptive only. Metrics are not clean benchmark evidence unless verification_ready is true. Home forecasts are comparison-only until home observations exist.",
         }
 
     @app.get("/api/verification/precipitation")
@@ -329,6 +370,7 @@ def create_app(settings: Settings | None = None, database: Database | None = Non
             "comparison_location": {"id": DWD_10416.id, "station_id": "10416"},
             "event_version": PRECIP_EVENT_VERSION,
             "occurrence_threshold_mm_per_hour": threshold,
+            "sample_sufficiency_contract": "common-sample-sufficiency-v1",
             "verification_ready": truth_quality["verification_ready"],
             "truth_quality": truth_quality,
             "probability": {
@@ -336,7 +378,7 @@ def create_app(settings: Settings | None = None, database: Database | None = Non
                 for provider, items in prob.items()
             },
             "amount": {provider: summarize(items) for provider, items in amount.items()},
-            "note": "Probability and precipitation amount are verified separately; metrics are not clean benchmark evidence unless verification_ready is true, and deterministic model transport never fabricates a probability.",
+            "note": "Probability and precipitation amount are verified separately; each metric exposes n and sample sufficiency. Missingness remains not_assessed unless a strict common-sample denominator is available. Metrics are not clean benchmark evidence unless verification_ready is true, and deterministic model transport never fabricates a probability.",
         }
 
     @app.get("/api/warnings")

@@ -16,7 +16,7 @@ from .probabilistic import (
     reliability_from_members,
     weighted_interval_score,
 )
-from .verification import lead_bucket, sample_confidence
+from .verification import lead_bucket, sample_confidence, sample_evidence
 
 WEATHERNEXT_RELEASE_NOTES_URL = "https://developers.google.com/weathernext/release-notes"
 PRECIP_EVENT_THRESHOLD_MM = 0.1
@@ -79,6 +79,7 @@ def _skill_samples(rows: list[dict[str, object]]) -> list[SkillSample]:
             forecast=float(row["forecast_value"]),
             observed=float(row["observed_value"]),
             mode="monthly_common_valid_time",
+            variable="temperature_2m",
         )
         for row in rows
     ]
@@ -90,7 +91,9 @@ def _common_wins_losses(rows: list[dict[str, object]]) -> tuple[dict[str, int], 
         by_bucket[lead_bucket(float(row["lead_hours"]))].append(row)
 
     common_counts: dict[str, int] = {}
-    counters: dict[tuple[str, str, str], dict[str, int]] = {}
+    counters: dict[
+        tuple[str, tuple[tuple[str, str], ...], str, str], dict[str, int]
+    ] = {}
     for bucket, bucket_rows in sorted(by_bucket.items()):
         providers = sorted({str(row["provider"]) for row in bucket_rows})
         if len(providers) < 2:
@@ -113,6 +116,13 @@ def _common_wins_losses(rows: list[dict[str, object]]) -> tuple[dict[str, int], 
         }
         for valid_time in sorted(common_times):
             sample_rows = [by_provider_time[(provider, valid_time)] for provider in providers]
+            version_vector = tuple(
+                (
+                    provider,
+                    str(by_provider_time[(provider, valid_time)]["model_version"] or "unknown"),
+                )
+                for provider in providers
+            )
             errors = {
                 str(row["provider"]): abs(float(row["forecast_value"]) - float(row["observed_value"]))
                 for row in sample_rows
@@ -124,7 +134,7 @@ def _common_wins_losses(rows: list[dict[str, object]]) -> tuple[dict[str, int], 
             for row in sample_rows:
                 provider = str(row["provider"])
                 version = str(row["model_version"] or "unknown")
-                key = (bucket, provider, version)
+                key = (bucket, version_vector, provider, version)
                 counter = counters.setdefault(
                     key,
                     {"n_common": 0, "wins": 0, "losses": 0, "best_ties": 0, "worst_ties": 0},
@@ -145,9 +155,10 @@ def _common_wins_losses(rows: list[dict[str, object]]) -> tuple[dict[str, int], 
             "lead_bucket": bucket,
             "provider": provider,
             "model_version": version,
+            "comparison_cohort": dict(version_vector),
             **counts,
         }
-        for (bucket, provider, version), counts in sorted(counters.items())
+        for (bucket, version_vector, provider, version), counts in sorted(counters.items())
     ]
     return common_counts, rows_out
 
@@ -213,21 +224,32 @@ def _ensemble_calibration(database: Database, *, start: str, end: str) -> dict[s
     for provider in providers:
         precip_members = precipitation_members.get(provider, [])
         precip_observed = precipitation_observed.get(provider, [])
+        crps_values = crps.get(provider, {})
+        temp_n = len(temperature_wis.get(provider, []))
+        precip_n = len(precip_members)
         result[provider] = {
             "n_member_groups": group_counts.get(provider, 0),
+            "sample_sufficiency_state": sample_confidence(group_counts.get(provider, 0)),
             "mean_crps_by_variable": {
                 variable: mean(values)
-                for variable, values in sorted(crps.get(provider, {}).items())
+                for variable, values in sorted(crps_values.items())
                 if values
             },
+            "crps_sample_evidence_by_variable": {
+                variable: sample_evidence(len(values))
+                for variable, values in sorted(crps_values.items())
+            },
             "temperature_80_interval": {
-                "n": len(temperature_wis.get(provider, [])),
+                "n": temp_n,
+                "sample_sufficiency_state": sample_confidence(temp_n),
                 "mean_wis": mean(temperature_wis[provider]) if temperature_wis.get(provider) else None,
                 "coverage": mean(temperature_coverage[provider]) if temperature_coverage.get(provider) else None,
                 "mean_width": mean(temperature_width[provider]) if temperature_width.get(provider) else None,
             },
             "precipitation_probability": {
                 **brier_from_members(precip_members, precip_observed, threshold=PRECIP_EVENT_THRESHOLD_MM),
+                "sample_sufficiency_state": sample_confidence(precip_n),
+                "missingness": sample_evidence(precip_n)["missingness"],
                 "reliability_bins": reliability_from_members(
                     precip_members,
                     precip_observed,
@@ -303,6 +325,7 @@ def monthly_weather_next_report(database: Database, *, month: str) -> dict[str, 
 
     return {
         "report_type": "station_benchmark_monthly_v3",
+        "sample_sufficiency_contract": "common-sample-sufficiency-v1",
         "month": month,
         "comparison_location": {"id": DWD_10416.id, "station_id": "10416"},
         "truth_source": "DWD WMO 10416",
@@ -326,8 +349,10 @@ def monthly_weather_next_report(database: Database, *, month: str) -> dict[str, 
         "release_note_events": release_events,
         "note": (
             "Home forecasts are excluded from measured skill until a home observation source exists. "
-            "Monthly deterministic comparisons use only common station valid-times inside each lead bucket; "
-            "bootstrap MAE intervals are emitted only when n>=30. Ensemble calibration uses stored member_* "
-            "values only. Release events are included only when previously recorded from verified source metadata."
+            "Monthly deterministic comparisons use only common station valid-times inside each lead bucket and exact provider model-version cohort; "
+            "each comparison row exposes missingness and sample-sufficiency evidence, and bootstrap MAE intervals are emitted only when n>=30. "
+            "Wins/losses are also separated by the complete provider model-version cohort. "
+            "Ensemble calibration exposes n/sufficiency beside CRPS, interval/WIS and precipitation Brier evidence and uses stored member_* values only. "
+            "Release events are included only when previously recorded from verified source metadata."
         ),
     }

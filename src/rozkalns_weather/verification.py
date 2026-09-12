@@ -61,47 +61,82 @@ def sample_confidence(n: int) -> str:
     return "usable_sample"
 
 
-def summarize(pairs: Iterable[ErrorPair]) -> dict[str, float | int | str | None]:
+def sample_evidence(n: int, *, expected_n: int | None = None) -> dict[str, object]:
+    """Common sample-size metadata attached to every verification metric family."""
+
+    sufficiency = sample_confidence(n)
+    if expected_n is None:
+        missingness: dict[str, object] = {
+            "state": "not_assessed",
+            "expected_n": None,
+            "available_n": n,
+            "missing_n": None,
+            "missing_fraction": None,
+        }
+    else:
+        if expected_n < n:
+            raise ValueError("expected_n cannot be smaller than available n")
+        missing_n = expected_n - n
+        missingness = {
+            "state": "assessed",
+            "expected_n": expected_n,
+            "available_n": n,
+            "missing_n": missing_n,
+            "missing_fraction": (missing_n / expected_n) if expected_n else 0.0,
+        }
+    return {
+        "n": n,
+        "sample_confidence": sufficiency,
+        "sample_sufficiency_state": sufficiency,
+        "missingness": missingness,
+    }
+
+
+def summarize(
+    pairs: Iterable[ErrorPair], *, expected_n: int | None = None
+) -> dict[str, object]:
     items = list(pairs)
+    evidence = sample_evidence(len(items), expected_n=expected_n)
     if not items:
         return {
-            "n": 0,
+            **evidence,
             "mae": None,
             "rmse": None,
             "bias": None,
             "p10_p90_coverage": None,
-            "sample_confidence": sample_confidence(0),
+            "coverage_n": 0,
         }
     errors = [item.forecast - item.observed for item in items]
     intervals = [item for item in items if item.p10 is not None and item.p90 is not None]
     coverage = (
-        mean(1.0 if item.p10 <= item.observed <= item.p90 else 0.0 for item in intervals)
+        mean(1.0 if float(item.p10) <= item.observed <= float(item.p90) else 0.0 for item in intervals)
         if intervals
         else None
     )
     return {
-        "n": len(items),
+        **evidence,
         "mae": mean(abs(error) for error in errors),
         "rmse": sqrt(mean(error * error for error in errors)),
         "bias": mean(errors),
         "p10_p90_coverage": coverage,
-        "sample_confidence": sample_confidence(len(items)),
+        "coverage_n": len(intervals),
     }
 
 
-def brier_score(pairs: Iterable[ProbabilityPair]) -> dict[str, float | int | str | None]:
+def brier_score(
+    pairs: Iterable[ProbabilityPair], *, expected_n: int | None = None
+) -> dict[str, object]:
     items = list(pairs)
+    evidence = sample_evidence(len(items), expected_n=expected_n)
     if not items:
         return {
-            "n": 0,
+            **evidence,
             "brier_score": None,
-            "sample_confidence": sample_confidence(0),
         }
     score = mean((item.probability - item.observed_event) ** 2 for item in items)
     return {
-        "n": len(items),
+        **evidence,
         "brier_score": score,
-        "sample_confidence": sample_confidence(len(items)),
     }
 
 
