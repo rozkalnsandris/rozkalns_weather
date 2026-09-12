@@ -1,0 +1,113 @@
+{
+  "schema_version": 1,
+  "contract": "private-home-weathernext-runtime-activation.v1",
+  "runtime_mode": "private-research",
+  "depends_on": [
+    "weathernext3-first-access.v1",
+    "weathernext3-sustained-collection.v1"
+  ],
+  "location_semantics": {
+    "station_10416": {
+      "role": "measured_verification",
+      "truth_source": "DWD WMO 10416",
+      "measured_accuracy_allowed": true
+    },
+    "home": {
+      "role": "private_forecast_display",
+      "coordinates_runtime_only": true,
+      "measured_accuracy_allowed": false,
+      "measured_accuracy_requires_future_home_truth_contract": true
+    }
+  },
+  "weathernext": {
+    "provider": "weathernext3",
+    "model_name": "WeatherNext 3",
+    "model_version": "3.0.0",
+    "required_product_surfaces": ["0p05", "0p1"],
+    "required_statistics": ["mean", "p10", "p25", "p50", "p75", "p90"],
+    "verified_private_access_required": true,
+    "accepted_snapshot_provenance_required": true,
+    "current_schema_fingerprint_required": true,
+    "maximum_access_evidence_age_seconds": 86400,
+    "real_values_in_activation_evidence_allowed": false,
+    "warning_authority": false
+  },
+  "production_prerequisites": {
+    "schema_ready": true,
+    "station_10416_truth_ready": true,
+    "public_forecast_corpus_ready": true,
+    "immutable_forecast_history_ready": true
+  },
+  "privacy": {
+    "sanitized_evidence_only": true,
+    "coordinates_may_be_committed": false,
+    "credential_material_may_be_committed": false,
+    "private_project_or_dataset_identity_may_be_committed": false,
+    "private_paths_or_raw_logs_may_be_committed": false
+  },
+  "ui_safety": {
+    "official_severe_weather_warning_authority": "DWD",
+    "weather_model_output_is_official_warning": false,
+    "home_forecast_may_be_labeled_measured_accuracy": false
+  },
+  "fail_closed_reason_codes": [
+    "RUNTIME_MODE_MISMATCH",
+    "HOME_COORDINATES_MISSING",
+    "HOME_COORDINATES_EXPOSED",
+    "GOOGLE_AUTH_MISSING",
+    "PROJECT_DATASET_CONFIG_MISSING",
+    "CREDENTIAL_MATERIAL_EXPOSED",
+    "PRIVATE_ACCESS_NOT_VERIFIED",
+    "ACCESS_STATE_NOT_READY",
+    "ACCESS_EVIDENCE_STALE",
+    "ACCESS_EVIDENCE_FROM_FUTURE",
+    "MODEL_IDENTITY_DRIFT",
+    "SCHEMA_FINGERPRINT_DRIFT",
+    "ACCEPTED_SNAPSHOT_MISSING",
+    "SNAPSHOT_PROVENANCE_INCOMPLETE",
+    "SNAPSHOT_SURFACE_DRIFT",
+    "SNAPSHOT_STATISTIC_DRIFT",
+    "SNAPSHOT_IDENTITY_INVALID",
+    "REAL_VALUES_EXPOSED",
+    "PRODUCTION_SCHEMA_NOT_READY",
+    "STATION_TRUTH_NOT_READY",
+    "PUBLIC_CORPUS_NOT_READY",
+    "IMMUTABLE_HISTORY_NOT_READY",
+    "HOME_ACCURACY_SEMANTICS_VIOLATION",
+    "DWD_WARNING_AUTHORITY_VIOLATION",
+    "AUTHORITY_EXPANSION"
+  ],
+  "future_owner_gates": {
+    "private_config_and_credentials": {
+      "requires_exact_target_host": true,
+      "requires_runtime_only_home_coordinate_pair": true,
+      "requires_google_auth_and_dataset_presence": true,
+      "github_may_contain_secret_values": false
+    },
+    "private_bigquery_read": {
+      "requires_separate_exact_authority": true,
+      "must_follow_weathernext_first_access_guardrails": true
+    },
+    "production_snapshot_or_corpus_write": {
+      "requires_separate_exact_data_authority": true,
+      "automatic": false
+    },
+    "runtime_deploy_or_restart": {
+      "requires_separate_exact_rpi5_live_authority": true,
+      "trusted_runtime_boundary": "rozkalnsandris/RPi5_main"
+    },
+    "private_scheduler_activation": {
+      "requires_separate_exact_rpi5_live_authority": true,
+      "automatic": false
+    }
+  },
+  "authority": {
+    "source_auto_full_authorizes_credentials": false,
+    "source_auto_full_authorizes_real_bigquery_reads": false,
+    "source_auto_full_authorizes_runtime_env_mutation": false,
+    "source_auto_full_authorizes_rpi5_deploy_or_restart": false,
+    "source_auto_full_authorizes_production_data_writes": false,
+    "source_auto_full_authorizes_scheduler_activation": false,
+    "source_auto_full_authorizes_cloudflare_or_network_mutation": false
+  }
+}
