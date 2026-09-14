@@ -8,4 +8,4 @@ RUN python -m pip install --no-cache-dir --no-deps --no-build-isolation .
 RUN useradd --create-home --uid 10001 weather && mkdir -p /app/data && chown -R weather:weather /app
 USER weather
 EXPOSE 8000
-CMD ["uvicorn", "rozkalns_weather.app:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["sh", "-c", "python -m rozkalns_weather.runtime_config && exec uvicorn rozkalns_weather.app:app --host 0.0.0.0 --port 8000"]
