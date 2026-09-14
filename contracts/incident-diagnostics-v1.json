@@ -1,0 +1,61 @@
+{
+  "schema": "incident-diagnostics-v1",
+  "schema_version": 1,
+  "states": ["PASS", "WARN", "BLOCKED", "ERROR"],
+  "required_sections": [
+    "source_sha",
+    "app",
+    "config",
+    "database",
+    "providers",
+    "corpus",
+    "privacy",
+    "authority"
+  ],
+  "incident_classes": [
+    "configuration_readiness",
+    "database_schema",
+    "application_readiness",
+    "corpus_integrity",
+    "provider_upstream",
+    "provider_local_ingest",
+    "provider_stale_data",
+    "provider_not_ingested",
+    "provider_evidence_unknown",
+    "evidence_corruption",
+    "privacy_rejection"
+  ],
+  "reason_codes": [
+    "SOURCE_SHA_INVALID",
+    "DIAGNOSTICS_EVIDENCE_CORRUPT",
+    "PRIVATE_COORDINATE_EVIDENCE_REJECTED",
+    "CREDENTIAL_EVIDENCE_REJECTED",
+    "PRIVATE_PATH_EVIDENCE_REJECTED",
+    "RAW_LOG_OR_DETAIL_EVIDENCE_REJECTED",
+    "PRIVATE_PAYLOAD_EVIDENCE_REJECTED",
+    "CONFIG_READINESS_FAILURE",
+    "CONFIG_READINESS_WARNING",
+    "DATABASE_SCHEMA_MISMATCH",
+    "APPLICATION_NOT_READY",
+    "CORPUS_INTEGRITY_FAILURE",
+    "PROVIDER_UPSTREAM_OUTAGE",
+    "PROVIDER_LOCAL_INGEST_FAILURE",
+    "PROVIDER_STALE_DATA",
+    "PROVIDER_NOT_INGESTED",
+    "PROVIDER_EVIDENCE_UNKNOWN"
+  ],
+  "privacy": {
+    "exact_home_coordinates_allowed": false,
+    "credentials_or_tokens_allowed": false,
+    "private_filesystem_paths_allowed": false,
+    "raw_logs_or_details_allowed": false,
+    "private_payloads_allowed": false,
+    "sensitive_values_echoed_on_failure": false
+  },
+  "authority": {
+    "read_only": true,
+    "live_authority_granted": false,
+    "production_data_authority_granted": false,
+    "automatic_recovery_authority_granted": false
+  }
+}
