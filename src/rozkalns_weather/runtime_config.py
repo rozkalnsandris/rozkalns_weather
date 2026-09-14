@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+import json
+import os
 from typing import Any
 
 from .config import Settings
@@ -204,3 +206,14 @@ def assert_startup_runtime_config(env: Mapping[str, str], settings: Settings) ->
         codes = ",".join(payload["reason_codes"])
         raise RuntimeError(f"runtime configuration blocked: {codes}")
     return payload
+
+
+def main() -> None:
+    payload = validate_runtime_config(os.environ)
+    print(json.dumps(payload, sort_keys=True))
+    if payload["state"] == "BLOCKED":
+        raise SystemExit(3)
+
+
+if __name__ == "__main__":
+    main()
