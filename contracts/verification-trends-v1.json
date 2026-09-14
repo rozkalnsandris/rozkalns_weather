@@ -1,0 +1,77 @@
+{
+  "schema": "verification-trends-v1",
+  "schema_version": 1,
+  "scope": "public verification trend evidence",
+  "period_families": {
+    "monthly": "calendar months clipped to the requested/common benchmark window",
+    "seasonal": "meteorological DJF/MAM/JJA/SON seasons clipped to the requested/common benchmark window",
+    "rolling": {
+      "default_days": 30,
+      "default_step_days": 7,
+      "final_window_may_be_clipped": true
+    }
+  },
+  "dimensions": [
+    "provider",
+    "model_version",
+    "comparison_cohort_id",
+    "init_cycle_utc",
+    "lead_bucket",
+    "variable"
+  ],
+  "sample_policy": {
+    "matching": "strict common valid-times inside each provider class",
+    "model_version_cohorts": "exact and never collapsed across version boundaries",
+    "sample_sufficiency": {
+      "insufficient_sample": "n < 30",
+      "limited_sample": "30 <= n < 100",
+      "usable_sample": "n >= 100"
+    },
+    "missingness_preserved": true
+  },
+  "metric_policy": {
+    "deterministic": ["n", "missingness", "mae", "rmse", "bias"],
+    "ensemble": [
+      "n",
+      "missingness",
+      "mean_crps",
+      "coverage",
+      "mean_interval_width",
+      "mean_wis",
+      "brier_score",
+      "reliability_bins"
+    ],
+    "ensemble_requires_genuine_members": true,
+    "deterministic_values_never_imply_probability": true
+  },
+  "material_shift_policy": {
+    "relative_metric_fraction": 0.25,
+    "absolute_metric_floor": 0.1,
+    "missing_fraction_delta": 0.2,
+    "coverage_delta": 0.15,
+    "brier_delta": 0.05,
+    "freshness_age_relative_fraction": 0.25,
+    "freshness_age_absolute_hours": 2.0,
+    "insufficient_samples_suppress_shift_detection": true,
+    "model_version_boundaries_are_not_compared": true,
+    "descriptive_only": true
+  },
+  "historical_policy": {
+    "common_public_benchmark_start": "2026-04-02",
+    "pre_common_history": "ecmwf_ifs only and excluded from common trend metrics"
+  },
+  "weathernext": {
+    "state": "pending until defensible real corpus exists",
+    "fabricated_values_allowed": false,
+    "included_in_public_trends": false
+  },
+  "ranking": {
+    "overall_winner_allowed": false,
+    "combined_weighting_allowed": false,
+    "automatic_model_weighting_allowed": false
+  },
+  "authority": {
+    "production_data_mutation": false,
+    "runtime_live_mutation": false
+  }
+}
