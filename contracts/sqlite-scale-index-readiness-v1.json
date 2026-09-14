@@ -1,0 +1,93 @@
+{
+  "authority": {
+    "production_data_authority_granted": false,
+    "production_schema_or_index_mutation_authority_granted": false,
+    "runtime_live_authority_granted": false,
+    "vacuum_or_analyze_authority_granted": false
+  },
+  "benchmark": {
+    "plan_scoring": {
+      "blocked_at": 9,
+      "large_table_scan": 4,
+      "other_scan": 1,
+      "temp_btree": 1,
+      "wall_clock_is_gate": false,
+      "warn_at": 4
+    },
+    "query_classes": [
+      "readiness",
+      "corpus_report",
+      "provider_health",
+      "common_sample_verification",
+      "monthly_reporting",
+      "api_slice"
+    ],
+    "scales": {
+      "large": {
+        "runs_per_provider": 256
+      },
+      "medium": {
+        "runs_per_provider": 64
+      },
+      "small": {
+        "runs_per_provider": 8
+      }
+    },
+    "synthetic_only": true
+  },
+  "contract": "sqlite-scale-index-readiness-v1",
+  "index_migration_proposal": {
+    "apply_to_production": false,
+    "contract": "sqlite-scale-index-readiness-v1",
+    "indexes": [
+      {
+        "expected_benefit": "replace corpus-wide latest-run scans with location/provider retrieval searches",
+        "name": "idx_proposed_forecast_runs_location_provider_retrieved",
+        "query_classes": [
+          "provider_health",
+          "api_slice"
+        ],
+        "rollback_sql": "DROP INDEX IF EXISTS idx_proposed_forecast_runs_location_provider_retrieved",
+        "sql": "CREATE INDEX idx_proposed_forecast_runs_location_provider_retrieved ON forecast_runs(location_id, provider, retrieved_at_utc DESC)"
+      },
+      {
+        "expected_benefit": "bind bounded corpus windows to location/provider/init range searches",
+        "name": "idx_proposed_forecast_runs_location_provider_init",
+        "query_classes": [
+          "corpus_report"
+        ],
+        "rollback_sql": "DROP INDEX IF EXISTS idx_proposed_forecast_runs_location_provider_init",
+        "sql": "CREATE INDEX idx_proposed_forecast_runs_location_provider_init ON forecast_runs(location_id, provider, init_time_utc, revision)"
+      },
+      {
+        "expected_benefit": "replace broad forecast-value scans with variable/time range searches",
+        "name": "idx_proposed_forecast_values_variable_valid_run",
+        "query_classes": [
+          "common_sample_verification",
+          "monthly_reporting",
+          "api_slice"
+        ],
+        "rollback_sql": "DROP INDEX IF EXISTS idx_proposed_forecast_values_variable_valid_run",
+        "sql": "CREATE INDEX idx_proposed_forecast_values_variable_valid_run ON forecast_values(variable, valid_time_utc, run_id, lead_hours)"
+      }
+    ],
+    "preconditions": [
+      "separate explicit production SQLite migration authority",
+      "fresh production backup/readiness evidence",
+      "exact reviewed schema identity",
+      "bounded maintenance and rollback plan",
+      "post-change EXPLAIN QUERY PLAN and integrity verification"
+    ],
+    "rollback_semantics": "DROP only the exact newly authorized index names after separate rollback authority; no implicit VACUUM or data rewrite",
+    "schema_version": 1,
+    "status": "PROPOSAL_ONLY"
+  },
+  "privacy": {
+    "credentials_required": false,
+    "private_coordinates_required": false,
+    "production_logs_required": false,
+    "production_paths_required": false
+  },
+  "schema_version": 1,
+  "status": "ACTIVE_SOURCE_BENCHMARK"
+}
