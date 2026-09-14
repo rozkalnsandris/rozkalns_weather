@@ -1,0 +1,87 @@
+{
+  "allowed_copy_sources": [
+    "deploy/public-runtime.lock",
+    "pyproject.toml",
+    "README.md",
+    "src"
+  ],
+  "authority": {
+    "production_image_deploy": false,
+    "registry_push": false,
+    "release_activation": false,
+    "runtime_live": false
+  },
+  "base_image": "python:3.12.14-slim-bookworm@sha256:782412e85d0f0984994c290652577d4018aff08145c85b262bb63dc0c7522254",
+  "base_image_kind": "docker_official_python_multi_platform_index_digest",
+  "build_tool_packages": [
+    "pip",
+    "setuptools"
+  ],
+  "contract": "container-build-reproducibility-v1",
+  "dependency_lock": "deploy/public-runtime.lock",
+  "dependency_lock_sha256": "c822be220427d82011ed57c8fb964a0f2a8dbc95da32e321f61843404b076c92",
+  "dockerfile": "Dockerfile",
+  "evidence": {
+    "build_identity_inputs": [
+      "exact_source_sha",
+      "base_image_index_digest",
+      "required_input_sha256",
+      "dependency_lock_sha256",
+      "sbom_sha256",
+      "runtime_class",
+      "target_alias"
+    ],
+    "schema": "container-build-reproducibility-v1",
+    "states": [
+      "PASS",
+      "WARN",
+      "BLOCKED"
+    ],
+    "wall_clock_or_registry_state_is_identity_input": false
+  },
+  "expected_console_scripts": [
+    "rozkalns-weather",
+    "uvicorn"
+  ],
+  "expected_runtime": {
+    "runtime_class": "public-only-rpi5",
+    "runtime_mode": "public-only",
+    "target_alias": "rozkalns-weather-public-rpi5",
+    "weathernext_required": false
+  },
+  "forbidden_public_runtime_packages": [
+    "google-cloud-bigquery"
+  ],
+  "later_live_binding": {
+    "requires_deployed_image_digest": true,
+    "requires_exact_build_identity_sha256": true,
+    "requires_exact_reviewed_source_sha": true,
+    "requires_fresh_acceptance_evidence": true,
+    "source_gate_grants_live_authority": false
+  },
+  "privacy": {
+    "credentials_or_tokens_required": false,
+    "exact_home_coordinates_required": false,
+    "private_runtime_paths_required": false,
+    "raw_runtime_logs_required": false
+  },
+  "public_runtime_direct_dependencies": [
+    "fastapi",
+    "httpx",
+    "uvicorn"
+  ],
+  "python_version": "3.12.14",
+  "required_inputs": [
+    "Dockerfile",
+    "pyproject.toml",
+    "README.md",
+    "deploy/public-runtime.lock",
+    "deploy/runtime-descriptor.json",
+    "deploy/docker-compose.public.yml",
+    ".dockerignore"
+  ],
+  "runtime_class": "public-only-rpi5",
+  "runtime_descriptor": "deploy/runtime-descriptor.json",
+  "schema_version": 1,
+  "status": "ACTIVE_SOURCE_GATE"
+}
