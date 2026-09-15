@@ -5,14 +5,17 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 import hashlib
 import json
+from math import isfinite
 from typing import Any, Callable, Iterable, Mapping
 
 from .config import Settings
 from .locations import DWD_10416
-from .models import ForecastRun
+from .models import ForecastRun, ensure_utc
 from .providers.weathernext import (
     EXPECTED_SCHEMA,
     STATS,
+    STATION_FIELDS,
+    SURFACE_FIELDS,
     TABLE_005,
     TABLE_01,
     WeatherNextDataLatency,
@@ -21,6 +24,7 @@ from .providers.weathernext import (
     build_point_query,
     forecast_horizon_hours,
     run_class,
+    rows_to_run,
     validate_query_contract,
     validate_schema_rows,
 )
@@ -55,10 +59,13 @@ class DryRunEvidence:
     resolution: str
     estimated_bytes: int
     maximum_bytes_billed: int
+    query_sha256: str = ""
 
     @property
     def within_cap(self) -> bool:
-        return self.estimated_bytes <= self.maximum_bytes_billed
+        return (type(self.estimated_bytes) is int and type(self.maximum_bytes_billed) is int
+                and 0 <= self.estimated_bytes <= self.maximum_bytes_billed <= MAX_ALLOWED_BYTES_BILLED
+                and self.maximum_bytes_billed > 0)
 
     def as_dict(self) -> dict[str, object]:
         return {
@@ -131,22 +138,22 @@ def classify_access_error(exc: Exception) -> str:
 
 
 def _validate_canary_bounds(*, hours_limit: int, maximum_bytes_billed: int) -> None:
-    if not 1 <= hours_limit <= MAX_CANARY_HOURS:
+    if type(hours_limit) is not int or not 1 <= hours_limit <= MAX_CANARY_HOURS:
         raise ValueError(f"hours_limit must be between 1 and {MAX_CANARY_HOURS}")
-    if not 1 <= maximum_bytes_billed <= MAX_ALLOWED_BYTES_BILLED:
+    if type(maximum_bytes_billed) is not int or not 1 <= maximum_bytes_billed <= MAX_ALLOWED_BYTES_BILLED:
         raise ValueError(f"maximum_bytes_billed must be between 1 and {MAX_ALLOWED_BYTES_BILLED}")
 
 
 def build_canary_plan(*, now: datetime, hours_limit: int = DEFAULT_CANARY_HOURS,
                       maximum_bytes_billed: int, init_time: datetime | None = None) -> dict[str, object]:
     _validate_canary_bounds(hours_limit=hours_limit, maximum_bytes_billed=maximum_bytes_billed)
-    now = now.astimezone(timezone.utc)
+    now = ensure_utc(now)
     candidates = available_init_candidates(now, limit=24)
     if init_time is None:
         if not candidates:
             raise WeatherNextDataLatency("no WeatherNext init fits the expected dissemination window")
         init_time = candidates[0]
-    init_time = init_time.astimezone(timezone.utc)
+    init_time = ensure_utc(init_time)
     if init_time not in candidates:
         raise WeatherNextDataLatency("selected init is outside the target-disseminated candidate set")
     horizon = forecast_horizon_hours(init_time)
@@ -203,9 +210,12 @@ def dry_run_canary_queries(*, client: Any, project: str, dataset: str, lat: floa
     evidence: list[DryRunEvidence] = []
     for query in (q05, q01):
         config = factory(dry_run=True, maximum_bytes_billed=maximum_bytes_billed)
-        job = client.query(query.sql, job_config=config)
-        estimated = int(getattr(job, "total_bytes_processed", 0) or 0)
-        item = DryRunEvidence(query.resolution, estimated, maximum_bytes_billed)
+        job = client.query(query.sql, job_config=config, retry=None, job_retry=None, timeout=60)
+        estimated = getattr(job, "total_bytes_processed", None)
+        if type(estimated) is not int or estimated < 0:
+            raise WeatherNextCostLimit("dry-run estimate is absent or invalid")
+        item = DryRunEvidence(query.resolution, estimated, maximum_bytes_billed,
+                              hashlib.sha256(query.sql.encode("utf-8")).hexdigest())
         if not item.within_cap:
             raise WeatherNextCostLimit(f"{query.resolution} dry-run estimate exceeds maximum_bytes_billed")
         evidence.append(item)
@@ -229,22 +239,92 @@ def validate_canary_rows(rows05: Iterable[Mapping[str, Any]], rows01: Iterable[M
     }
 
 
+def read_first_access_canary(*, client: Any, project: str, dataset: str,
+                             now: datetime, init_time: datetime, maximum_bytes_billed: int,
+                             job_config_factory: Callable[..., Any] | None = None
+                             ) -> tuple[dict[str, object], tuple[ForecastRun, ForecastRun]]:
+    """Private read-only entrypoint for #122; caller must hold separate authority.
+
+    Runs remain in caller memory. Never print them or use an ordinary ingest path
+    to persist them. This function has no DB, runtime install or retry authority.
+    """
+    factory = job_config_factory or _default_job_config
+    plan = build_canary_plan(now=now, init_time=init_time, hours_limit=6,
+                             maximum_bytes_billed=maximum_bytes_billed)
+    adapter = WeatherNextBigQueryAdapter(project=project, dataset=dataset, client=client)
+    schema = schema_summary(adapter.schema_probe(maximum_bytes_billed=maximum_bytes_billed,
+                                                job_config_factory=factory))
+    if schema["state"] != "linked_dataset_ready":
+        raise ValueError("required WeatherNext schema mismatch")
+    query_args = dict(client=client, project=project, dataset=dataset,
+                      lat=DWD_10416.lat, lon=DWD_10416.lon, init_time=init_time,
+                      hours_limit=6, maximum_bytes_billed=maximum_bytes_billed,
+                      job_config_factory=factory)
+    dry = dry_run_canary_queries(**query_args)
+    rows05, rows01 = execute_canary_queries(**query_args, dry_run_evidence=dry)
+    for rows, fields in ((rows05, STATION_FIELDS), (rows01, SURFACE_FIELDS)):
+        for row in rows:
+            lead = row.get("forecast_hour")
+            valid = row.get("forecast_time")
+            if isinstance(valid, str):
+                valid = datetime.fromisoformat(valid.replace("Z", "+00:00"))
+            if not isinstance(valid, datetime) or valid.tzinfo is None:
+                raise ValueError("canary valid time must be explicit and timezone-aware")
+            if (isinstance(lead, bool) or not isinstance(lead, (int, float))
+                    or not isfinite(lead) or not 0 <= lead <= 6
+                    or (valid - init_time).total_seconds() != lead * 3600):
+                raise ValueError("canary lead provenance is absent or invalid")
+            if any(row.get(f"{field}_{stat}") is None for field in fields for stat in STATS):
+                raise ValueError("canary product statistic matrix incomplete")
+    canary = validate_canary_rows(rows05, rows01)
+    if not canary["product_surfaces_complete"]:
+        raise WeatherNextDataLatency("two complete canary surfaces required; no fallback authorized")
+    retrieved_at = datetime.now(timezone.utc)
+    runs = tuple(rows_to_run(rows, resolution=resolution, init_time=init_time, retrieved_at=retrieved_at)
+                 for rows, resolution in ((rows05, "0p05"), (rows01, "0p1")))
+    for run in runs:
+        if any(not 0 <= value.lead_hours <= 6 for value in run.values):
+            raise ValueError("canary response exceeds the six-hour envelope")
+    evidence = {
+        "state": "canary_ready_for_snapshot",
+        "selected_init_time_utc": plan["selected_init_time_utc"],
+        "schema": schema, "dry_run": [item.as_dict() for item in dry], "canary": canary,
+        "provenance": {"complete": all(validate_provenance(run)["complete"] for run in runs)},
+    }
+    # This validates the per-variable statistic matrix too, without SQLite access.
+    from .weathernext_snapshot_admission import validate_first_snapshot_admission
+    validate_first_snapshot_admission(first_access_evidence=evidence, runs=runs,
+        candidate_schema_fingerprint=expected_required_schema_fingerprint(),
+        admission_time_utc=retrieved_at, maximum_candidate_age_hours=1)
+    validate_first_access_evidence(evidence)
+    return evidence, runs
+
+
 def execute_canary_queries(*, client: Any, project: str, dataset: str, lat: float, lon: float,
                            init_time: datetime, hours_limit: int, maximum_bytes_billed: int,
                            dry_run_evidence: Iterable[DryRunEvidence],
                            job_config_factory: Callable[..., Any] | None = None) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     _validate_canary_bounds(hours_limit=hours_limit, maximum_bytes_billed=maximum_bytes_billed)
     checked = tuple(dry_run_evidence)
-    if len(checked) != 2 or any(item.maximum_bytes_billed != maximum_bytes_billed or not item.within_cap for item in checked):
-        raise WeatherNextCostLimit("successful matching dry-run evidence is required before canary query")
     factory = job_config_factory or _default_job_config
     q05, q01 = _query_pair(project=project, dataset=dataset, lat=lat, lon=lon,
                            init_time=init_time, hours_limit=hours_limit)
+    if len(checked) != 2 or any(
+        item.resolution != query.resolution or not item.within_cap
+        or not item.estimated_bytes <= maximum_bytes_billed <= item.maximum_bytes_billed
+        or item.query_sha256 != hashlib.sha256(query.sql.encode("utf-8")).hexdigest()
+        for item, query in zip(checked, (q05, q01))
+    ):
+        raise WeatherNextCostLimit("successful exact-query dry-run evidence is required before canary query")
     rows: list[list[dict[str, Any]]] = []
     for query in (q05, q01):
         config = factory(dry_run=False, maximum_bytes_billed=maximum_bytes_billed)
-        job = client.query(query.sql, job_config=config)
-        rows.append([dict(row) for row in job.result()])
+        job = client.query(query.sql, job_config=config, retry=None, job_retry=None, timeout=60)
+        result = [dict(row) for row in job.result(retry=None, job_retry=None, timeout=60,
+                                                  max_results=hours_limit + 2)]
+        if len(result) > hours_limit + 1:
+            raise ValueError("canary response row count exceeds bounded hourly envelope")
+        rows.append(result)
     return rows[0], rows[1]
 
 
@@ -308,10 +388,20 @@ def validate_first_access_evidence(evidence: Mapping[str, Any]) -> dict[str, obj
     schema = evidence.get("schema")
     if not isinstance(schema, Mapping): raise ValueError("schema evidence is required")
     if schema.get("state") != "linked_dataset_ready": raise ValueError("linked dataset/schema must be ready")
+    if schema.get("observed_required_fingerprint") != expected_required_schema_fingerprint():
+        raise ValueError("required schema fingerprint mismatch")
     dry_run = evidence.get("dry_run")
     if not isinstance(dry_run, list) or len(dry_run) != 2: raise ValueError("two dry-run evidence items are required")
     if any(not isinstance(item, Mapping) or item.get("within_cap") is not True for item in dry_run):
         raise ValueError("dry-run cost cap must pass for both surfaces")
+    if [item.get("resolution") for item in dry_run] != ["0p05", "0p1"]:
+        raise ValueError("distinct ordered dry-run surfaces are required")
+    for item in dry_run:
+        bound = DryRunEvidence(str(item["resolution"]), item.get("estimated_bytes"), item.get("maximum_bytes_billed"))
+        if not bound.within_cap:
+            raise ValueError("dry-run numeric cost evidence is required")
+    selected_init = datetime.fromisoformat(str(evidence.get("selected_init_time_utc")).replace("Z", "+00:00"))
+    ensure_utc(selected_init)
     canary = evidence.get("canary")
     if not isinstance(canary, Mapping) or canary.get("product_surfaces_complete") is not True:
         raise ValueError("complete two-surface canary evidence is required")
@@ -349,7 +439,8 @@ def preflight_access(*, settings: Settings, now: datetime, hours_limit: int, max
     adapter = adapter or WeatherNextBigQueryAdapter(project=settings.google_cloud_project,
                                                      dataset=settings.weathernext_bigquery_dataset)
     try:
-        rows = adapter.schema_probe()
+        rows = adapter.schema_probe(maximum_bytes_billed=maximum_bytes_billed,
+                                    job_config_factory=job_config_factory or _default_job_config)
     except Exception as exc:
         return {"schema_version": 1, "state": classify_access_error(exc), "coordinates_exposed": False,
                 "credentials_exposed": False, "production_write_performed": False}

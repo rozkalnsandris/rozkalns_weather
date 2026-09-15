@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 
+from rozkalns_weather.weathernext_access import expected_required_schema_fingerprint
 from rozkalns_weather.models import ForecastRun, ForecastValue
 from rozkalns_weather.providers.weathernext import STATS
 from rozkalns_weather.weathernext_snapshot_admission import (
@@ -19,7 +20,7 @@ from rozkalns_weather.weathernext_snapshot_admission import (
 
 
 INIT = datetime(2026, 9, 8, 6, tzinfo=timezone.utc)
-SCHEMA_FINGERPRINT = "schema-fingerprint-001"
+SCHEMA_FINGERPRINT = expected_required_schema_fingerprint()
 
 
 def _first_access_evidence() -> dict[str, object]:
@@ -31,8 +32,8 @@ def _first_access_evidence() -> dict[str, object]:
             "observed_required_fingerprint": SCHEMA_FINGERPRINT,
         },
         "dry_run": [
-            {"resolution": "0p05", "within_cap": True},
-            {"resolution": "0p1", "within_cap": True},
+            {"resolution": "0p05", "within_cap": True, "estimated_bytes": 100, "maximum_bytes_billed": 1000},
+            {"resolution": "0p1", "within_cap": True, "estimated_bytes": 100, "maximum_bytes_billed": 1000},
         ],
         "canary": {"product_surfaces_complete": True},
         "provenance": {"complete": True},

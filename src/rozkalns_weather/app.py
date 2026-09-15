@@ -4,6 +4,7 @@ from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
+from typing import Literal
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse, JSONResponse
@@ -36,16 +37,16 @@ def _descriptor(provider) -> dict[str, object]:
     }
 
 
-def _daily_payload(database: Database, *, days: int, timezone_name: str) -> list[dict[str, object]]:
+def _daily_payload(database: Database, *, days: int, timezone_name: str, location_id: str = "home") -> list[dict[str, object]]:
     rows = database.latest_forecast_rows(
         hours=min(360, days * 24),
         variables=("temperature_2m", "precipitation_1h"),
-        location_id="home",
+        location_id=location_id,
     )
     tz = ZoneInfo(timezone_name)
     grouped: dict[tuple[str, str], dict[str, object]] = {}
     for row in rows:
-        if row["statistic"] not in {"deterministic", "mean", "p50"}:
+        if row["statistic"] not in {"deterministic", "mean"}:
             continue
         local_date = parse_time(str(row["valid_time_utc"])).astimezone(tz).date().isoformat()
         key = (str(row["provider"]), local_date)
@@ -255,23 +256,25 @@ def create_app(settings: Settings | None = None, database: Database | None = Non
         }
 
     @app.get("/api/hourly")
-    def hourly(hours: int = Query(48, ge=1, le=360), variable: str = Query("temperature_2m")) -> dict[str, object]:
+    def hourly(hours: int = Query(48, ge=1, le=360), variable: str = Query("temperature_2m"),
+               location_id: Literal["home", "station_10416"] = Query("home")) -> dict[str, object]:
         require_database_ready()
         return {
             "hours": hours,
             "variable": variable,
-            "location": {"id": "home", "label": settings.home_label, "coordinates_exposed": False},
-            "series": database.latest_hourly(hours=hours, variable=variable, location_id="home"),
+            "location": {"id": location_id, "label": settings.home_label if location_id == "home" else DWD_10416.label, "coordinates_exposed": False},
+            "series": database.latest_hourly(hours=hours, variable=variable, location_id=location_id),
         }
 
     @app.get("/api/daily")
-    def daily(days: int = Query(10, ge=1, le=15)) -> dict[str, object]:
+    def daily(days: int = Query(10, ge=1, le=15),
+              location_id: Literal["home", "station_10416"] = Query("home")) -> dict[str, object]:
         require_database_ready()
         return {
             "days": days,
             "timezone": settings.home_timezone,
-            "location": {"id": "home", "label": settings.home_label, "coordinates_exposed": False},
-            "days_by_provider": _daily_payload(database, days=days, timezone_name=settings.home_timezone),
+            "location": {"id": location_id, "label": settings.home_label if location_id == "home" else DWD_10416.label, "coordinates_exposed": False},
+            "days_by_provider": _daily_payload(database, days=days, timezone_name=settings.home_timezone, location_id=location_id),
         }
 
     @app.get("/api/corpus/stats")

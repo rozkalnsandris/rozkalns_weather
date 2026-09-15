@@ -118,7 +118,7 @@ Reference: https://brightsky.dev/
 
 Galvenais pētniecības modelis.
 
-MVP access: BigQuery pēc allowlist apstiprināšanas.
+MVP access: BigQuery; allowlist approval is established in #122. Private runtime, linkage and first access remain separate gates.
 
 Loma:
 

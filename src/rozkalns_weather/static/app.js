@@ -286,6 +286,8 @@ function renderTemperature(result, healthMap) {
       qs(`#${id}`).classList.remove("empty");
       qs(`#${id}`).innerHTML = tempSvg;
     });
+  } else {
+    ["overviewChart", "modelsChart"].forEach((id) => { qs(`#${id}`).textContent = "Šai vietai nav temperatūras prognožu."; });
   }
   qs("#uncertainty").innerHTML = uncertaintySummary(rows);
 }
@@ -300,6 +302,8 @@ function renderPrecipitation(result, healthMap) {
       qs(`#${id}`).classList.remove("empty");
       qs(`#${id}`).innerHTML = precipSvg;
     });
+  } else {
+    ["overviewPrecip", "modelsPrecip"].forEach((id) => { qs(`#${id}`).textContent = "Šai vietai nav nokrišņu prognožu."; });
   }
 }
 
@@ -310,11 +314,20 @@ function renderDaily(result, healthMap) {
   qs("#dailyGrid").innerHTML = rows.length ? dailyCards(rows, healthMap) : "Nav datu.";
 }
 
+let forecastLocationInitialized = false;
+let refreshSequence = 0;
+
 async function refresh() {
+  const sequence = ++refreshSequence;
   let healthResult;
   try {
     healthResult = await apiWithFallback("/api/health/providers", "provider-health");
+    if (sequence !== refreshSequence) return;
     lastHealth = healthResult.payload;
+    if (!forecastLocationInitialized) {
+      qs("#forecastLocation").value = lastHealth.home.configured ? "home" : "station_10416";
+      forecastLocationInitialized = true;
+    }
     qs("#statusBadge").textContent = lastHealth.home.configured ? "home configured" : "home config pending";
     qs("#providerGrid").innerHTML = providersCard(lastHealth.providers);
     const healthState = providerGridState(lastHealth, healthResult);
@@ -323,19 +336,32 @@ async function refresh() {
     const weatherNext = lastHealth.providers.find((item) => item.id === "weathernext3");
     qs("#wnState").textContent = weatherNext?.state || "unknown";
   } catch (error) {
+    if (sequence !== refreshSequence) return;
     lastHealth = null;
     qs("#statusBadge").textContent = navigator.onLine ? "API unavailable" : "offline";
     setSurfaceState("providerState", navigator.onLine ? "error" : "offline", `Provider health unavailable: ${error}`, { alert: true });
     globalNetworkState({ state: navigator.onLine ? "error" : "offline", message: "Provider health API unavailable." });
   }
 
+  if (sequence !== refreshSequence) return;
+  const locationId = qs("#forecastLocation").value;
+  const locationLabel = locationId === "home" ? "Home" : "DWD 10416";
+  document.querySelectorAll(".forecast-location-label").forEach((node) => { node.textContent = locationLabel; });
+  qs("#forecastLocationNote").textContent = locationId === "home" ? "Privāta home prognoze; nav izmērīta station accuracy." : "Station prognoze; izmērīta accuracy tikai pret DWD 10416 observations.";
+  ["overviewChart", "modelsChart", "overviewPrecip", "modelsPrecip"].forEach((id) => {
+    qs(`#${id}`).textContent = "Prognozes tiek ielādētas…";
+    qs(`#${id}`).classList.add("empty");
+  });
+  qs("#uncertainty").textContent = "WeatherNext uncertainty vēl nav pieejama.";
+  qs("#dailyGrid").textContent = "Dienas prognozes tiek ielādētas…";
   const healthMap = providerHealthMap(lastHealth);
   const requests = await Promise.allSettled([
     apiWithFallback("/api/current", "current"),
-    apiWithFallback("/api/hourly?hours=48&variable=temperature_2m", "hourly-temperature-48"),
-    apiWithFallback("/api/hourly?hours=48&variable=precipitation_1h", "hourly-precipitation-48"),
-    apiWithFallback("/api/daily?days=10", "daily-10"),
+    apiWithFallback(`/api/hourly?hours=48&variable=temperature_2m&location_id=${locationId}`, `hourly-temperature-48-${locationId}`),
+    apiWithFallback(`/api/hourly?hours=48&variable=precipitation_1h&location_id=${locationId}`, `hourly-precipitation-48-${locationId}`),
+    apiWithFallback(`/api/daily?days=10&location_id=${locationId}`, `daily-10-${locationId}`),
   ]);
+  if (sequence !== refreshSequence) return;
   const [current, temperature, precipitation, daily] = requests;
   if (current.status === "fulfilled") renderCurrent(current.value, healthMap);
   else setSurfaceState("currentState", navigator.onLine ? "error" : "offline", `DWD current observation unavailable: ${current.reason}`, { alert: true });
@@ -394,6 +420,8 @@ async function loadSafetySurface(kind) {
     setSurfaceState(stateId, navigator.onLine ? "error" : "offline", `${isWarning ? "DWD official warning" : "DWD radar"} endpoint unavailable: ${error}`, { alert: isWarning });
   }
 }
+
+qs("#forecastLocation").onchange = () => { forecastLocationInitialized = true; refresh(); };
 
 qs("#loadWarnings").onclick = () => loadSafetySurface("warnings");
 qs("#loadRadar").onclick = () => loadSafetySurface("radar");

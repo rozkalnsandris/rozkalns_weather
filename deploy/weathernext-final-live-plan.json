@@ -1,0 +1,195 @@
+{
+  "access_approval": {
+    "evidence_issue": 122,
+    "live_access_verified": false,
+    "state": "approved"
+  },
+  "authority": {
+    "external_repository_write": false,
+    "google_request_performed": false,
+    "plan_grants_live_authority": false,
+    "production_mutation_performed": false
+  },
+  "canary": {
+    "HOURS": 6,
+    "MAX_BYTES_BILLED_PER_QUERY": 1073741824,
+    "dry_run_bound_to_exact_query": true,
+    "dry_run_required_for_both_surfaces": true,
+    "entrypoint": "rozkalns_weather.weathernext_access.read_first_access_canary",
+    "exact_init_time_partition_filter": true,
+    "first_access_sqlite_write": false,
+    "maximum_initial_hours": 6,
+    "metadata_probe_also_capped": true,
+    "model_version_contract": "3.0.0",
+    "real_cap_policy": "smallest_defensible_cap_from_fresh_exact_query_dry_run",
+    "required_surfaces": [
+      "0p05_station",
+      "0p1_surface"
+    ],
+    "selected_columns_only": true,
+    "selected_init_count": 1
+  },
+  "classification_semantics": {
+    "EXTERNAL_SOURCE_CAPABILITY_MISSING": "required trusted executable connection absent; documented class is insufficient",
+    "LIVE_BINDING_REQUIRED": "executable source exists; only fresh private binding/authorization remains",
+    "SOURCE_READY": "reviewed executable source exists; not installed or authorized; earlier prerequisites still apply"
+  },
+  "failure_policy": {
+    "alternate_dataset": false,
+    "alternate_mutation_path": false,
+    "automatic_cleanup": false,
+    "automatic_retry": false,
+    "automatic_rollback": false,
+    "consume_authority_at_first_authorized_operation": true,
+    "credential_substitution": false,
+    "error_timeout_drift_lock_permission_schema_cost_or_health_ambiguity": "STOP",
+    "recovery_requires_separate_frozen_authority": true
+  },
+  "issue": 125,
+  "next_owner_command": "AUTHORIZE RPi5_main WEATHERNEXT-PRIVATE-EXECUTION-BRIDGE CREATE-ONE-SOURCE-ISSUE-AND-DRAFT-PR NO-MERGE NO-LIVE",
+  "next_state": "BLOCKED_BY_EXTERNAL_SOURCE_CAPABILITY",
+  "ordered_stages": [
+    {
+      "authorized": false,
+      "class": "private_execution_bridge",
+      "mode": "source_prerequisite",
+      "postconditions": [
+        "reviewed private dispatch with owner/replay/source/baseline guards",
+        "verified offline artifact staging and exact Weather application source binding",
+        "fixed entrypoints; no arbitrary shell/path/argv/environment authority"
+      ],
+      "source_evidence": [
+        "RPi5_main:ops/lib/deploy_executor/weather_private_bigquery_runtime_materialization.py:materialize_reviewed_runtime is not wired into LIVE execution"
+      ],
+      "source_readiness": "EXTERNAL_SOURCE_CAPABILITY_MISSING"
+    },
+    {
+      "authorized": false,
+      "class": "weathernext_private_runtime_materialization",
+      "mode": "mutation",
+      "postconditions": [
+        "fresh artifact source/closure/digest/size proof",
+        "linux/aarch64 CPython 3.13 cp313 baseline",
+        "absent target and partial staging",
+        "matching installed marker",
+        "dependency closure alone does not install Weather application source"
+      ],
+      "source_evidence": [
+        "RPi5_main:ops/lib/deploy_executor/weather_private_bigquery_runtime_materialization.py",
+        "RPi5_main:.github/workflows/weathernext-private-runtime-source.yml"
+      ],
+      "source_readiness": "SOURCE_READY"
+    },
+    {
+      "authorized": false,
+      "class": "google_auth_binding",
+      "mode": "mutation_if_absent",
+      "postconditions": [
+        "reviewed private binding mechanism",
+        "sanitized binding-present evidence",
+        "no credential readout or replacement; IAM changes separately authorized"
+      ],
+      "source_evidence": [
+        "RPi5_main:ops/lib/deploy_executor/weather_private_bigquery_contract.py:execution_enabled false; class name only"
+      ],
+      "source_readiness": "EXTERNAL_SOURCE_CAPABILITY_MISSING"
+    },
+    {
+      "authorized": false,
+      "class": "google_project_binding",
+      "mode": "mutation_if_absent",
+      "postconditions": [
+        "reviewed private binding mechanism",
+        "sanitized project-binding-present evidence"
+      ],
+      "source_evidence": [
+        "RPi5_main:ops/lib/deploy_executor/weather_private_bigquery_contract.py:execution_enabled false; class name only"
+      ],
+      "source_readiness": "EXTERNAL_SOURCE_CAPABILITY_MISSING"
+    },
+    {
+      "authorized": false,
+      "class": "analytics_hub_link_create",
+      "mode": "mutation_if_absent",
+      "postconditions": [
+        "reviewed approved-listing linkage mechanism",
+        "linked-dataset-present evidence",
+        "no link deletion or alternate dataset"
+      ],
+      "source_evidence": [
+        "RPi5_main:ops/lib/deploy_executor/weather_private_bigquery_contract.py:execution_enabled false; class name only"
+      ],
+      "source_readiness": "EXTERNAL_SOURCE_CAPABILITY_MISSING"
+    },
+    {
+      "authorized": false,
+      "class": "read_only_private_bigquery",
+      "mode": "private_read_only",
+      "postconditions": [
+        "canonical gate remains issue 122",
+        "fresh source and private bindings",
+        "linked_dataset_probe",
+        "schema_fingerprint",
+        "dry_run_cost_guard",
+        "bounded_canary_query",
+        "provenance_validate",
+        "no SQLite write"
+      ],
+      "source_evidence": [
+        "src/rozkalns_weather/weathernext_access.py:read_first_access_canary",
+        "src/rozkalns_weather/providers/weathernext.py",
+        "tests/test_weathernext_first_access_execution.py"
+      ],
+      "source_readiness": "SOURCE_READY"
+    },
+    {
+      "authorized": false,
+      "class": "production_sqlite_forecast_snapshot_write",
+      "mode": "separate_later_mutation",
+      "postconditions": [
+        "separate exact data authorization and trusted execution binding",
+        "validated two-surface canary and complete statistic matrix",
+        "fresh bounded candidate and schema fingerprint",
+        "immutable snapshot idempotency",
+        "station API/PWA provenance visible; no home accuracy claim"
+      ],
+      "source_evidence": [
+        "src/rozkalns_weather/weathernext_snapshot_admission.py:prepare_first_snapshot_run",
+        "src/rozkalns_weather/db.py:Database.insert_forecast_run"
+      ],
+      "source_readiness": "SOURCE_READY"
+    }
+  ],
+  "repository": "rozkalnsandris/rozkalns_weather",
+  "schema": "weathernext-final-live-plan.v1",
+  "source_bindings": {
+    "rpi5": {
+      "changed_sha_requires_new_source_review": true,
+      "materializer_pr": 544,
+      "refresh_before_owner_gate": true,
+      "repository": "rozkalnsandris/RPi5_main",
+      "reviewed_sha": "8182bb24545fd676843a9177e69177502c34214c"
+    },
+    "weather": {
+      "exact_sha_ci_required": true,
+      "exact_sha_required": true,
+      "final_receipt_issue": 125,
+      "resolution": "fresh_exact_merged_main_containing_this_plan"
+    }
+  },
+  "target": {
+    "home_scope_enabled": false,
+    "host_alias": "rpi5",
+    "location_id": "station_10416"
+  },
+  "verification": [
+    "fresh exact Weather merged SHA and all required CI/reviews",
+    "fresh reviewed RPi5 SHA and relevant source/artifact CI",
+    "fresh trusted rpi5 baseline; no runtime claim from source",
+    "fresh linked-schema required fingerprint equals expected contract",
+    "both query estimates known, nonnegative and within explicitly frozen cap",
+    "both nonempty surfaces with init/retrieval/valid/lead/model/statistic/native provenance",
+    "sanitized counts/status/hash evidence only in GitHub",
+    "DWD remains authoritative warning source; WeatherNext primary_research"
+  ]
+}

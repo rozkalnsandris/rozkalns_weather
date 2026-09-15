@@ -1,6 +1,6 @@
 # WeatherNext 3 first-access readiness
 
-This document is a **source contract**, not private Google Cloud or production-data authority. `AUTO-RUN FULL` may build and test this contract without making a real BigQuery request. Any live access after allowlist approval is a separate exact owner gate.
+This document is a **source contract**, not private Google Cloud or production-data authority. `AUTO-RUN FULL` may build and test this contract without making a real BigQuery request. Access approval is established in issue #122; any real access remains a separate exact owner gate. Issue #125 final planning is in `WEATHERNEXT_FINAL_LIVE_PLAN.md`.
 
 Canonical machine contract: `deploy/weathernext-first-access.json`.
 
@@ -27,7 +27,7 @@ This command does not read environment secrets, contact BigQuery, inspect SQLite
 
 ## Private read-only access preflight
 
-After allowlist approval and runtime-only Google configuration, a separate private read-only gate may run:
+After the still-required runtime-only Google configuration, a separate private read-only gate may run:
 
 ```bash
 python -m rozkalns_weather.weathernext_access preflight \
@@ -174,3 +174,33 @@ Credential/IAM changes, Analytics Hub subscription/link changes, home-coordinate
 ## Authority
 
 WeatherNext 3 remains experimental/research forecast output. DWD remains the official severe-weather warning authority in Germany. This source contract never fabricates WeatherNext values, access state or publication metadata.
+
+
+## Issue #125 guarded station entrypoint
+
+`read_first_access_canary` in `weathernext_access.py` is the private read-only
+entrypoint for a later #122 authorization. It fixes `station_10416`, one explicit
+init, and six forecast hours. The caller supplies private project/dataset/client
+in memory through a separately reviewed trusted binding; never through GitHub.
+
+It caps the metadata query, validates the required schema fingerprint, dry-runs
+both exact SQL statements, rejects unknown/negative estimates, then queries both
+surfaces with RPC/job retries disabled and bounded 60-second request/result waits.
+Any exception propagates to STOP; no fallback init or alternate dataset is tried.
+SQL hashes bind transient dry-run objects to the exact query and are not emitted.
+A lower real cap is accepted only within the original successful dry-run envelope.
+The operator must select the smallest defensible cap from fresh dry-run evidence;
+1 GiB is a hard ceiling, never the recommended default cost.
+
+Returns sanitized evidence and two native runs in memory, never prints raw values
+or writes SQLite. `prepare_first_snapshot_run` separately validates admission and
+prepares one immutable provider/init/retrieval snapshot, retaining complete native
+product values in `raw_product_surfaces` metadata. Display values prefer 0.05°
+station temperature/dew point; this is product selection, not model weighting.
+Only a later exact data gate may call `Database.insert_forecast_run` with the
+explicit `location_id="station_10416"`; ordinary unbounded ingest/diagnose/fallback
+paths are not first-access entrypoints. Production schema must already be ready.
+
+SDK retry controls were checked against the official Python BigQuery
+[Client reference](https://docs.cloud.google.com/python/docs/reference/bigquery/latest/google.cloud.bigquery.client.Client)
+and [QueryJob reference](https://docs.cloud.google.com/python/docs/reference/bigquery/latest/google.cloud.bigquery.job.QueryJob).

@@ -2,6 +2,21 @@
 
 Status reconciled after `AUDIT-HANDOFF` on 2026-09-09 and extended by Issue #19, Issue #22, Issue #24 and Issue #26 source work.
 
+## Current WeatherNext continuation — issue #125
+
+- GOAL: source-complete first access and one deterministic FINAL-LIVE PLAN.
+- DONE: access approval reconciled; exact-query dry-run binding, capped no-retry
+  first access, complete native snapshot preparation and station API/PWA path.
+- REMAINING: reviewed trusted private runtime dispatch/application source staging
+  and Google auth/project/Analytics Hub binding mechanisms in `RPi5_main`.
+- EXACT_NEXT_GATE: **BLOCKED_BY_EXTERNAL_SOURCE_CAPABILITY**; the materializer
+  function alone is not a callable trusted LIVE path.
+- Canonical plan, evidence matrix and one exact owner command:
+  `docs/WEATHERNEXT_FINAL_LIVE_PLAN.md`.
+
+The historical public rollout milestones below are point-in-time source evidence;
+they are not current host observations or an alternate WeatherNext next action.
+
 ## Source-complete
 - FastAPI + SQLite immutable forecast corpus.
 - Location-aware forecast identity: `station_10416` and private runtime-only `home`.
@@ -124,7 +139,7 @@ Status reconciled after `AUDIT-HANDOFF` on 2026-09-09 and extended by Issue #19,
 1. Before the first public-only rollout, separately authorize and verify the exact 23-artifact operator installation, independently refresh the READY queue to the final merged Weather SHA, then obtain a new Composite STRICT LIVE authorization after fresh source/CI/host/target/baseline preflight.
 2. Production SQLite schema initialization and historical/public corpus population under separately bounded data-write/LIVE authority, with explicit date/model bounds and recovery decision.
 3. Any Docker/systemd/timer activation or host/filesystem/network mutation remains separately gated.
-4. WeatherNext allowlist/access approval for private WeatherNext activation.
+4. WeatherNext access approval is established by #122; private runtime/linkage and live-access verification remain gated.
 5. Private runtime `HOME_LAT` / `HOME_LON` if/when private-home forecasts are activated.
 6. Google Cloud project/linked dataset/credentials, any real schema/dry-run/canary BigQuery request, and the first real WeatherNext snapshot remain private LIVE/data gates.
 7. Recurring private WeatherNext BigQuery collection and any private scheduler/timer activation remain distinct exact owner gates; the source cadence planner does not authorize them.

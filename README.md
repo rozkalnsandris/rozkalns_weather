@@ -10,6 +10,14 @@ forecast snapshot -> observation -> verification -> WeatherNext comparison
 
 WeatherNext 3 nav warning authority. Severe-weather brīdinājumos Vācijā autoritatīvs avots ir **DWD**.
 
+## WeatherNext aktivizācijas nākamais solis
+
+Issue #125 gala source plāns: `deploy/weathernext-final-live-plan.json` un
+`docs/WEATHERNEXT_FINAL_LIVE_PLAN.md`. Nākamais stāvoklis ir
+**BLOCKED_BY_EXTERNAL_SOURCE_CAPABILITY**: `RPi5_main` privātais materializer
+ir source-ready, bet vēl nav trusted izpildes savienojuma un Google binding/link
+izpildes mehānismu. Allowlist apstiprinājums pats nepierāda reālu BigQuery piekļuvi.
+
 ## Benchmark metodika
 
 Projektā ir divi atšķirīgi lokācijas režīmi:
@@ -25,7 +33,7 @@ Deterministisks precipitation amount (`mm`) un precipitation probability ir atš
 
 ## Public archive + ensemble benchmark v3
 
-Kamēr WeatherNext 3 private allowlist ir pending, public-data lane var veidot reproducējamu benchmark corpus bez privāta home punkta:
+WeatherNext 3 piekļuve ir apstiprināta (canonical evidence: issue #122); privātā runtime/linkage un pirmā reālā piekļuve vēl ir atsevišķi gate. Public-data lane turpina reproducējamu benchmark corpus bez privāta home punkta:
 
 - bounded/resumable exact-run backfill ar explicit model/date/UTC run-hour ranges, `--dry-run`, rate limit un atomic checkpoint;
 - common deterministic archive window sākas `2026-04-02`; vecāks IFS history paliek atsevišķs non-common series;
@@ -103,7 +111,7 @@ Mandatory CI ir fixture-driven un network-independent. `smoke-public` ir operato
 
 ## API / PWA
 
-`/api/current` rāda DWD 10416 reference observation, `/api/hourly` un `/api/daily` rāda private-home forecast comparison, bet `/api/verification/*` ir station-location matched benchmark. Accuracy v3 UI atdala deterministic/ensemble/legacy provider roles, rāda lead-bucket sample size/confidence un genuine precipitation calibration atsevišķi. Combined weighting joprojām ir bloķēts līdz pietiekamam corpus.
+`/api/current` rāda DWD 10416 reference observation, `/api/hourly` un `/api/daily` pēc noklusējuma rāda private-home forecast comparison; `location_id=station_10416` rāda tikai station prognozes, bet `/api/verification/*` ir station-location matched benchmark. Accuracy v3 UI atdala deterministic/ensemble/legacy provider roles, rāda lead-bucket sample size/confidence un genuine precipitation calibration atsevišķi. Combined weighting joprojām ir bloķēts līdz pietiekamam corpus.
 
 Runtime health/readiness:
 
@@ -144,6 +152,7 @@ RPi5, systemd/Docker, Cloudflare, credentials, private Google Cloud/BigQuery acc
 - `docs/RPI5_PUBLIC_RUNTIME_HANDOFF.md`
 - `docs/WEATHERNEXT3.md`
 - `docs/WEATHERNEXT_FIRST_ACCESS.md`
+- `docs/WEATHERNEXT_FINAL_LIVE_PLAN.md`
 - `docs/WEATHERNEXT_SUSTAINED_COLLECTION.md`
 - `docs/WEATHERNEXT_VERSION_EVOLUTION.md`
 - `docs/VERIFICATION.md`

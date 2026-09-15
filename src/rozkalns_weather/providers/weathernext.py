@@ -101,7 +101,7 @@ def build_point_query(
         f"SELECT\n  {', '.join(selected)}\n"
         f"FROM {table} AS t, t.forecast AS f\n"
         f"WHERE t.init_time = TIMESTAMP('{init_literal}')\n"
-        f"  AND ST_COVERS(t.geography_polygon, ST_GEOGPOINT({lon:.8f}, {lat:.8f}))"
+        f"  AND ST_COVERS(t.geography_polygon, ST_GEOGPOINT({lon:.8f}, {lat:.8f}))\n  AND f.hours >= 0"
         f"{hours_clause}\nORDER BY f.time ASC"
     )
     return WeatherNextQuery(table=table, sql=sql, resolution=resolution)
@@ -210,7 +210,8 @@ def rows_to_run(
             valid = valid_time.astimezone(timezone.utc)
         else:
             continue
-        lead = float(row.get("forecast_hour") or (valid - init_time).total_seconds() / 3600.0)
+        raw_lead = row.get("forecast_hour")
+        lead = float(raw_lead if raw_lead is not None else (valid - init_time).total_seconds() / 3600.0)
         for field, (variable, native_unit, unit, accumulation) in fields.items():
             for stat in STATS:
                 raw = row.get(f"{field}_{stat}")
@@ -277,8 +278,20 @@ class WeatherNextBigQueryAdapter:
         self._client = bigquery.Client(project=self.project)
         return self._client
 
-    def schema_probe(self) -> list[dict[str, Any]]:
+    def schema_probe(self, *, maximum_bytes_billed: int | None = None,
+                     job_config_factory: Any = None) -> list[dict[str, Any]]:
         client = self._client_or_create()
+        if maximum_bytes_billed is not None:
+            if type(maximum_bytes_billed) is not int or not 1 <= maximum_bytes_billed <= 1_073_741_824:
+                raise ValueError("schema probe bytes cap invalid")
+            if job_config_factory is None:
+                from google.cloud import bigquery
+                job_config_factory = bigquery.QueryJobConfig
+            config = job_config_factory(dry_run=False, maximum_bytes_billed=maximum_bytes_billed)
+            config.use_query_cache = False
+            job = client.query(build_schema_probe_query(project=self.project, dataset=self.dataset),
+                               job_config=config, retry=None, job_retry=None, timeout=60)
+            return [dict(row) for row in job.result(retry=None, job_retry=None, timeout=60)]
         return [dict(row) for row in client.query(build_schema_probe_query(project=self.project, dataset=self.dataset)).result()]
 
     def diagnose(self, *, lat: float, lon: float, now: datetime | None = None) -> WeatherNextDiagnostic:
