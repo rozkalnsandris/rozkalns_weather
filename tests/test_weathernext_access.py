@@ -46,7 +46,7 @@ class FakeClient:
         self.estimates = list(estimates)
         self.calls = []
 
-    def query(self, sql, job_config=None):
+    def query(self, sql, job_config=None, **kwargs):
         self.calls.append((sql, job_config))
         if getattr(job_config, "dry_run", False):
             return FakeJob(total_bytes_processed=self.estimates.pop(0))
@@ -58,7 +58,7 @@ class FakeAdapter:
         self.rows = rows
         self.client = client or FakeClient()
 
-    def schema_probe(self):
+    def schema_probe(self, **kwargs):
         return self.rows
 
     def _client_or_create(self):
@@ -292,8 +292,8 @@ def test_first_snapshot_write_envelope_requires_sanitized_complete_canary() -> N
         "selected_init_time_utc": "2026-09-08T06:00:00Z",
         "schema": schema,
         "dry_run": [
-            {"resolution": "0p05", "within_cap": True},
-            {"resolution": "0p1", "within_cap": True},
+            {"resolution": "0p05", "within_cap": True, "estimated_bytes": 100, "maximum_bytes_billed": 1000},
+            {"resolution": "0p1", "within_cap": True, "estimated_bytes": 100, "maximum_bytes_billed": 1000},
         ],
         "canary": {"product_surfaces_complete": True},
         "provenance": {"complete": True},

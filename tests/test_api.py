@@ -74,6 +74,52 @@ def test_hourly_returns_latest_provider_snapshot(tmp_path) -> None:
     assert payload["series"][0]["provider"] == "weathernext3"
 
 
+def test_first_station_snapshot_visible_without_home_and_preserves_surface_statistics(tmp_path):
+    from rozkalns_weather.providers.weathernext import STATS, rows_to_run
+    client, database = _client(tmp_path, with_home=False)
+    init = datetime(2026, 9, 8, 6, tzinfo=timezone.utc)
+    times = {"forecast_time": init + timedelta(hours=1), "forecast_hour": 1}
+    station = rows_to_run([times | {f"station_head_temperature_2m_{s}": 293.15 for s in STATS}],
+        resolution="0p05", init_time=init, retrieved_at=init + timedelta(hours=9))
+    surface = rows_to_run([times | {f"temperature_2m_{s}": 290.15 for s in STATS}
+        | {f"total_precipitation_1hr_{s}": 0.001 for s in STATS}],
+        resolution="0p1", init_time=init, retrieved_at=init + timedelta(hours=9))
+    from rozkalns_weather.weathernext_access import expected_required_schema_fingerprint
+    from rozkalns_weather.weathernext_snapshot_admission import prepare_first_snapshot_run
+    evidence = {
+        "state": "canary_ready_for_snapshot", "selected_init_time_utc": "2026-09-08T06:00:00Z",
+        "schema": {"state": "linked_dataset_ready", "observed_required_fingerprint": expected_required_schema_fingerprint()},
+        "dry_run": [{"resolution": r, "within_cap": True, "estimated_bytes": 100, "maximum_bytes_billed": 1000}
+                    for r in ("0p05", "0p1")],
+        "canary": {"product_surfaces_complete": True}, "provenance": {"complete": True},
+    }
+    combined = prepare_first_snapshot_run(first_access_evidence=evidence, runs=(station, surface),
+        admission_time_utc=init + timedelta(hours=9), maximum_candidate_age_hours=1)
+    first_id = database.insert_forecast_run(combined, location_id=DWD_10416.id)
+    assert database.insert_forecast_run(combined, location_id=DWD_10416.id) == first_id
+    response = client.get("/api/hourly?location_id=station_10416&hours=6").json()
+    assert response["location"]["id"] == "station_10416"
+    series = response["series"]
+    assert len(series) == 6  # 0p1 temperature remains stored, not duplicated into the station chart.
+    assert {r["statistic"] for r in series} == set(STATS)
+    assert {round(r["value"], 2) for r in series} == {20.0}
+    assert all(r["model_version"] == "3.0.0" and r["lead_hours"] == 1 for r in series)
+    assert all(r["init_time_utc"] and r["retrieved_at_utc"] and r["valid_time_utc"] for r in series)
+    assert client.get("/api/hourly").json()["series"] == []
+    daily = client.get("/api/daily?location_id=station_10416").json()["days_by_provider"]
+    assert len(daily) == 1
+    assert daily[0]["precipitation_total_mm"] == 1.0  # mean only; never mean + p50.
+    assert round(daily[0]["temperature_min_c"], 2) == 20.0
+    assert client.get("/api/hourly?location_id=unknown").status_code == 422
+    assert client.get("/api/daily?location_id=unknown").status_code == 422
+    with database.connect() as connection:
+        assert connection.execute("SELECT COUNT(*) FROM forecast_values").fetchone()[0] == 12
+        import json
+        metadata = json.loads(connection.execute("SELECT source_metadata_json FROM forecast_runs").fetchone()[0])
+        assert sum(len(item["values"]) for item in metadata["raw_product_surfaces"]) == 18
+        assert metadata["raw_product_surfaces"][1]["values"][0]["native_value"] == 290.15
+
+
 def test_verification_api_uses_common_samples_and_exposes_missingness(tmp_path) -> None:
     client, database = _client(tmp_path)
     first = datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0) - timedelta(hours=2)

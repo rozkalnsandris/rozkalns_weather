@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from dataclasses import asdict, replace
 import hashlib
 import json
 from typing import Any, Iterable, Mapping, Sequence
@@ -10,6 +11,47 @@ from .providers.weathernext import STATS
 from .weathernext_collection import validate_snapshot_admission
 
 MAX_SUPPORTED_CANDIDATE_AGE_HOURS = 48
+
+
+def prepare_first_snapshot_run(*, first_access_evidence: Mapping[str, Any],
+                               runs: Sequence[ForecastRun], admission_time_utc: datetime,
+                               maximum_candidate_age_hours: int) -> ForecastRun:
+    """Build one immutable two-product snapshot in memory, without a DB write.
+
+    The DB admits one provider/init/retrieval identity. Keep both complete native
+    product payloads as provenance; use station-head temperature/dew point in the
+    display values, matching the established provider resolution policy.
+    """
+    fingerprint = str(first_access_evidence.get("schema", {}).get("observed_required_fingerprint", ""))
+    validate_first_snapshot_admission(first_access_evidence=first_access_evidence, runs=runs,
+        candidate_schema_fingerprint=fingerprint, admission_time_utc=admission_time_utc,
+        maximum_candidate_age_hours=maximum_candidate_age_hours)
+    by_resolution = {run.source_metadata.get("resolution"): run for run in runs}
+    if set(by_resolution) != {"0p05", "0p1"}:
+        raise ValueError("exactly two native product surfaces required")
+    station, surface = by_resolution["0p05"], by_resolution["0p1"]
+    if station.retrieved_at_utc != surface.retrieved_at_utc:
+        raise ValueError("two-product snapshot retrieval identity mismatch")
+    raw_surfaces = []
+    for run in (station, surface):
+        raw_surfaces.append({
+            "source_surface": run.source_surface,
+            "source_metadata": run.source_metadata,
+            "raw_payload_hash": run.raw_payload_hash,
+            "values": [asdict(value) | {"valid_time_utc": utc_iso(value.valid_time_utc)}
+                       for value in run.values],
+        })
+    values = station.values + tuple(v for v in surface.values
+                                    if v.variable not in {"temperature_2m", "dew_point_2m"})
+    combined = replace(station, source_surface="BigQuery WeatherNext 3 0.05° station + 0.1° surface",
+        values=values, raw_payload_hash=None,
+        source_metadata=station.source_metadata | {"resolution": "combined",
+            "station_resolution": "0.05deg", "surface_resolution": "0.1deg",
+            "schema_fingerprint": fingerprint, "raw_product_surfaces": raw_surfaces})
+    validate_first_snapshot_admission(first_access_evidence=first_access_evidence, runs=(combined,),
+        candidate_schema_fingerprint=fingerprint, admission_time_utc=admission_time_utc,
+        maximum_candidate_age_hours=maximum_candidate_age_hours)
+    return combined
 
 REASON_CANARY_INVALID = "CANARY_EVIDENCE_INVALID"
 REASON_SCHEMA_MISMATCH = "SCHEMA_FINGERPRINT_MISMATCH"

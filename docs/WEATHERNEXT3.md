@@ -196,3 +196,6 @@ Version-evolution contract šo boundary analizē tikai tad, ja release/model met
 - https://developers.google.com/weathernext/guides/dissemination
 - https://developers.google.com/weathernext/guides/disclaimers
 - https://developers.google.com/weathernext/release-notes
+
+
+Project access approval is established in issue #122. It does not establish a linked dataset, private runtime, or successful real BigQuery query. Current next gate: `WEATHERNEXT_FINAL_LIVE_PLAN.md`.

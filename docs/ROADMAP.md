@@ -4,10 +4,16 @@
 forecast snapshot -> observation -> verification -> WeatherNext comparison
 ```
 
+## Current WeatherNext handoff — issue #125
+
+**BLOCKED_BY_EXTERNAL_SOURCE_CAPABILITY**. See `WEATHERNEXT_FINAL_LIVE_PLAN.md`:
+finish the narrow trusted private execution/binding bridge in `RPi5_main` before
+requesting final LIVE authority. Weather source readiness is not runtime evidence.
+
 ## Phase 0 — access
 - [x] WeatherNext-first goal/privacy/methodology.
 - [x] Runtime-only home config contract.
-- [ ] WeatherNext allowlist approved.
+- [x] WeatherNext allowlist approved; canonical approval evidence is issue #122. Live access remains unverified.
 - [ ] Private Google Cloud + home runtime configured.
 
 ## Phase 1 — robust public baseline
@@ -89,7 +95,7 @@ forecast snapshot -> observation -> verification -> WeatherNext comparison
 - [x] model-version + lead-bucket dimensions.
 - [x] notable misses archive payload.
 - [x] release-note hook without fabricated events.
-- [x] public benchmark runway while WN3 access is pending.
+- [x] public benchmark runway while private WeatherNext runtime and first access remain gated.
 - [x] first-month verification source readiness: station common-times/model-version/lead-bucket eligibility, summary-quantile calibration and sanitized evidence/report contract.
 - [x] version-change comparative reporting source readiness: verified model/schema boundary, deterministic before/after windows, strict common station samples, skill/quantile/freshness deltas, deterministic notable cases and privacy-safe report contract.
 - [ ] first month of real WeatherNext 3 corpus.
