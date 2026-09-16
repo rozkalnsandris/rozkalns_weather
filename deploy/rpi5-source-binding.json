@@ -72,6 +72,15 @@
     "mutation_allowed": false,
     "cleanup_allowed": false
   },
+  "legacy_checkout": {
+    "compatibility_alias": "predecessor_installer_source_checkout",
+    "contract": "ops/deploy/rpi5-main-weather-v7-host-capability-installer-source-trusted-checkout-bootstrap.json",
+    "identity": "RPi5_main-weather-v7-host-capability-installer-source-trusted",
+    "historical_evidence_only": true,
+    "authority_source": false,
+    "mutation_allowed": false,
+    "cleanup_allowed": false
+  },
   "source_safety": {
     "source_merge_authorizes_live": false,
     "source_merge_proves_host_ready": false,
@@ -79,9 +88,14 @@
     "corrected_installer_source_v2_checkout_ready": false,
     "weather_v7_host_capability_installed": false,
     "weather_v7_operator_upgrade_completed": false,
+    "operator_host_installed": false,
+    "helper_installation_enabled": false,
+    "operator_installation_enabled": false,
+    "privileged_install_invocation_enabled": false,
     "production_mutation_enabled": false,
     "production_mutation_started": false,
     "fresh_owner_live_authorization_required_for_next_gate": true,
+    "fresh_human_composite_strict_live_authorization_required": true,
     "fresh_sanitized_runtime_baseline_required": true,
     "queue_matches_current_weather_candidate": false,
     "source_only_snapshot_must_not_be_treated_as_live_evidence": true
