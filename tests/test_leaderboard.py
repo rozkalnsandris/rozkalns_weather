@@ -23,12 +23,18 @@ def test_common_sample_leaderboard_excludes_provider_only_samples_and_reports_mi
     assert {row["provider"] for row in rows} == {"icon", "ifs"}
     assert all(row["n"] == 1 for row in rows)
     assert all(row["common_sample_ids"] == ["a"] for row in rows)
+    assert all(row["matched_sample_ids"] == ["a"] for row in rows)
+    assert all(row["excluded_sample_ids"] == ["b", "c"] for row in rows)
+    assert all(row["excluded_sample_count"] == 2 for row in rows)
+    assert len({row["matched_set_id"] for row in rows}) == 1
+    assert all(len(str(row["matched_set_id"])) == 64 for row in rows)
     assert all(row["sample_sufficiency_state"] == "insufficient_sample" for row in rows)
     assert all(row["missingness"]["expected_n"] == 3 for row in rows)
     assert all(row["missingness"]["available_n"] == 2 for row in rows)
     assert all(row["missingness"]["missing_n"] == 1 for row in rows)
     assert all(row["missingness"]["common_n"] == 1 for row in rows)
     assert all(row["missingness"]["excluded_non_common_n"] == 1 for row in rows)
+    assert all(row["missingness"]["excluded_from_matched_set_n"] == 2 for row in rows)
 
 
 def test_leaderboard_keeps_modes_and_complete_model_version_cohorts_separate() -> None:
@@ -48,6 +54,10 @@ def test_leaderboard_keeps_modes_and_complete_model_version_cohorts_separate() -
         (("icon", "old"), ("ifs", "v1")),
     }
     assert all(row["n"] == 1 for row in run_rows)
+    assert {tuple(row["matched_sample_ids"]) for row in run_rows} == {("a",), ("b",)}
+    assert {tuple(row["excluded_sample_ids"]) for row in run_rows} == {("a",), ("b",)}
+    assert all(row["excluded_sample_count"] == 1 for row in run_rows)
+    assert len({row["matched_set_id"] for row in run_rows}) == 2
     assert {row["mode"] for row in rows} == {"run_to_run", "user_available"}
 
 
