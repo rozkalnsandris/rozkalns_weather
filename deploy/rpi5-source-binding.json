@@ -5,34 +5,39 @@
   "repository": "rozkalnsandris/rozkalns_weather",
   "target_alias": "rozkalns-weather-public-rpi5",
   "operation_id": "rozkalns-weather.public-runtime-release.v1",
-  "reconciled_on": "2026-09-11",
+  "reconciled_on": "2026-09-16",
   "weather_source": {
-    "candidate_sha_at_reconciliation": "7b188d56ef083f60289bf34297199a42f13e1048",
-    "exact_sha_governance_run": 34557811416,
-    "exact_sha_backend_tests_run": 34557810930,
-    "queue_binding_sha": "52d3fd0ff946d3d5a0e1379f6c4362bf834a1aa9",
+    "candidate_sha_at_reconciliation": "26f704692c202827206cd370b5f5112864bb3b1b",
+    "exact_sha_ci_summary": "7/7_SUCCESS",
+    "queue_binding_sha": "867b9dc82622bef55ffa2cb1a866c5206dfae74f",
     "candidate_is_runtime_deployment_proof": false,
-    "queue_binding_matches_candidate": false
+    "queue_binding_matches_candidate": false,
+    "live_candidate_must_be_resolved_from_current_merged_main": true
   },
   "deploy_queue": {
     "repository": "rozkalnsandris/ops-workflows",
     "issue": 46,
-    "observed_state_at_reconciliation": "OPEN_READY",
+    "observed_state_at_reconciliation": "OPEN_STOP_ERROR",
     "eligibility_only": true,
     "grants_live_authority": false,
     "embedded_rpi5_snapshot_is_current_authority": false,
     "fresh_rpi5_revalidation_required_before_live": true,
-    "current_candidate_binding_status": "BLOCKED_SOURCE_SHA_MISMATCH"
+    "current_candidate_binding_status": "BLOCKED_QUEUE_STOP_ERROR_AND_SOURCE_SHA_MISMATCH",
+    "failed_authorization_reusable": false,
+    "queue_refresh_authorized_by_issue_127": false
   },
   "rpi5_main_source": {
-    "main_sha_at_reconciliation": "2672451d1f3ddc6cffcc70a3627c6b758db8abe0",
-    "exact_main_validate_run": 34571359393,
-    "issue_454": "DONE_VIA_PR460",
-    "issue_455": "DONE_SUCCESSOR_PRIVILEGED_INSTALL_BRIDGE",
+    "main_sha_at_reconciliation": "1741cfa076d00a11f609356fee37179226bb9753",
+    "exact_main_ci_summary": "8/8_SUCCESS",
+    "public_operator_recovery_issue": 543,
+    "public_operator_recovery_pr": 545,
+    "public_operator_recovery_pr_state": "OPEN_DRAFT",
+    "public_operator_recovery_pr_head": "41d25c46cee40a2d0bee034a44c031b721df1740",
+    "public_operator_recovery_pr_validate": "FAILURE",
     "must_refresh_before_live": true,
     "source_state_proves_host_installation": false,
     "source_state_proves_deployment": false,
-    "issue_462": "DONE_SOURCE_ONLY_OPERATOR_INSTALLER_BRIDGE_INACTIVE"
+    "current_dependency_status": "BLOCKED_EXTERNAL_SOURCE_RECOVERY"
   },
   "canonical_current_contracts": {
     "successor_trusted_checkout": "ops/deploy/rpi5-main-weather-public-runtime-install-trusted-checkout-bootstrap.json",
@@ -65,7 +70,8 @@
     "fresh_human_composite_strict_live_authorization_required": true,
     "fresh_sanitized_runtime_baseline_required": true,
     "operator_installer_bridge_active": false,
-    "queue_matches_current_weather_candidate": false
+    "queue_matches_current_weather_candidate": false,
+    "source_only_snapshot_must_not_be_treated_as_live_evidence": true
   },
   "research_and_safety": {
     "dwd_severe_weather_warning_authority": "DWD",
