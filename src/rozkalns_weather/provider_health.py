@@ -72,6 +72,7 @@ def classify_public_provider_health(
     evidence: Mapping[str, object] | None,
     *,
     now: datetime | None = None,
+    latency_summary: Mapping[str, object] | None = None,
 ) -> dict[str, object]:
     if provider not in PUBLIC_PROVIDER_HEALTH_POLICIES:
         raise ValueError(f"provider is not in public recurring health scope: {provider}")
@@ -135,7 +136,7 @@ def classify_public_provider_health(
         failure_domain = "upstream_data"
         reason_code = "SOURCE_DATA_LAGGING"
 
-    return {
+    result: dict[str, object] = {
         "tracked": True,
         "ingest_state": ingest_state,
         "freshness_state": freshness_state,
@@ -155,3 +156,6 @@ def classify_public_provider_health(
         "source_stale_after_hours": policy.source_stale_hours,
         "detail": saved.get("detail"),
     }
+    if latency_summary is not None:
+        result["latency_benchmark"] = dict(latency_summary)
+    return result
