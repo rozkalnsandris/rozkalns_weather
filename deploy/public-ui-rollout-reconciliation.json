@@ -1,0 +1,102 @@
+{
+  "schema_version": 1,
+  "contract": "rozkalns-weather.public-ui-rollout-reconciliation.v1",
+  "repository": "rozkalnsandris/rozkalns_weather",
+  "issue": 127,
+  "reconciled_on": "2026-09-16",
+  "target_alias": "rozkalns-weather-public-rpi5",
+  "host_alias": "rpi5",
+  "runtime_mode": "public-only",
+  "outcome": "BLOCKED_EXTERNAL_RPI5_SOURCE_AND_QUEUE_RECOVERY",
+  "weather": {
+    "reconciliation_anchor_sha": "26f704692c202827206cd370b5f5112864bb3b1b",
+    "exact_anchor_ci": "7/7_SUCCESS",
+    "ui_source_implemented": true,
+    "ui_surfaces": ["Overview", "Models", "Accuracy", "Warnings-Radar"],
+    "live_candidate_rule": "resolve exact current merged main and exact-SHA CI again immediately before LIVE",
+    "source_sha_is_runtime_proof": false
+  },
+  "public_runtime_contract": {
+    "compose": "deploy/docker-compose.public.yml",
+    "runtime_descriptor": "deploy/runtime-descriptor.json",
+    "source_binding": "deploy/rpi5-source-binding.json",
+    "rollout_readiness": "deploy/rollout-readiness.json",
+    "first_live_preflight": "deploy/first-public-rollout-preflight.json",
+    "schedule": "deploy/public-ingest-schedule.json",
+    "liveness_endpoint": "/health",
+    "readiness_endpoint": "/ready",
+    "provider_health_endpoint": "/api/health/providers",
+    "database_init_mode": "require-existing",
+    "weathernext_required": false,
+    "home_coordinates_required": false,
+    "dwd_warning_authority": "DWD"
+  },
+  "rpi5_main": {
+    "observed_main_sha": "1741cfa076d00a11f609356fee37179226bb9753",
+    "exact_main_ci": "8/8_SUCCESS",
+    "public_operator_recovery_issue": 543,
+    "canonical_pr": 545,
+    "canonical_pr_state": "OPEN_DRAFT",
+    "canonical_pr_head": "41d25c46cee40a2d0bee034a44c031b721df1740",
+    "canonical_pr_mergeable": true,
+    "canonical_pr_validate": "FAILURE",
+    "unresolved_review_threads": 0,
+    "source_dependency_satisfied": false
+  },
+  "deploy_queue": {
+    "repository": "rozkalnsandris/ops-workflows",
+    "issue": 46,
+    "observed_state": "OPEN_STOP_ERROR",
+    "embedded_weather_sha": "867b9dc82622bef55ffa2cb1a866c5206dfae74f",
+    "matches_weather_anchor": false,
+    "eligibility_only": true,
+    "grants_live_authority": false,
+    "refresh_authorized_by_issue_127": false,
+    "ready_for_current_candidate": false
+  },
+  "fresh_read_only_host_observation": {
+    "observed_on": "2026-09-16",
+    "host_online": true,
+    "weather_docker_container_observed": false,
+    "weather_systemd_service_observed": false,
+    "weather_systemd_timer_observed": false,
+    "operator_installation_not_rechecked_by_this_snapshot": true,
+    "runtime_state_is_point_in_time_only": true
+  },
+  "blockers": [
+    "RPI5_MAIN_ISSUE_543_CANONICAL_PR_545_NOT_READY",
+    "RPI5_MAIN_PR_545_EXACT_HEAD_VALIDATE_FAILURE",
+    "OPS_WORKFLOWS_46_STOP_ERROR",
+    "OPS_WORKFLOWS_46_WEATHER_SHA_STALE",
+    "FRESH_LIVE_BASELINE_REQUIRED_AFTER_EXTERNAL_RECOVERY",
+    "FRESH_STRICT_LIVE_AUTHORIZATION_REQUIRED_AFTER_EXTERNAL_RECOVERY"
+  ],
+  "required_external_sequence": [
+    "converge RPi5_main issue 543 / PR 545 under its own authority",
+    "verify the required Weather public operator capability on rpi5 with fresh sanitized read-only evidence",
+    "reconcile ops-workflows issue 46 to the then-current exact Weather candidate without reusing failed authorization",
+    "refresh exact Weather and RPi5_main SHAs plus exact-SHA CI",
+    "refresh sanitized runtime baseline",
+    "run the existing first-public-rollout JIT preflight against those fresh inputs",
+    "only then request one exact Composite STRICT LIVE authorization"
+  ],
+  "next_owner_live_gate": {
+    "available_now": false,
+    "reason": "external source and queue recovery must converge first",
+    "authorization_class_when_available": "STRICT",
+    "live_authority_created_by_this_issue": false,
+    "live_authority_consumed_by_this_issue": false
+  },
+  "safety": {
+    "source_merge_authorizes_live": false,
+    "source_merge_proves_deployment": false,
+    "failed_authorization_reusable": false,
+    "automatic_retry": false,
+    "automatic_cleanup": false,
+    "automatic_rollback": false,
+    "production_mutation_started": false,
+    "weathernext_private_access_blocks_public_ui": false,
+    "home_coordinates_block_public_ui": false,
+    "weathernext_real_values_fabricated": false
+  }
+}
