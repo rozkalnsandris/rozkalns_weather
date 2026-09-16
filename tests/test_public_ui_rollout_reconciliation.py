@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+RPI5_SHA = "14592fd53e6f7f7a6f2f4a2a60f9b9d009134f43"
 
 
 def _reconciliation() -> dict[str, object]:
@@ -13,34 +14,61 @@ def _reconciliation() -> dict[str, object]:
 def test_public_ui_source_is_ready_but_live_is_not_claimed() -> None:
     payload = _reconciliation()
     assert payload["contract"] == "rozkalns-weather.public-ui-rollout-reconciliation.v1"
+    assert payload["issue"] == 136
     assert payload["runtime_mode"] == "public-only"
     assert payload["weather"]["ui_source_implemented"] is True
     assert payload["weather"]["ui_surfaces"] == ["Overview", "Models", "Accuracy", "Warnings-Radar"]
-    assert payload["outcome"] == "BLOCKED_EXTERNAL_RPI5_SOURCE_AND_QUEUE_RECOVERY"
-    assert payload["next_owner_live_gate"]["available_now"] is False
+    assert payload["outcome"] == "BLOCKED_WEATHER_V7_HOST_CAPABILITY_AND_QUEUE_RECOVERY"
+    assert payload["next_owner_live_gate"]["available_now"] is True
     assert payload["safety"]["source_merge_authorizes_live"] is False
     assert payload["safety"]["source_merge_proves_deployment"] is False
     assert payload["safety"]["production_mutation_started"] is False
 
 
-def test_rpi5_and_queue_blockers_are_exact_and_fail_closed() -> None:
+def test_rpi5_source_recovery_is_complete_but_host_capability_chain_is_not() -> None:
     payload = _reconciliation()
     rpi = payload["rpi5_main"]
-    queue = payload["deploy_queue"]
-    assert rpi["public_operator_recovery_issue"] == 543
-    assert rpi["canonical_pr"] == 545
-    assert rpi["canonical_pr_state"] == "OPEN_DRAFT"
-    assert rpi["canonical_pr_validate"] == "FAILURE"
-    assert rpi["source_dependency_satisfied"] is False
+    assert rpi["observed_main_sha"] == RPI5_SHA
+    assert rpi["required_exact_main_ci"] == "5/5_SUCCESS"
+    assert rpi["sudo_git_trust_correction_issue"] == 586
+    assert rpi["sudo_git_trust_correction_pr"] == 587
+    assert rpi["sudo_git_trust_correction_pr_state"] == "MERGED"
+    assert rpi["source_dependency_satisfied"] is True
+    assert rpi["host_capability_dependency_satisfied"] is False
+    assert rpi["operator_v7_dependency_satisfied"] is False
+
+
+def test_queue_remains_stale_and_fail_closed() -> None:
+    queue = _reconciliation()["deploy_queue"]
     assert queue["issue"] == 46
     assert queue["observed_state"] == "OPEN_STOP_ERROR"
     assert queue["matches_weather_anchor"] is False
     assert queue["ready_for_current_candidate"] is False
     assert queue["grants_live_authority"] is False
-    blockers = set(payload["blockers"])
-    assert "RPI5_MAIN_ISSUE_543_CANONICAL_PR_545_NOT_READY" in blockers
-    assert "OPS_WORKFLOWS_46_STOP_ERROR" in blockers
-    assert "FRESH_STRICT_LIVE_AUTHORIZATION_REQUIRED_AFTER_EXTERNAL_RECOVERY" in blockers
+    assert queue["refresh_authorized_by_issue_136"] is False
+
+
+def test_fresh_host_observation_supports_only_the_first_weather_v7_gate() -> None:
+    payload = _reconciliation()
+    observed = payload["fresh_read_only_host_observation"]
+    gate = payload["next_owner_live_gate"]
+    assert observed["host_online"] is True
+    assert observed["manager_checkout_matches_current_rpi5_main"] is False
+    assert observed["manager_checkout_clean"] is False
+    assert observed["corrected_installer_source_v2_checkout_present"] is False
+    assert observed["predecessor_installer_source_checkout_present"] is True
+    assert observed["predecessor_installer_source_checkout_clean"] is True
+    assert observed["operator_upgrade_v7_checkout_present"] is False
+    assert observed["weather_v7_privileged_broker_binary_present"] is False
+    assert observed["weather_v7_privileged_broker_socket_loaded"] is False
+    assert observed["weather_public_port_9180_listening"] is False
+    assert observed["runtime_state_is_point_in_time_only"] is True
+    assert gate["name"] == "DELIVER_CORRECTED_WEATHER_V7_INSTALLER_SOURCE_V2"
+    assert gate["authorization_class"] == "STRICT"
+    assert gate["rpi5_main_sha"] == RPI5_SHA
+    assert gate["authorizes_host_capability_install"] is False
+    assert gate["authorizes_operator_upgrade"] is False
+    assert gate["authorizes_weather_rollout"] is False
 
 
 def test_public_ui_does_not_depend_on_private_weathernext_or_home_coordinates() -> None:
@@ -55,10 +83,11 @@ def test_public_ui_does_not_depend_on_private_weathernext_or_home_coordinates() 
     assert safety["weathernext_real_values_fabricated"] is False
 
 
-def test_live_candidate_and_runtime_baseline_must_be_refreshed_after_external_recovery() -> None:
+def test_required_external_sequence_keeps_queue_and_composite_rollout_after_operator_v7() -> None:
     payload = _reconciliation()
-    assert payload["weather"]["live_candidate_rule"].startswith("resolve exact current merged main")
-    assert payload["fresh_read_only_host_observation"]["runtime_state_is_point_in_time_only"] is True
     sequence = payload["required_external_sequence"]
+    assert sequence[0].startswith("owner-authorized corrected Weather-v7 installer-source v2 delivery")
+    assert "host-capability install" in sequence[2]
+    assert "operator upgrade" in sequence[4]
     assert sequence[-2].startswith("run the existing first-public-rollout JIT preflight")
-    assert sequence[-1] == "only then request one exact Composite STRICT LIVE authorization"
+    assert sequence[-1] == "only then request the bounded Composite STRICT LIVE rollout authorization"
