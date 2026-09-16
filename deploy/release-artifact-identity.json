@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "contract": "release-artifact-identity-v1",
+  "build_contract": "container-build-reproducibility-v1",
+  "runtime_descriptor": "deploy/runtime-descriptor.json",
+  "expected_runtime": {
+    "runtime_class": "public-only-rpi5",
+    "target_alias": "rozkalns-weather-public-rpi5"
+  },
+  "image_digest_algorithm": "sha256",
+  "release_identity_algorithm": "sha256",
+  "build_release_evidence_only": true,
+  "deployed_runtime_state_proven": false
+}
