@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 from rozkalns_weather.provider_health import classify_public_provider_health
 from rozkalns_weather.provider_latency import (
     LATENCY_CONTRACT,
@@ -28,7 +30,6 @@ def _row(**overrides: object) -> dict[str, object]:
 
 def test_normal_latency_is_pass_and_preserves_provenance() -> None:
     report = provider_latency_report([_row()])
-
     assert report["contract"] == LATENCY_CONTRACT
     assert report["state"] == "PASS"
     assert report["reason_codes"] == ["LATENCY_WITHIN_BOUNDS"]
@@ -41,14 +42,11 @@ def test_normal_latency_is_pass_and_preserves_provenance() -> None:
 
 
 def test_delayed_upstream_availability_is_warn_not_outage() -> None:
-    report = provider_latency_report([
-        _row(
-            upstream_available_at_utc="2026-09-16T01:45:00Z",
-            ingest_attempt_at_utc="2026-09-16T01:50:00Z",
-            retrieved_at_utc="2026-09-16T01:55:00Z",
-        )
-    ])
-
+    report = provider_latency_report([_row(
+        upstream_available_at_utc="2026-09-16T01:45:00Z",
+        ingest_attempt_at_utc="2026-09-16T01:50:00Z",
+        retrieved_at_utc="2026-09-16T01:55:00Z",
+    )])
     assert report["state"] == "WARN"
     assert "UPSTREAM_AVAILABILITY_LATE" in report["reason_codes"]
     assert "RETRIEVAL_LATE" not in report["reason_codes"]
@@ -56,29 +54,23 @@ def test_delayed_upstream_availability_is_warn_not_outage() -> None:
 
 
 def test_delayed_local_retrieval_attempt_is_distinct_from_upstream_delay() -> None:
-    report = provider_latency_report([
-        _row(
-            upstream_available_at_utc="2026-09-16T01:05:00Z",
-            ingest_attempt_at_utc="2026-09-16T01:50:00Z",
-            retrieved_at_utc="2026-09-16T01:55:00Z",
-        )
-    ])
-
+    report = provider_latency_report([_row(
+        upstream_available_at_utc="2026-09-16T01:05:00Z",
+        ingest_attempt_at_utc="2026-09-16T01:50:00Z",
+        retrieved_at_utc="2026-09-16T01:55:00Z",
+    )])
     assert report["state"] == "WARN"
     assert "LOCAL_RETRIEVAL_ATTEMPT_LATE" in report["reason_codes"]
     assert "UPSTREAM_AVAILABILITY_LATE" not in report["reason_codes"]
 
 
 def test_missing_observed_publication_evidence_is_explicit_and_not_fabricated() -> None:
-    report = provider_latency_report([
-        _row(
-            upstream_available_at_utc=None,
-            upstream_availability_source=None,
-            ingest_attempt_at_utc="2026-09-16T01:10:00Z",
-            retrieved_at_utc="2026-09-16T01:12:00Z",
-        )
-    ])
-
+    report = provider_latency_report([_row(
+        upstream_available_at_utc=None,
+        upstream_availability_source=None,
+        ingest_attempt_at_utc="2026-09-16T01:10:00Z",
+        retrieved_at_utc="2026-09-16T01:12:00Z",
+    )])
     assert report["state"] == "WARN"
     assert report["reason_codes"] == ["UPSTREAM_AVAILABILITY_UNOBSERVED"]
     sample = report["samples"][0]
@@ -88,27 +80,21 @@ def test_missing_observed_publication_evidence_is_explicit_and_not_fabricated() 
 
 
 def test_unusually_late_retrieval_has_stable_reason_code() -> None:
-    report = provider_latency_report([
-        _row(
-            ingest_attempt_at_utc="2026-09-16T02:05:00Z",
-            retrieved_at_utc="2026-09-16T02:10:00Z",
-        )
-    ])
-
+    report = provider_latency_report([_row(
+        ingest_attempt_at_utc="2026-09-16T02:05:00Z",
+        retrieved_at_utc="2026-09-16T02:10:00Z",
+    )])
     assert report["state"] == "WARN"
     assert "RETRIEVAL_LATE" in report["reason_codes"]
     assert "LOCAL_RETRIEVAL_ATTEMPT_LATE" in report["reason_codes"]
 
 
 def test_timestamp_inversion_fails_closed() -> None:
-    report = provider_latency_report([
-        _row(
-            upstream_available_at_utc="2026-09-16T01:30:00Z",
-            ingest_attempt_at_utc="2026-09-16T01:20:00Z",
-            retrieved_at_utc="2026-09-16T01:25:00Z",
-        )
-    ])
-
+    report = provider_latency_report([_row(
+        upstream_available_at_utc="2026-09-16T01:30:00Z",
+        ingest_attempt_at_utc="2026-09-16T01:20:00Z",
+        retrieved_at_utc="2026-09-16T01:25:00Z",
+    )])
     assert report["state"] == "BLOCKED"
     assert report["reason_codes"] == ["TIMESTAMP_ORDER_INVALID"]
     assert report["samples"] == []
@@ -116,7 +102,7 @@ def test_timestamp_inversion_fails_closed() -> None:
 
 def test_group_distributions_are_by_provider_model_and_run_cycle() -> None:
     report = provider_latency_report([
-        _row(retrieved_at_utc="2026-09-16T01:18:00Z"),
+        _row(),
         _row(
             init_time_utc="2026-09-16T12:00:00Z",
             expected_available_at_utc="2026-09-16T13:00:00Z",
@@ -128,7 +114,6 @@ def test_group_distributions_are_by_provider_model_and_run_cycle() -> None:
         _row(
             provider="ecmwf_ifs",
             model_name="IFS HRES",
-            init_time_utc="2026-09-16T00:00:00Z",
             expected_available_at_utc="2026-09-16T06:00:00Z",
             upstream_available_at_utc=None,
             upstream_availability_source=None,
@@ -136,7 +121,6 @@ def test_group_distributions_are_by_provider_model_and_run_cycle() -> None:
             retrieved_at_utc="2026-09-16T06:15:00Z",
         ),
     ])
-
     identities = {(g["provider"], g["model_name"], g["run_cycle"]) for g in report["groups"]}
     assert identities == {
         ("icon_d2", "ICON-D2", "00Z"),
@@ -148,14 +132,12 @@ def test_group_distributions_are_by_provider_model_and_run_cycle() -> None:
 
 
 def test_provider_health_integration_does_not_reclassify_freshness_as_outage() -> None:
-    report = provider_latency_report([
-        _row(
-            upstream_available_at_utc=None,
-            upstream_availability_source=None,
-            retrieved_at_utc="2026-09-16T02:10:00Z",
-            ingest_attempt_at_utc="2026-09-16T02:05:00Z",
-        )
-    ])
+    report = provider_latency_report([_row(
+        upstream_available_at_utc=None,
+        upstream_availability_source=None,
+        retrieved_at_utc="2026-09-16T02:10:00Z",
+        ingest_attempt_at_utc="2026-09-16T02:05:00Z",
+    )])
     latency = provider_health_latency_summary(report, "icon_d2")
     health = classify_public_provider_health(
         "icon_d2",
@@ -169,10 +151,9 @@ def test_provider_health_integration_does_not_reclassify_freshness_as_outage() -
             "last_retrieved_at_utc": "2026-09-16T02:10:00Z",
             "latest_valid_time_utc": "2026-09-18T00:00:00Z",
         },
-        now="2026-09-16T02:15:00Z",  # type: ignore[arg-type]
+        now=datetime(2026, 9, 16, 2, 15, tzinfo=timezone.utc),
         latency_summary=latency,
     )
-
     assert health["freshness_state"] == "fresh"
     assert health["reason_code"] == "FRESH"
     assert health["failure_domain"] == "none"
