@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import hashlib
+import json
 from math import sqrt
 import random
 from statistics import mean
@@ -56,6 +58,27 @@ def bootstrap_mean_ci(
     return BootstrapInterval(estimates[lower_index], estimates[upper_index], samples)
 
 
+def _matched_set_id(
+    *,
+    mode: str,
+    variable: str,
+    bucket: str,
+    comparison_cohort: dict[str, str],
+    matched_sample_ids: Sequence[str],
+) -> str:
+    payload = {
+        "mode": mode,
+        "variable": variable,
+        "lead_bucket": bucket,
+        "comparison_cohort": comparison_cohort,
+        "matched_sample_ids": list(matched_sample_ids),
+    }
+    encoded = json.dumps(
+        payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+    ).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
 def _metric_row(
     items: Sequence[SkillSample],
     *,
@@ -94,7 +117,8 @@ def common_sample_leaderboard(samples: Iterable[SkillSample]) -> list[dict[str, 
     assigned to one cohort containing the exact model version for every compared
     provider. This prevents a row from silently pooling peer model-version periods.
     Missingness is reported against the union of timestamps seen in the comparison
-    slice; metrics themselves use only the exact cohort intersection.
+    slice; metrics themselves use only the exact cohort intersection. Each cohort
+    publishes a deterministic matched-set fingerprint plus the exact excluded IDs.
     """
 
     items = list(samples)
@@ -139,6 +163,15 @@ def common_sample_leaderboard(samples: Iterable[SkillSample]) -> list[dict[str, 
 
         for version_vector, cohort_ids in sorted(cohorts.items()):
             cohort_versions = dict(version_vector)
+            matched_sample_ids = list(cohort_ids)
+            excluded_sample_ids = sorted(expected_ids - set(cohort_ids))
+            matched_set_id = _matched_set_id(
+                mode=mode,
+                variable=variable,
+                bucket=bucket,
+                comparison_cohort=cohort_versions,
+                matched_sample_ids=matched_sample_ids,
+            )
             for provider in providers:
                 provider_ids = ids_by_provider[provider]
                 expected_n = len(expected_ids)
@@ -152,6 +185,7 @@ def common_sample_leaderboard(samples: Iterable[SkillSample]) -> list[dict[str, 
                     "common_n": cohort_common_n,
                     "total_common_n": len(common_ids),
                     "excluded_non_common_n": available_n - len(common_ids),
+                    "excluded_from_matched_set_n": len(excluded_sample_ids),
                     "missing_fraction": (missing_n / expected_n) if expected_n else 0.0,
                 }
                 provider_items = [
@@ -166,7 +200,11 @@ def common_sample_leaderboard(samples: Iterable[SkillSample]) -> list[dict[str, 
                         "provider": provider,
                         "model_version": cohort_versions[provider],
                         "comparison_cohort": cohort_versions,
-                        "common_sample_ids": list(cohort_ids),
+                        "matched_set_id": matched_set_id,
+                        "matched_sample_ids": matched_sample_ids,
+                        "excluded_sample_ids": excluded_sample_ids,
+                        "excluded_sample_count": len(excluded_sample_ids),
+                        "common_sample_ids": matched_sample_ids,
                         **_metric_row(provider_items, missingness=missingness),
                     }
                 )
