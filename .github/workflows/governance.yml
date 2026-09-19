@@ -31,12 +31,18 @@ jobs:
     with:
       forbid_self_hosted: true
 
+  workflow-security:
+    name: GitHub Actions static analysis
+    uses: rozkalnsandris/ops-workflows/.github/workflows/workflow-security.yml@0450e662093c41e98ca96802b523ac91eb02e5fe
+    permissions:
+      contents: read
+
   auto-run-contract:
     name: AUTO-RUN FULL contract
     runs-on: ubuntu-24.04
     steps:
       - name: Check out repository
-        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: Validate machine contracts
@@ -56,6 +62,7 @@ jobs:
       - fast-lane-policy
       - github-only-policy
       - public-repository-baseline
+      - workflow-security
       - auto-run-contract
     if: ${{ always() }}
     steps:
@@ -64,10 +71,12 @@ jobs:
           FAST_LANE_RESULT: ${{ needs.fast-lane-policy.result }}
           GITHUB_ONLY_RESULT: ${{ needs.github-only-policy.result }}
           PUBLIC_BASELINE_RESULT: ${{ needs.public-repository-baseline.result }}
+          WORKFLOW_SECURITY_RESULT: ${{ needs.workflow-security.result }}
           AUTO_RUN_RESULT: ${{ needs.auto-run-contract.result }}
         run: |
           set -euo pipefail
           test "$FAST_LANE_RESULT" = success
           test "$GITHUB_ONLY_RESULT" = success
           test "$PUBLIC_BASELINE_RESULT" = success
+          test "$WORKFLOW_SECURITY_RESULT" = success
           test "$AUTO_RUN_RESULT" = success
