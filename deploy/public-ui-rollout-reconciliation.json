@@ -3,17 +3,24 @@
   "contract": "rozkalns-weather.public-ui-rollout-reconciliation.v1",
   "repository": "rozkalnsandris/rozkalns_weather",
   "issue": 136,
-  "reconciled_on": "2026-09-16",
+  "reconciled_on": "2026-09-19",
   "target_alias": "rozkalns-weather-public-rpi5",
   "host_alias": "rpi5",
   "runtime_mode": "public-only",
-  "outcome": "BLOCKED_WEATHER_V7_HOST_CAPABILITY_AND_QUEUE_RECOVERY",
+  "outcome": "SOURCE_READY_POST_MERGE_QUEUE_AND_JIT_RECONCILIATION_REQUIRED",
   "weather": {
-    "reconciliation_anchor_sha": "90c7a1db356ecc9f7b3bf7b557a4884809ca5222",
-    "exact_anchor_ci": "7/7_SUCCESS",
+    "reconciliation_anchor_sha": "9e903b0e1d129856c4b1533b48487b7f5c36737d",
+    "anchor_role": "pre_issue_140_main_snapshot_only",
+    "exact_anchor_ci": "Backend-tests-and-Governance-SUCCESS",
     "ui_source_implemented": true,
-    "ui_surfaces": ["Overview", "Models", "Accuracy", "Warnings-Radar"],
-    "live_candidate_rule": "resolve exact current merged main and exact-SHA CI again immediately before LIVE",
+    "ui_surfaces": [
+      "Overview",
+      "Models",
+      "Accuracy",
+      "Warnings-Radar"
+    ],
+    "final_merged_sha_must_be_resolved_after_issue_140_merge": true,
+    "live_candidate_rule": "resolve exact current merged main and exact-SHA CI again immediately before JIT/LIVE",
     "source_sha_is_runtime_proof": false
   },
   "public_runtime_contract": {
@@ -32,90 +39,58 @@
     "dwd_warning_authority": "DWD"
   },
   "rpi5_main": {
-    "observed_main_sha": "14592fd53e6f7f7a6f2f4a2a60f9b9d009134f43",
-    "required_exact_main_ci": "5/5_SUCCESS",
-    "weather_v7_delivery_issue": 543,
-    "host_capability_installer_issue": 571,
-    "original_installer_source_issue": 574,
-    "sudo_git_trust_correction_issue": 586,
-    "sudo_git_trust_correction_pr": 587,
-    "sudo_git_trust_correction_pr_state": "MERGED",
-    "corrected_installer_source_contract": "ops/deploy/rpi5-main-weather-v7-host-capability-installer-source-v2-trusted-checkout-bootstrap.json",
-    "source_dependency_satisfied": true,
-    "host_capability_dependency_satisfied": false,
-    "operator_v7_dependency_satisfied": false
+    "observed_main_sha": "84e129909831bd8111c4f4c1f6618b7fff2a803b",
+    "required_exact_main_ci": "Validate-FAST-LANE-GITHUB-ONLY-SUCCESS",
+    "weather_v9_recovery_control_plane_closed_before_reconciliation": true,
+    "stale_v7_next_gate_superseded": true,
+    "source_snapshot_only": true,
+    "source_state_is_operator_installation_proof": false,
+    "source_state_is_deployment_proof": false,
+    "fresh_current_main_and_ci_required_before_jit": true
   },
   "deploy_queue": {
     "repository": "rozkalnsandris/ops-workflows",
     "issue": 46,
-    "observed_state": "OPEN_STOP_ERROR",
-    "embedded_weather_sha": "867b9dc82622bef55ffa2cb1a866c5206dfae74f",
-    "matches_weather_anchor": false,
+    "observed_state": "BLOCKED_WEATHER_SOURCE_HANDOFF_RECONCILIATION",
+    "final_merged_weather_sha_must_be_bound_after_merge": true,
     "eligibility_only": true,
     "grants_live_authority": false,
     "refresh_authorized_by_issue_136": false,
-    "ready_for_current_candidate": false
+    "refresh_authorized_by_issue_140": false,
+    "ready_for_final_candidate_proven_by_source": false
   },
-  "fresh_read_only_host_observation": {
-    "observed_on": "2026-09-16",
-    "host_online": true,
-    "manager_checkout_matches_current_rpi5_main": false,
-    "manager_checkout_clean": false,
-    "corrected_installer_source_v2_checkout_present": false,
-    "predecessor_installer_source_checkout_present": true,
-    "predecessor_installer_source_checkout_clean": true,
-    "operator_upgrade_v7_checkout_present": false,
-    "weather_v7_privileged_broker_binary_present": false,
-    "weather_v7_privileged_broker_socket_loaded": false,
-    "weather_public_port_9180_listening": false,
-    "runtime_state_is_point_in_time_only": true
+  "jit_runtime_evidence": {
+    "fresh_operator_installation_proof_required": true,
+    "fresh_sanitized_runtime_baseline_required": true,
+    "baseline_token_exact_match_required": true,
+    "source_snapshot_may_not_substitute": true,
+    "raw_private_logs_allowed": false,
+    "private_paths_allowed": false,
+    "credentials_allowed": false,
+    "home_coordinates_allowed": false
   },
-  "blockers": [
-    "WEATHER_V7_CORRECTED_INSTALLER_SOURCE_V2_CHECKOUT_ABSENT",
-    "WEATHER_V7_HOST_CAPABILITY_NOT_INSTALLED",
-    "WEATHER_V7_OPERATOR_UPGRADE_NOT_COMPLETED",
-    "OPS_WORKFLOWS_46_STOP_ERROR",
-    "OPS_WORKFLOWS_46_WEATHER_SHA_STALE",
-    "FRESH_QUEUE_AND_JIT_RECONCILIATION_REQUIRED_AFTER_OPERATOR_V7",
-    "FRESH_COMPOSITE_STRICT_LIVE_AUTHORIZATION_REQUIRED_AFTER_JIT_PASS"
+  "blockers_after_source_merge": [
+    "OPS_WORKFLOWS_46_MUST_BIND_FINAL_MERGED_WEATHER_SHA",
+    "FRESH_EXACT_SHA_CI_AND_RUNTIME_EVIDENCE_REQUIRED",
+    "FRESH_JIT_PREFLIGHT_MUST_PASS",
+    "NEW_COMPOSITE_STRICT_LIVE_AUTHORIZATION_REQUIRED_AFTER_JIT_PASS"
   ],
   "required_external_sequence": [
-    "owner-authorized corrected Weather-v7 installer-source v2 delivery at exact current RPi5_main SHA",
-    "sanitized verification of the detached-clean corrected installer-source v2 checkout",
-    "owner-authorized one-time Weather-v7 host-capability install from that exact checkout",
-    "sanitized host-capability verification",
-    "fresh exact Weather-v7 operator authorization and operator upgrade",
-    "installed-closure verification preserving predecessor evidence",
-    "reconcile ops-workflows issue 46 to the then-current exact Weather candidate under target-repository rules",
-    "refresh exact Weather and RPi5_main SHAs plus exact-SHA CI and sanitized runtime baseline",
+    "reconcile ops-workflows issue 46 to the final merged Weather SHA under target-repository rules",
+    "refresh exact Weather and RPi5_main SHAs plus exact-SHA CI",
+    "collect fresh sanitized operator-installation proof and runtime baseline",
     "run the existing first-public-rollout JIT preflight against those fresh inputs",
     "only then request the bounded Composite STRICT LIVE rollout authorization"
   ],
-  "next_owner_live_gate": {
-    "available_now": true,
-    "name": "DELIVER_CORRECTED_WEATHER_V7_INSTALLER_SOURCE_V2",
-    "authorization_class": "STRICT",
-    "host_alias": "rpi5",
-    "rpi5_main_sha": "14592fd53e6f7f7a6f2f4a2a60f9b9d009134f43",
-    "checkout_identity": "RPi5_main-weather-v7-host-capability-installer-source-v2-trusted",
-    "mutation_budget": [
-      {"category": "git.weather-v7-host-capability-installer-source-v2-fetch", "max_operations": 1},
-      {"category": "git.weather-v7-host-capability-installer-source-v2-worktree-add", "max_operations": 1}
-    ],
-    "authorizes_host_capability_install": false,
-    "authorizes_operator_upgrade": false,
-    "authorizes_weather_rollout": false,
-    "live_authority_created_by_this_issue": false,
-    "live_authority_consumed_by_this_issue": false
-  },
   "safety": {
     "source_merge_authorizes_live": false,
     "source_merge_proves_deployment": false,
+    "source_merge_proves_operator_installation": false,
+    "source_authorizes_production_mutation": false,
     "failed_authorization_reusable": false,
     "automatic_retry": false,
     "automatic_cleanup": false,
     "automatic_rollback": false,
-    "production_mutation_started": false,
     "weathernext_private_access_blocks_public_ui": false,
     "home_coordinates_block_public_ui": false,
     "weathernext_real_values_fabricated": false

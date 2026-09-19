@@ -6,112 +6,97 @@ from pathlib import Path
 from rozkalns_weather.rollout import validate_source_package
 
 ROOT = Path(__file__).resolve().parents[1]
-WEATHER_SHA = "90c7a1db356ecc9f7b3bf7b557a4884809ca5222"
-RPI5_SHA = "14592fd53e6f7f7a6f2f4a2a60f9b9d009134f43"
-QUEUE_SHA = "867b9dc82622bef55ffa2cb1a866c5206dfae74f"
-PREDECESSOR_SHA = "fb3ac2fc40d1683bb5539b2c0e870256087412cb"
-CORRECTED_SOURCE = (
-    "ops/deploy/rpi5-main-weather-v7-host-capability-installer-source-v2-trusted-checkout-bootstrap.json"
-)
-PREDECESSOR_SOURCE = (
-    "ops/deploy/rpi5-main-weather-v7-host-capability-installer-source-trusted-checkout-bootstrap.json"
-)
+WEATHER_BASE_SHA = "9e903b0e1d129856c4b1533b48487b7f5c36737d"
+RPI5_SHA = "84e129909831bd8111c4f4c1f6618b7fff2a803b"
 
 
 def _binding() -> dict[str, object]:
     return json.loads((ROOT / "deploy/rpi5-source-binding.json").read_text())
 
 
-def test_reconciliation_binds_fresh_source_snapshots_without_deployment_claim() -> None:
+def test_reconciliation_tracks_current_source_lineage_without_runtime_claim() -> None:
     binding = _binding()
     assert binding["status"] == "SOURCE_RECONCILED_RUNTIME_UNPROVEN"
-    assert binding["reconciled_on"] == "2026-09-16"
-    assert binding["weather_source"]["candidate_sha_at_reconciliation"] == WEATHER_SHA
-    assert binding["weather_source"]["exact_sha_ci_summary"] == "7/7_SUCCESS"
-    assert binding["weather_source"]["queue_binding_sha"] == QUEUE_SHA
-    assert binding["weather_source"]["queue_binding_matches_candidate"] is False
-    assert binding["weather_source"]["live_candidate_must_be_resolved_from_current_merged_main"] is True
-    assert binding["rpi5_main_source"]["main_sha_at_reconciliation"] == RPI5_SHA
-    assert binding["rpi5_main_source"]["required_exact_main_ci_summary"] == "5/5_SUCCESS"
-    assert binding["rpi5_main_source"]["sudo_git_trust_correction_pr"] == 587
-    assert binding["rpi5_main_source"]["sudo_git_trust_correction_pr_state"] == "MERGED"
-    assert (
-        binding["rpi5_main_source"]["current_dependency_status"]
-        == "SOURCE_READY_HOST_CAPABILITY_CHAIN_PENDING"
-    )
+    assert binding["reconciled_on"] == "2026-09-19"
+    weather = binding["weather_source"]
+    assert weather["candidate_sha_at_reconciliation"] == WEATHER_BASE_SHA
+    assert weather["snapshot_role"] == "pre_issue_140_main_anchor_only"
+    assert weather["final_live_candidate_must_be_resolved_from_current_merged_main"] is True
+    assert weather["source_sha_is_runtime_proof"] is False
+    rpi = binding["rpi5_main_source"]
+    assert rpi["main_sha_at_reconciliation"] == RPI5_SHA
+    assert rpi["stale_v7_next_gate_superseded"] is True
+    assert rpi["source_state_proves_host_installation"] is False
+    assert rpi["source_state_proves_deployment"] is False
+    assert rpi["fresh_current_main_and_ci_required_before_live"] is True
 
 
-def test_queue_remains_fail_closed_and_does_not_grant_live_authority() -> None:
+def test_queue_handoff_requires_final_merged_weather_sha_and_grants_no_live_authority() -> None:
     queue = _binding()["deploy_queue"]
     assert queue["issue"] == 46
-    assert queue["observed_state_at_reconciliation"] == "OPEN_STOP_ERROR"
+    assert queue["observed_state_at_reconciliation"] == "BLOCKED_WEATHER_SOURCE_HANDOFF_RECONCILIATION"
+    assert queue["final_merged_weather_sha_must_be_bound_after_merge"] is True
+    assert queue["fresh_queue_revalidation_required_before_live"] is True
     assert queue["eligibility_only"] is True
     assert queue["grants_live_authority"] is False
-    assert queue["current_candidate_binding_status"] == "BLOCKED_QUEUE_STOP_ERROR_AND_SOURCE_SHA_MISMATCH"
-    assert queue["failed_authorization_reusable"] is False
-    assert queue["queue_refresh_authorized_by_issue_136"] is False
+    assert queue["queue_refresh_authorized_by_this_source_issue"] is False
+    assert queue["historical_or_failed_authorization_reusable"] is False
 
 
-def test_corrected_weather_v7_source_chain_is_canonical_and_predecessor_is_evidence_only() -> None:
+def test_static_source_binding_contains_no_point_in_time_host_observation_or_stale_v7_gate() -> None:
     binding = _binding()
-    contracts = binding["canonical_current_contracts"]
-    predecessor = binding["predecessor_installer_source_checkout"]
-    assert contracts["corrected_installer_source_checkout"] == CORRECTED_SOURCE
-    assert contracts["host_capability_installer"].endswith(
-        "weather-public-runtime-operator-upgrade-v7-host-capability-installer.json"
-    )
-    assert predecessor["contract"] == PREDECESSOR_SOURCE
-    assert predecessor["historical_evidence_only"] is True
-    assert predecessor["authority_source"] is False
-    assert predecessor["mutation_allowed"] is False
-    assert predecessor["cleanup_allowed"] is False
+    assert "fresh_sanitized_host_observation" not in binding
+    assert "next_owner_live_gate" not in binding
+    lineage = binding["control_plane_lineage"]
+    assert lineage["runtime_installation_state_encoded_as_source_authority"] is False
+    assert lineage["fresh_operator_installation_proof_required_by_jit"] is True
+    assert lineage["fresh_runtime_baseline_required_by_jit"] is True
 
 
-def test_fresh_sanitized_host_observation_exposes_only_gate_relevant_state() -> None:
-    observed = _binding()["fresh_sanitized_host_observation"]
-    assert observed["manager_checkout_observed"] is True
-    assert observed["manager_checkout_matches_current_main"] is False
-    assert observed["manager_checkout_clean"] is False
-    assert observed["corrected_installer_source_v2_checkout_present"] is False
-    assert observed["predecessor_installer_source_checkout_present"] is True
-    assert observed["predecessor_installer_source_checkout_clean"] is True
-    assert observed["predecessor_installer_source_checkout_sha"] == PREDECESSOR_SHA
-    assert observed["operator_upgrade_v7_checkout_present"] is False
-    assert observed["weather_v7_privileged_broker_binary_present"] is False
-    assert observed["weather_v7_privileged_broker_socket_loaded"] is False
-    assert observed["weather_public_port_9180_listening"] is False
-    assert observed["point_in_time_only"] is True
-
-
-def test_source_merge_cannot_claim_host_ready_live_or_deployed() -> None:
+def test_v1_compatibility_sentinels_are_explicitly_non_authoritative() -> None:
     safety = _binding()["source_safety"]
-    false_fields = (
-        "source_merge_authorizes_live",
-        "source_merge_proves_host_ready",
-        "source_merge_proves_deployment",
-        "corrected_installer_source_v2_checkout_ready",
-        "weather_v7_host_capability_installed",
-        "weather_v7_operator_upgrade_completed",
+    compatibility_fields = (
+        "operator_host_installed",
+        "helper_installation_enabled",
+        "operator_installation_enabled",
+        "privileged_install_invocation_enabled",
         "production_mutation_enabled",
         "production_mutation_started",
-        "queue_matches_current_weather_candidate",
     )
-    assert all(safety[field] is False for field in false_fields)
-    assert safety["fresh_owner_live_authorization_required_for_next_gate"] is True
+    assert all(safety[field] is False for field in compatibility_fields)
+    assert safety["compatibility_sentinels_are_current_host_observations"] is False
+    assert safety["compatibility_sentinels_grant_or_deny_runtime_capability"] is False
+    assert safety["operator_installation_proof_required_via_fresh_jit_evidence"] is True
     assert safety["fresh_sanitized_runtime_baseline_required"] is True
     assert safety["source_only_snapshot_must_not_be_treated_as_live_evidence"] is True
 
 
-def test_next_owner_gate_is_only_corrected_installer_source_delivery() -> None:
-    gate = _binding()["next_owner_live_gate"]
-    assert gate["name"] == "DELIVER_CORRECTED_WEATHER_V7_INSTALLER_SOURCE_V2"
-    assert gate["available_now"] is True
-    assert gate["rpi5_main_sha"] == RPI5_SHA
-    assert gate["checkout_identity"] == "RPi5_main-weather-v7-host-capability-installer-source-v2-trusted"
-    assert gate["max_operations_each"] == 1
-    assert gate["authorizes_host_capability_install"] is False
-    assert gate["authorizes_operator_upgrade"] is False
-    assert gate["authorizes_weather_rollout"] is False
+def test_rollout_readiness_does_not_encode_current_operator_host_state() -> None:
+    readiness = json.loads((ROOT / "deploy/rollout-readiness.json").read_text())
+    trusted = readiness["trusted_boundary_compatibility"]
+    assert "operator_host_installed" not in trusted
+    assert "operator_installer_bridge_status" not in trusted
+    assert trusted["operator_installation_state_is_source_authoritative"] is False
+    assert trusted["operator_installation_proof_required_via_fresh_jit"] is True
+    assert trusted["fresh_runtime_baseline_required_via_jit"] is True
+
+
+def test_runtime_descriptor_points_to_post_merge_queue_and_jit_reconciliation() -> None:
+    runtime = json.loads((ROOT / "deploy/runtime-descriptor.json").read_text())
+    assessment = runtime["rollout_readiness"]["current_source_assessment"]
+    assert assessment == "SOURCE_READY_REQUIRES_POST_MERGE_QUEUE_AND_FRESH_JIT_RECONCILIATION"
+    assert "BLOCKED_EXTERNAL_RPI5_SOURCE_AND_QUEUE_RECOVERY" not in json.dumps(runtime)
+
+
+def test_post_merge_sequence_keeps_queue_jit_and_live_authority_separate() -> None:
+    reconciliation = _binding()["post_merge_reconciliation"]
+    assert reconciliation["required_order"][0] == "resolve_final_merged_weather_main_sha"
+    assert reconciliation["required_order"][-1] == (
+        "only_if_jit_pass_request_new_bounded_composite_strict_live_authorization"
+    )
+    assert reconciliation["queue_ready_transition_authorized_by_issue_140"] is False
+    assert reconciliation["live_authorization_created_by_issue_140"] is False
+    assert reconciliation["source_merge_is_not_queue_ready_transition"] is True
 
 
 def test_warning_and_research_authority_are_preserved() -> None:
@@ -122,14 +107,7 @@ def test_warning_and_research_authority_are_preserved() -> None:
     assert safety["weathernext_real_values_fabricated"] is False
 
 
-def test_runtime_descriptors_reference_binding_and_validator_enforces_it() -> None:
-    runtime = json.loads((ROOT / "deploy/runtime-descriptor.json").read_text())
-    readiness = json.loads((ROOT / "deploy/rollout-readiness.json").read_text())
-    refs = runtime["rollout_readiness"]
-    assert refs["public_ui_rollout_reconciliation_descriptor"] == "deploy/public-ui-rollout-reconciliation.json"
-    assert runtime["future_rpi5_adapter"]["source_binding_descriptor"] == "deploy/rpi5-source-binding.json"
-    trusted = readiness["trusted_boundary_compatibility"]
-    assert trusted["source_binding_descriptor"] == "deploy/rpi5-source-binding.json"
-    assert trusted["source_merge_proves_deployment"] is False
-    assert trusted["source_merge_authorizes_live"] is False
-    assert "deploy/rpi5-source-binding.json" in validate_source_package()["validated_files"]
+def test_source_package_validator_accepts_reconciled_handoff() -> None:
+    result = validate_source_package()
+    assert result["ok"] is True
+    assert "deploy/rpi5-source-binding.json" in result["validated_files"]

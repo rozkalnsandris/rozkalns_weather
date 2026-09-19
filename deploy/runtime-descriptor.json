@@ -23,7 +23,7 @@
     "jit_live_preflight_command": "rozkalns-weather rollout-live-preflight-validate",
     "jit_live_preflight_is_read_only": true,
     "jit_live_preflight_creates_or_consumes_authorization": false,
-    "current_source_assessment": "BLOCKED_EXTERNAL_RPI5_SOURCE_AND_QUEUE_RECOVERY",
+    "current_source_assessment": "SOURCE_READY_REQUIRES_POST_MERGE_QUEUE_AND_FRESH_JIT_RECONCILIATION",
     "production_public_corpus_bootstrap_descriptor": "deploy/production-public-corpus-bootstrap.json"
   },
   "packaging": {
@@ -64,11 +64,26 @@
     "ordinary_live_all_eligible": false,
     "baseline_resolver_candidate": "rozkalns-weather.public-runtime-baseline.v1",
     "mutation_budget_candidates": [
-      {"category": "filesystem.release-materialization", "max_operations": 1},
-      {"category": "docker.named-volume-ensure", "max_operations": 1},
-      {"category": "docker.compose-build", "max_operations": 1},
-      {"category": "docker.compose-application-apply", "max_operations": 1},
-      {"category": "systemd.public-ingest-schedule-install-or-update", "max_operations": 1}
+      {
+        "category": "filesystem.release-materialization",
+        "max_operations": 1
+      },
+      {
+        "category": "docker.named-volume-ensure",
+        "max_operations": 1
+      },
+      {
+        "category": "docker.compose-build",
+        "max_operations": 1
+      },
+      {
+        "category": "docker.compose-application-apply",
+        "max_operations": 1
+      },
+      {
+        "category": "systemd.public-ingest-schedule-install-or-update",
+        "max_operations": 1
+      }
     ],
     "explicitly_separate_data_mutations": [
       "sqlite.schema-init",
