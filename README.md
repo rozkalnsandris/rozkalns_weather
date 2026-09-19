@@ -117,7 +117,6 @@ Runtime health/readiness:
 
 `/api/health/providers` uses `provider-freshness-v1`: the five recurring public providers expose separate ingest state, freshness state, failure domain, stable reason code and last attempt/success/init/retrieval/valid-or-observed provenance. A stale local attempt is classified separately from a recent upstream/transport error, and one provider failure never hides healthy provider states.
 
-
 - `/health` — process/app liveness + local DB state summary;
 - `/ready` and `/api/readiness` — machine-readable schema/storage/provider/privacy readiness contract.
 
@@ -139,9 +138,11 @@ Fixed runtime mode ir `WEATHER_RUNTIME_MODE=public-only`; application service iz
 
 ## Deployment
 
-`Dockerfile`, `deploy/` un `docs/OPERATIONS.md` ir source-level deploy preparation. `rozkalns_weather` pats neiegūst RPi5 root/sudo/deploy authority. `RPi5_main` Weather static operation/bootstrap/preactivation/host-wiring avoti ir papildināti ar Issue #455 successor privileged install/activation bridge, Issue #454 / PR #460 source-ready Composite operator un Issue #462 source-only zero-input 23-artifact operator installer bridge. Canonical current checkout source ir `RPi5_main-weather-public-runtime-install-trusted`; agrākais trusted checkout ir tikai historical evidence. Weather joprojām ir `STRICT`, nav ordinary `LIVE-ALL` eligible, operator install/runtime activation paliek disabled, un source merge nepierāda host readiness/deployment un nepiešķir LIVE authority. `deploy/rpi5-source-binding.json` glabā timestamped source reconciliation, kas vienmēr jārefreshē pirms LIVE.
+`Dockerfile`, `deploy/` un `docs/OPERATIONS.md` ir source-level deploy preparation. `rozkalns_weather` pats neiegūst RPi5 root/sudo/deploy authority. Weather-v9 recovery/control-plane closure ir pabeigta ārpus šī repo, tāpēc static Weather source vairs neglabā veco v7 host-capability gate kā pašreizēju blocker. `deploy/rpi5-source-binding.json` glabā tikai point-in-time source/control-plane lineage un skaidri neuzskata source snapshot par operator installation vai deployment proof.
 
-`rozkalns-weather rollout-live-preflight-validate` lasa tikai sanitized JIT evidence no stdin un atgriež `PASS` vai `BLOCKED`; tas pats neveido un nepatērē LIVE authorization. Pirmajam public-only rollout pirms jebkuras mutation svaigi jāpiesaista exact merged Weather SHA + exact-SHA CI, current `RPi5_main` SHA + CI, matching READY queue, trusted host/target, verified operator installation, sanitized runtime baseline, reviewed contract identities, bounded dates/models/run hours, WMO `10416`, explicit owner recovery decision, exact release/supplemental/read-only budgets un authorization TTL/replay/body evidence. Pašreizējais source snapshot ir `BLOCKED`, jo `ops-workflows#46` joprojām piesaista veco Weather SHA; queue refresh nav autorizēts ar Issue #30.
+`rozkalns-weather rollout-live-preflight-validate` lasa tikai sanitized JIT evidence no stdin un atgriež `PASS` vai `BLOCKED`; tas pats neveido un nepatērē LIVE authorization. Pēc Issue #140 merge nākamais source/control-plane solis ir piesaistīt `ops-workflows#46` tieši jaunajam merged Weather SHA, svaigi pārbaudīt Weather un `RPi5_main` exact-SHA CI, un tikai tad JIT ievadē piegādāt verified operator installation proof + sanitized runtime baseline. Static `operator_host_installed=false` vai vecs host snapshot nav runtime authority.
+
+Composite STRICT LIVE gate kļūst iespējams tikai pēc JIT `PASS`; tas vēl prasa jaunu human authorization, exact host/target, bounded bootstrap scope, explicit recovery decision un precīzus mutation/read-only budgets. Queue READY paliek eligibility-only un pati nepiešķir LIVE authority. WeatherNext private activation ir atsevišķs ceļš un nav first public-only UI priekšnoteikums.
 
 RPi5, systemd/Docker, Cloudflare, credentials, private Google Cloud/BigQuery access, production SQLite/corpus writes un runtime mutation prasa atsevišķu LIVE autorizāciju.
 
@@ -150,6 +151,7 @@ RPi5, systemd/Docker, Cloudflare, credentials, private Google Cloud/BigQuery acc
 - `docs/BENCHMARK_METHODOLOGY.md`
 - `docs/PUBLIC_BACKFILL_PROBABILISTIC_V3.md`
 - `docs/RPI5_PUBLIC_RUNTIME_HANDOFF.md`
+- `docs/PUBLIC_UI_ROLLOUT_READINESS.md`
 - `docs/WEATHERNEXT3.md`
 - `docs/WEATHERNEXT_FIRST_ACCESS.md`
 - `docs/WEATHERNEXT_FINAL_LIVE_PLAN.md`

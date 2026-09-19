@@ -1,33 +1,62 @@
 # First public Web UI rollout readiness
 
-Issue `#127` reconciles the already-implemented public PWA/API with the current external rollout dependencies. This document is a source-side handoff, not proof that Weather is deployed.
+Issue `#140` reconciles the already-implemented public PWA/API with the completed Weather-v9 recovery/control-plane closure. This document is a **source-side handoff**, not proof that Weather is deployed and not LIVE authorization.
 
 ## What is already ready in Weather source
 
-The public-only UI path already contains the Overview, Models, Accuracy and Warnings-Radar surfaces. The runtime packaging remains `deploy/docker-compose.public.yml`, with `WEATHER_RUNTIME_MODE=public-only` and `DATABASE_INIT_MODE=require-existing`. The public UI does not require WeatherNext private BigQuery credentials, `HOME_LAT`, `HOME_LON`, or a first real WeatherNext snapshot. DWD remains the authoritative severe-weather warning source.
+The public-only UI path contains the Overview, Models, Accuracy and Warnings-Radar surfaces. Runtime packaging remains `deploy/docker-compose.public.yml` with:
 
-The current source reconciliation anchor for `#127` is `26f704692c202827206cd370b5f5112864bb3b1b`. That SHA is evidence for this reconciliation only. A later LIVE decision must resolve the exact then-current merged Weather `main` and its exact-SHA CI again.
+- `WEATHER_RUNTIME_MODE=public-only`;
+- `DATABASE_INIT_MODE=require-existing`;
+- no WeatherNext private BigQuery credentials;
+- no `HOME_LAT` / `HOME_LON`;
+- DWD as the authoritative severe-weather warning source.
 
-## Current external blockers — 2026-09-16 snapshot
+The Issue `#140` reconciliation anchor is Weather `main=9e903b0e1d129856c4b1533b48487b7f5c36737d`. That is a point-in-time source anchor only. The final LIVE candidate must be resolved again from the exact merged `main` after `#140`.
 
-`RPi5_main/main` was observed at `1741cfa076d00a11f609356fee37179226bb9753` with its exact-main CI green. The remaining public-operator recovery lane is `RPi5_main#543`; canonical PR `RPi5_main#545` is still open Draft at head `41d25c46cee40a2d0bee034a44c031b721df1740`, and that exact head currently has a failing `validate` check. Therefore Weather source cannot claim the required trusted public-runtime capability is ready for a fresh rollout.
+## Control-plane state at reconciliation
 
-`ops-workflows#46` is open in `STOP_ERROR` and still embeds Weather candidate `867b9dc82622bef55ffa2cb1a866c5206dfae74f`, not the current Weather source. Its prior failed/consumed authorization is historical evidence only and cannot be reused. Issue `#127` does not have authority to rewrite the shared queue or finish the separate `RPi5_main#543` lane.
+At the source reconciliation boundary on `2026-09-19`:
 
-A read-only host check in the `#127` activation session observed `rpi5` online with no Weather Docker container, Weather systemd service or Weather timer. That observation is point-in-time only. It did not re-check privileged operator installation state and must not be reused as a later LIVE baseline.
+- `RPi5_main/main=84e129909831bd8111c4f4c1f6618b7fff2a803b`;
+- the Weather-v9 recovery/control-plane lane is closed;
+- the stale v7 delivery/install gate is superseded;
+- `ops-workflows#46` is blocked specifically on Weather source-handoff reconciliation;
+- no source snapshot is accepted as proof of current operator installation, current runtime baseline, deployment or readiness.
 
-The machine-readable snapshot is `deploy/public-ui-rollout-reconciliation.json`.
+This repository intentionally does **not** freeze mutable host facts such as an `operator_host_installed=false` snapshot into `deploy/rollout-readiness.json`. The existing JIT preflight owns that proof.
 
-## Required sequence before the UI can be deployed
+## Required sequence after Issue #140 merge
 
-1. Converge `RPi5_main#543` / PR `#545` under that repository's own authority and verify the required Weather public operator capability with fresh sanitized read-only host evidence.
-2. Reconcile `ops-workflows#46` to the then-current exact Weather candidate. Do not reuse any failed or consumed authorization.
-3. Refresh exact Weather and `RPi5_main` SHAs plus exact-SHA CI and a sanitized runtime baseline.
-4. Run the existing `rollout-live-preflight-validate` path against those fresh inputs. Source snapshots do not substitute for this JIT evidence.
-5. Only after the preflight passes, request one exact Composite STRICT LIVE authorization for the reviewed host/source/target/mutation envelope.
+1. Resolve the exact newly merged Weather `main` SHA.
+2. Reconcile `ops-workflows#46` to that exact SHA under `ops-workflows` rules. The queue remains eligibility-only and grants no LIVE authority.
+3. Refresh Weather and `RPi5_main` exact-SHA CI.
+4. Collect fresh sanitized operator-installation proof and a fresh runtime baseline.
+5. Run `rozkalns-weather rollout-live-preflight-validate`.
+6. Only with zero blockers request a new bounded Composite STRICT LIVE authorization.
+7. Under that separate LIVE gate, execute schema initialization, DWD truth + ICON-D2/IFS/AIFS corpus bootstrap, integrity checks, enable recurring public ingest **last**, and verify `/ready=200` plus UI/provider endpoints.
 
-The actual deployment, Docker/systemd/timer changes, production SQLite initialization/backfill, WeatherNext private access, credentials, Cloudflare/network changes and any host mutation remain outside issue `#127`.
+The source issue itself does not retarget the queue, does not create READY state, does not create or consume LIVE authorization, and performs no runtime mutation.
 
-## Terminal classification for #127
+## JIT invariants
 
-Until the two external blockers above are resolved, the correct source outcome is `BLOCKED_EXTERNAL_RPI5_SOURCE_AND_QUEUE_RECOVERY`, not `READY_FOR_STRICT_LIVE`. This is intentionally fail-closed: source merge can improve continuity and prevent stale readiness claims, but it cannot manufacture host capability, queue eligibility or LIVE authority.
+The machine gate still requires all of the following at evaluation time:
+
+- exact current merged Weather SHA and green exact-SHA CI;
+- exact current `RPi5_main` SHA and green required CI;
+- matching `ops-workflows#46` `OPEN_READY` queue identity;
+- fresh sanitized operator installation proof;
+- exact-match runtime baseline token;
+- fixed reviewed contract identities;
+- bounded dates, exact model set/run hours and WMO `10416`;
+- explicit recovery decision;
+- exact release/supplemental/read-only budgets;
+- owner/TTL/raw-body/replay authorization evidence.
+
+Missing or stale evidence returns `BLOCKED`; source merge is never a substitute.
+
+## WeatherNext and privacy boundaries
+
+WeatherNext 3 remains `primary_research` and is not required for the first public-only Web UI. No WeatherNext values are fabricated. DWD remains warning authority.
+
+Exact home coordinates, credentials, `.env`, private paths and raw runtime logs must not enter GitHub evidence. Production SQLite/corpus writes, systemd/Docker changes, Cloudflare/network changes and private WeatherNext/Google Cloud activation remain separate owner-gated mutation classes.

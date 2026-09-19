@@ -1,33 +1,46 @@
 {
   "schema_version": 1,
   "contract": "rozkalns-weather.first-public-rollout-preflight.v1",
-  "status": "SOURCE_READY_PREFLIGHT_CURRENTLY_BLOCKED",
+  "status": "SOURCE_READY_REQUIRES_POST_MERGE_QUEUE_AND_FRESH_JIT_EVIDENCE",
   "repository": "rozkalnsandris/rozkalns_weather",
   "runtime_class": "public-only-rpi5",
   "host_alias": "rpi5",
   "target_alias": "rozkalns-weather-public-rpi5",
   "operation_id": "rozkalns-weather.public-runtime-release.v1",
   "source_snapshot_at_build": {
-    "weather_main_sha": "7b188d56ef083f60289bf34297199a42f13e1048",
-    "weather_governance_run": 34557811416,
-    "weather_backend_tests_run": 34557810930,
-    "rpi5_main_sha": "2672451d1f3ddc6cffcc70a3627c6b758db8abe0",
-    "rpi5_validate_run": 34571359393,
+    "weather_main_sha": "9e903b0e1d129856c4b1533b48487b7f5c36737d",
+    "weather_exact_main_ci": {
+      "backend_tests": "SUCCESS",
+      "backend_tests_run_number": 116,
+      "governance": "SUCCESS",
+      "governance_run_number": 120
+    },
+    "rpi5_main_sha": "84e129909831bd8111c4f4c1f6618b7fff2a803b",
+    "rpi5_exact_main_ci": {
+      "validate": "SUCCESS",
+      "validate_run_number": 1277,
+      "fast_lane": "SUCCESS",
+      "fast_lane_run_number": 735,
+      "github_only": "SUCCESS",
+      "github_only_run_number": 721
+    },
     "point_in_time_only": true,
+    "source_snapshot_is_runtime_proof": false,
     "fresh_revalidation_required_before_live": true
   },
   "deploy_queue": {
     "repository": "rozkalnsandris/ops-workflows",
     "issue": 46,
     "required_state": "OPEN_READY",
-    "observed_source_sha_at_build": "52d3fd0ff946d3d5a0e1379f6c4362bf834a1aa9",
-    "required_source_sha_at_build": "7b188d56ef083f60289bf34297199a42f13e1048",
+    "observed_state_at_build": "BLOCKED_WEATHER_SOURCE_HANDOFF_RECONCILIATION",
+    "final_merged_weather_sha_required_after_merge": true,
     "observed_target_alias_at_build": "rozkalns-weather-public-rpi5",
     "eligibility_only": true,
     "grants_live_authority": false,
-    "current_source_assessment": "BLOCKED",
+    "current_source_assessment": "POST_MERGE_QUEUE_RECONCILIATION_REQUIRED",
     "current_block_reasons": [
-      "QUEUE_WEATHER_SHA_MISMATCH",
+      "QUEUE_MUST_BIND_FINAL_MERGED_WEATHER_SHA",
+      "FRESH_OPERATOR_INSTALLATION_PROOF_REQUIRED",
       "FRESH_RUNTIME_BASELINE_REQUIRED",
       "LIVE_AUTHORIZATION_NOT_SUPPLIED"
     ],
@@ -35,11 +48,11 @@
   },
   "rpi5_contracts": {
     "composite_operator": "ops/deploy/weather-public-runtime-operator.json",
-    "composite_operator_status": "SOURCE_READY_HOST_NOT_INSTALLED",
     "operator_install": "ops/deploy/weather-public-runtime-operator-install.json",
-    "operator_install_status": "SOURCE_READY_INSTALL_DISABLED",
     "operator_installer_issue": 462,
     "operator_installer_status": "SOURCE_ONLY_INSTALLER_BRIDGE_INACTIVE",
+    "operator_installer_status_is_current_runtime_proof": false,
+    "operator_installer_status_is_current_host_state": false,
     "operator_installer_entrypoint": "RPi5_CHECKOUT_PARENT/RPi5_main-weather-public-runtime-install-trusted/ops/bin/rozkalns-weather-public-runtime-operator-install",
     "operator_installer_caller_arguments": [],
     "operator_artifact_count": 23,
@@ -47,7 +60,8 @@
     "helper_artifact_count": 13,
     "composite_authority": "ops/deploy/weather-public-runtime-composite-live.json",
     "execution": "ops/deploy/weather-public-runtime-execution.json",
-    "successor_trusted_checkout": "ops/deploy/rpi5-main-weather-public-runtime-install-trusted-checkout-bootstrap.json"
+    "successor_trusted_checkout": "ops/deploy/rpi5-main-weather-public-runtime-install-trusted-checkout-bootstrap.json",
+    "current_runtime_installation_state_must_come_from_jit_evidence": true
   },
   "bootstrap": {
     "start_date": "2026-04-02",
@@ -233,9 +247,12 @@
     "authorization_consumed": false
   },
   "next_owner_live_gate": {
-    "sequence": 1,
+    "sequence": 0,
     "name": "INSTALL_WEATHER_PUBLIC_RUNTIME_OPERATOR",
-    "purpose": "install the reviewed 23-artifact Weather Composite operator closure only",
+    "purpose": "historical v1 schema compatibility only; superseded by fresh JIT operator-installation proof",
+    "available_now": false,
+    "historical_schema_compatibility_only": true,
+    "superseded": true,
     "requires_fresh_exact_rpi5_main_sha": true,
     "host_alias": "rpi5",
     "target_alias": "rozkalns-weather-public-rpi5",
@@ -244,10 +261,20 @@
     "operator_installer_entrypoint": "RPi5_CHECKOUT_PARENT/RPi5_main-weather-public-runtime-install-trusted/ops/bin/rozkalns-weather-public-runtime-operator-install",
     "operator_installer_caller_arguments": [],
     "artifact_count": 23,
-    "verification": "fresh read-only proof of exact 23 artifacts, hashes, root ownership and reviewed modes",
+    "verification": "fresh operator installation proof is supplied only as sanitized JIT runtime evidence",
     "does_not_authorize_composite_rollout": true,
     "created_by_this_source_issue": false,
     "consumed_by_this_source_issue": false
+  },
+  "post_merge_reconciliation": {
+    "required_before_jit_pass": true,
+    "final_merged_weather_sha_must_match_ready_queue": true,
+    "fresh_current_weather_sha_and_ci_required": true,
+    "fresh_current_rpi5_sha_and_ci_required": true,
+    "fresh_operator_installation_proof_required": true,
+    "fresh_sanitized_baseline_required": true,
+    "new_human_composite_strict_live_authorization_required": true,
+    "queue_ready_transition_authorized_by_this_source_issue": false
   },
   "later_composite_live_gate": {
     "requires_operator_installation_proof": true,

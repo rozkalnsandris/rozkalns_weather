@@ -109,16 +109,29 @@ def _valid_evidence() -> dict[str, object]:
     }
 
 
-def test_source_package_records_current_blocked_queue_without_claiming_live() -> None:
+def test_source_package_requires_post_merge_queue_and_fresh_jit_evidence() -> None:
     contract = _contract()
-    assert contract["status"] == "SOURCE_READY_PREFLIGHT_CURRENTLY_BLOCKED"
-    assert contract["deploy_queue"]["current_source_assessment"] == "BLOCKED"
-    assert "QUEUE_WEATHER_SHA_MISMATCH" in contract["deploy_queue"]["current_block_reasons"]
-    assert contract["recovery"]["source_default"] is None
-    assert contract["next_owner_live_gate"]["name"] == "INSTALL_WEATHER_PUBLIC_RUNTIME_OPERATOR"
-    assert contract["next_owner_live_gate"]["created_by_this_source_issue"] is False
-    assert contract["next_owner_live_gate"]["consumed_by_this_source_issue"] is False
+    assert contract["status"] == "SOURCE_READY_REQUIRES_POST_MERGE_QUEUE_AND_FRESH_JIT_EVIDENCE"
+    assert contract["deploy_queue"]["current_source_assessment"] == "POST_MERGE_QUEUE_RECONCILIATION_REQUIRED"
+    assert "QUEUE_MUST_BIND_FINAL_MERGED_WEATHER_SHA" in contract["deploy_queue"]["current_block_reasons"]
+    assert contract["runtime_evidence"]["operator_installation_proof_required"] is True
+    assert contract["runtime_evidence"]["fresh_baseline_required"] is True
+    assert contract["post_merge_reconciliation"]["final_merged_weather_sha_must_match_ready_queue"] is True
+    assert contract["post_merge_reconciliation"]["queue_ready_transition_authorized_by_this_source_issue"] is False
+    compatibility_gate = contract["next_owner_live_gate"]
+    assert compatibility_gate["available_now"] is False
+    assert compatibility_gate["historical_schema_compatibility_only"] is True
+    assert compatibility_gate["superseded"] is True
     assert contract["authority"]["source_auto_full_authorizes_live"] is False
+
+
+def test_static_rpi_contract_does_not_claim_current_operator_installation_state() -> None:
+    rpi = _contract()["rpi5_contracts"]
+    assert "composite_operator_status" not in rpi
+    assert "operator_install_status" not in rpi
+    assert rpi["operator_installer_status_is_current_runtime_proof"] is False
+    assert rpi["operator_installer_status_is_current_host_state"] is False
+    assert rpi["current_runtime_installation_state_must_come_from_jit_evidence"] is True
 
 
 def test_full_sanitized_jit_evidence_can_pass_without_consuming_authorization() -> None:
@@ -184,6 +197,14 @@ def test_private_jit_input_is_rejected_even_when_safety_flags_claim_clean() -> N
     evidence["credentials"] = "must-not-enter-preflight"
     result = evaluate_first_public_rollout_preflight(evidence)
     assert "EXCLUSION_SAFETY_MISMATCH" in result["block_reasons"]
+
+
+def test_operator_installation_must_be_proven_by_fresh_runtime_evidence() -> None:
+    evidence = _valid_evidence()
+    evidence["runtime"]["operator"]["installed"] = False
+    evidence["runtime"]["operator"]["verified"] = False
+    result = evaluate_first_public_rollout_preflight(evidence)
+    assert "OPERATOR_INSTALLATION_PROOF_REQUIRED" in result["block_reasons"]
 
 
 def test_operator_budget_and_exclusion_drift_block() -> None:
