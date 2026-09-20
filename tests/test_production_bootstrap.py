@@ -6,7 +6,11 @@ import json
 import pytest
 
 from rozkalns_weather.cli import main as cli_main
-from rozkalns_weather.production_bootstrap import build_production_bootstrap_plan, evaluate_resume_evidence
+from rozkalns_weather.production_bootstrap import (
+    TRUTH_TRANSPORT_BLOCK_REASON,
+    build_production_bootstrap_plan,
+    evaluate_resume_evidence,
+)
 
 
 def _plan():
@@ -31,8 +35,10 @@ def _runs(start: date, end: date) -> list[str]:
 def _complete_evidence() -> dict[str, object]:
     plan = _plan()
     runs = _runs(date(2026, 4, 2), date(2026, 4, 15))
+
     def model_state() -> dict[str, object]:
         return {"completed_runs": list(runs), "revision_drift_runs": [], "unexpected_runs": [], "database_ahead_of_checkpoint": False}
+
     return {
         "bootstrap_fingerprint": plan["bootstrap_fingerprint"],
         "recovery_decision": "verified_backup_available",
@@ -43,13 +49,23 @@ def _complete_evidence() -> dict[str, object]:
     }
 
 
-def test_plan_freezes_bounds_chunks_scope_and_recovery() -> None:
+def test_plan_freezes_bounds_chunks_scope_recovery_and_truth_transport_gate() -> None:
     plan = _plan()
     assert plan["inclusive_days"] == 14
     assert plan["truth_chunk_count"] == 1
     assert plan["forecast_run_count_per_model"] == 56
     assert plan["identity"]["models"] == ["icon_d2", "ecmwf_ifs", "ecmwf_aifs"]
     assert plan["identity"]["run_hours_utc"] == [0, 6, 12, 18]
+    assert plan["identity"]["truth_station_id"] == "10416"
+    assert plan["state"] == "BLOCKED_BY_TRUTH_TRANSPORT_CAPABILITY"
+    assert plan["block_reasons"] == [TRUTH_TRANSPORT_BLOCK_REASON]
+    assert plan["truth_transport"] == {
+        "source_authority": "DWD",
+        "transport": "Bright Sky",
+        "station_id": "10416",
+        "historical_capability": "unverified_historical_capability",
+        "live_backfill_allowed": False,
+    }
     assert plan["schema_init_explicit_only"] is True
     assert plan["production_data_authority_granted"] is False
 
@@ -61,10 +77,10 @@ def test_plan_rejects_unbounded_window_and_unsupported_recovery() -> None:
         build_production_bootstrap_plan(source_sha="a" * 40, start=date(2026, 4, 2), end=date(2026, 4, 3), recovery_decision="auto_restore")
 
 
-def test_complete_evidence_passes_without_granting_write_authority() -> None:
+def test_complete_evidence_remains_blocked_until_truth_transport_is_verified() -> None:
     result = evaluate_resume_evidence(_plan(), _complete_evidence())
-    assert result["state"] == "PASS"
-    assert result["block_reasons"] == []
+    assert result["state"] == "BLOCKED"
+    assert result["block_reasons"] == [TRUTH_TRANSPORT_BLOCK_REASON]
     assert result["production_data_authority_granted"] is False
 
 
@@ -94,7 +110,7 @@ def test_resume_evidence_rejects_private_fields() -> None:
         evaluate_resume_evidence(_plan(), evidence)
 
 
-def test_production_bootstrap_plan_cli_is_runtime_independent(monkeypatch, capsys) -> None:
+def test_production_bootstrap_plan_cli_is_runtime_independent_and_blocked(monkeypatch, capsys) -> None:
     monkeypatch.setattr(
         "sys.argv",
         [
@@ -112,5 +128,6 @@ def test_production_bootstrap_plan_cli_is_runtime_independent(monkeypatch, capsy
     )
     cli_main()
     payload = json.loads(capsys.readouterr().out)
-    assert payload["state"] == "source_plan_ready"
+    assert payload["state"] == "BLOCKED_BY_TRUTH_TRANSPORT_CAPABILITY"
+    assert payload["block_reasons"] == [TRUTH_TRANSPORT_BLOCK_REASON]
     assert payload["production_data_authority_granted"] is False
