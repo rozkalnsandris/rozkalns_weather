@@ -2,6 +2,14 @@
 
 Issue #31 freezes source behavior for a later, separately authorized production SQLite bootstrap. This document does not authorize a database, corpus, host or runtime mutation.
 
+## Current truth-transport gate
+
+The first separately authorized #148 production truth attempt exposed a source-contract gap before any observation insert or checkpoint publication: the frozen Bright Sky `/weather` request for exact WMO `10416` and the first `2026-04-02..2026-04-15` chunk returned HTTP 404.
+
+Current Bright Sky source/docs still accept `wmo_station_id`, `date` and `last_date`, so this is not treated as a malformed-parameter repair. Bright Sky keeps SYNOP as a distinct source path with short recent retention, while its `/weather` historical path does not establish the required 162-day exact-WMO-10416 capability. The production bootstrap therefore fails closed with `TRUTH_TRANSPORT_HISTORICAL_CAPABILITY_UNVERIFIED`.
+
+Until a later focused source change verifies or implements an exact-station historical truth transport, `production-bootstrap-plan` reports `BLOCKED_BY_TRUTH_TRANSPORT_CAPABILITY` and `live_backfill_allowed=false`. Do not spend a new LIVE/data authorization on the same Bright Sky historical request. This gate does not permit station substitution, nearest-station fallback, synthetic truth or a provider change by implication.
+
 ## Frozen first-bootstrap scope
 
 - benchmark location: `station_10416`; DWD truth station: WMO `10416`;
@@ -11,7 +19,7 @@ Issue #31 freezes source behavior for a later, separately authorized production 
 - forecast cycles: exactly `00/06/12/18 UTC`;
 - DWD truth: exact 14-day chunks, final chunk shortened only at the requested end date.
 
-`deploy/production-public-corpus-bootstrap.json` is the machine contract. `build_production_bootstrap_plan()` produces a deterministic fingerprint over source SHA, bounds, station, models, run hours and owner recovery decision. Source planning grants no production-data authority.
+`deploy/production-public-corpus-bootstrap.json` is the machine contract. `build_production_bootstrap_plan()` produces a deterministic fingerprint over source SHA, bounds, station, models, run hours, truth transport state and owner recovery decision. Source planning grants no production-data authority and currently remains blocked by the historical truth-transport gate.
 
 ## Schema and backfill separation
 
@@ -33,4 +41,4 @@ There is no automatic delete, restore, cleanup, repair or SQLite rollback. Backu
 
 ## Later owner gate
 
-A future production bootstrap authorization must bind the reviewed merged Weather SHA and exact-SHA CI, exact production SQLite target, start/end dates, station, all three models, `00/06/12/18 UTC`, recovery decision, schema-init/backfill mutation classes, checkpoint fingerprint, verification postconditions and failure semantics. Any runtime/host/Docker/systemd mutation remains separately governed by the trusted `RPi5_main` boundary.
+Before another production corpus-write authorization is requested, a focused reviewed source change must replace `TRUTH_TRANSPORT_HISTORICAL_CAPABILITY_UNVERIFIED` with evidence-backed exact-WMO-10416 historical transport capability without nearest-station fallback. Only then may a fresh production bootstrap authorization bind the reviewed merged Weather SHA and exact-SHA CI, exact production SQLite target, start/end dates, station, all three models, `00/06/12/18 UTC`, recovery decision, checkpoint fingerprint, verification postconditions and failure semantics. Any runtime/host/Docker/systemd mutation remains separately governed by the trusted `RPi5_main` boundary.
