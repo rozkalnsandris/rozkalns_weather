@@ -123,6 +123,8 @@ def test_source_package_requires_post_merge_queue_and_fresh_jit_evidence() -> No
     assert compatibility_gate["historical_schema_compatibility_only"] is True
     assert compatibility_gate["superseded"] is True
     assert contract["authority"]["source_auto_full_authorizes_live"] is False
+    assert contract["lifecycle"]["ordinary_application_release_role"] == "LEGACY_SUPERSEDED"
+    assert contract["lifecycle"]["required_by_current_ordinary_release"] is False
 
 
 def test_static_rpi_contract_does_not_claim_current_operator_installation_state() -> None:

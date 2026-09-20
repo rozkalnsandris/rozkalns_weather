@@ -21,6 +21,10 @@ The project has four different readiness questions and they must not be collapse
 
 Each track is independently `PASS`, `WARN`, or `BLOCKED`. A public `PASS` therefore cannot be used as evidence that private activation or production data mutation is authorized or ready.
 
+## Deployment relationship
+
+The current ordinary application-release path is SIMPLE-DEPLOY v1. This acceptance matrix remains source/evidence aggregation only: it neither replaces `.simple-deploy.json` nor grants registry, host, LIVE, data, secret or network authority. The older Weather queue/operator/JIT control plane is not an ordinary-release prerequisite.
+
 ## Capability matrix
 
 `public_release` contains:

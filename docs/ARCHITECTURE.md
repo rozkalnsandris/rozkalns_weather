@@ -33,6 +33,12 @@ Ja dashboard tiek publicēts internetā tehniskai piekļuvei no telefona, tas jo
 
 Deploy/runtime konfigurācija nav šīs bootstrap dokumentācijas daļa un prasa atsevišķu autorizāciju.
 
+## Deployment architecture
+
+Weather is a SIMPLE-DEPLOY v1 consumer/canary, not the deployment-platform implementation. `.github/workflows/simple-deploy.yml` pins `ops-workflows@e05ed760791a127c7c9628696806ef39c9fe329c` and reads `.simple-deploy.json`; the shared workflow builds/publishes the ARM64 image and advances only a discovery pointer. `RPi5_main@ff20fcf64ba62c95e5f15eeb481c3c66bb5c9708` owns the generic allowlisted pull/deploy boundary. The exact resolved GHCR digest is the runtime application identity.
+
+Application release does not include schema/corpus mutation, destructive recovery, private-provider activation, secrets/permissions or Cloudflare/network work. Those remain separately gated.
+
 ## Logical components
 
 ```text

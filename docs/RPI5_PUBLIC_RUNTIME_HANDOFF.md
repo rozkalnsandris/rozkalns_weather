@@ -1,6 +1,10 @@
-# RPi5 public-only runtime handoff
+# RPi5 public-only runtime handoff — SIMPLE-DEPLOY v1
 
-This document is a **source contract**, not LIVE authorization. It prepares the Weather public-only runtime for trusted execution through `rozkalnsandris/RPi5_main` while keeping mutable host truth in fresh JIT/runtime evidence.
+Current ordinary application-release handoff uses shared SIMPLE-DEPLOY v1. Weather consumer config is `.simple-deploy.json`, pinned shared revision is `ops-workflows@e05ed760791a127c7c9628696806ef39c9fe329c`, and generic trusted host source is `RPi5_main@ff20fcf64ba62c95e5f15eeb481c3c66bb5c9708`. Target `rozkalns-weather-public-rpi5` remains inactive until one separate exact LIVE cutover installs/enables the generic deployer and binds the fixed target.
+
+The generic deployer, not Weather GitHub prose, owns fixed host authority: it resolves the discovery pointer, freezes one immutable digest, pulls/updates only the allowlisted `weather` service, verifies `/health` and `/ready`, and records an exact receipt. `weather_data` is retained and `DATABASE_INIT_MODE=require-existing` prevents application replacement from becoming a schema/data operation.
+
+The old Weather-specific broker/operator/`ops-workflows#46` queue/JIT/Composite flow is **legacy/superseded for ordinary application releases**. Its source files are retained only as audit/regression evidence and do not gate SIMPLE-DEPLOY.
 
 ## Runtime mode and safety
 
@@ -71,7 +75,7 @@ Before production corpus writes, one explicit recovery decision must be bound:
 
 Backup creation/restore/delete are separate mutation classes. Application rollback does not imply SQLite rollback.
 
-## Current source/control-plane reconciliation
+## Legacy source/control-plane reconciliation — superseded for ordinary application releases
 
 Issue `#140` supersedes the stale v7 handoff after the Weather-v9 operator/control-plane recovery completed.
 
@@ -85,7 +89,7 @@ These anchors are **not** runtime proof. `deploy/rpi5-source-binding.json` there
 
 `deploy/rollout-readiness.json` likewise does not encode mutable current-host assertions such as `operator_host_installed=false`. The v1 source-package validator still has compatibility sentinel fields in `deploy/rpi5-source-binding.json`; they are explicitly marked non-authoritative and are not current host observations or capability decisions.
 
-## First-public JIT gate
+## Legacy first-public JIT gate — superseded for ordinary application releases
 
 `deploy/first-public-rollout-preflight.json` plus `rozkalns-weather rollout-live-preflight-validate` require fresh:
 
@@ -105,7 +109,7 @@ The validator returns only `PASS` or explicit `BLOCKED` reasons and does not cre
 
 A retained `next_owner_live_gate` node in the v1 preflight JSON exists only for schema compatibility with the current source-package validator. It is marked unavailable, historical and superseded; it is **not** the current gate.
 
-## Post-merge control-plane sequence
+## Legacy post-merge control-plane sequence — superseded for ordinary application releases
 
 After Issue `#140` merges:
 

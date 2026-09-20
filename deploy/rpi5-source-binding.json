@@ -91,5 +91,13 @@
     "weathernext3_role": "primary_research",
     "weathernext3_required_for_public_runtime": false,
     "weathernext_real_values_fabricated": false
+  },
+  "lifecycle": {
+    "current_ordinary_release_role": "LEGACY_SUPERSEDED",
+    "superseded_by": "SIMPLE_DEPLOY_V1",
+    "shared_workflow_sha": "e05ed760791a127c7c9628696806ef39c9fe329c",
+    "generic_rpi5_deployer_source_sha": "ff20fcf64ba62c95e5f15eeb481c3c66bb5c9708",
+    "historical_queue_operator_jit_evidence_retained": true,
+    "historical_evidence_grants_current_authority": false
   }
 }

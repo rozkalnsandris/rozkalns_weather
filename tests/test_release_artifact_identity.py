@@ -13,7 +13,7 @@ from rozkalns_weather.release_artifact_identity import (
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_SHA = "a" * 40
 IMAGE_DIGEST = "sha256:" + "b" * 64
-IMAGE_REPOSITORY = "ghcr.io/rozkalnsandris/rozkalns-weather"
+IMAGE_REPOSITORY = "ghcr.io/rozkalnsandris/rozkalns_weather"
 
 
 def _sha256_file(path: Path) -> str:

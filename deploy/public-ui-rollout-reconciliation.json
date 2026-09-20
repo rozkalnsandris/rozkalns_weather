@@ -7,7 +7,7 @@
   "target_alias": "rozkalns-weather-public-rpi5",
   "host_alias": "rpi5",
   "runtime_mode": "public-only",
-  "outcome": "SOURCE_READY_POST_MERGE_QUEUE_AND_JIT_RECONCILIATION_REQUIRED",
+  "outcome": "SIMPLE_DEPLOY_V1_CANARY_SOURCE_READY_CUTOVER_REQUIRED",
   "weather": {
     "reconciliation_anchor_sha": "9e903b0e1d129856c4b1533b48487b7f5c36737d",
     "anchor_role": "pre_issue_140_main_snapshot_only",
@@ -57,7 +57,9 @@
     "grants_live_authority": false,
     "refresh_authorized_by_issue_136": false,
     "refresh_authorized_by_issue_140": false,
-    "ready_for_final_candidate_proven_by_source": false
+    "ready_for_final_candidate_proven_by_source": false,
+    "lifecycle_role": "LEGACY_SUPERSEDED_FOR_ORDINARY_APPLICATION_RELEASES",
+    "required_by_current_ordinary_release": false
   },
   "jit_runtime_evidence": {
     "fresh_operator_installation_proof_required": true,
@@ -76,11 +78,11 @@
     "NEW_COMPOSITE_STRICT_LIVE_AUTHORIZATION_REQUIRED_AFTER_JIT_PASS"
   ],
   "required_external_sequence": [
-    "reconcile ops-workflows issue 46 to the final merged Weather SHA under target-repository rules",
-    "refresh exact Weather and RPi5_main SHAs plus exact-SHA CI",
-    "collect fresh sanitized operator-installation proof and runtime baseline",
-    "run the existing first-public-rollout JIT preflight against those fresh inputs",
-    "only then request the bounded Composite STRICT LIVE rollout authorization"
+    "complete Weather #142 source adoption and guarded merge",
+    "perform one separately authorized SIMPLE-DEPLOY cutover binding rpi5 and the fixed Weather target",
+    "prove one merged Weather release through shared build/publish, immutable digest deploy, liveness and readiness",
+    "perform production schema and public corpus bootstrap only under separate exact data authority",
+    "enable recurring public ingest only after corpus integrity passes"
   ],
   "safety": {
     "source_merge_authorizes_live": false,
@@ -94,5 +96,20 @@
     "weathernext_private_access_blocks_public_ui": false,
     "home_coordinates_block_public_ui": false,
     "weathernext_real_values_fabricated": false
+  },
+  "simple_deploy_v1": {
+    "role": "CURRENT_ORDINARY_APPLICATION_RELEASE_ARCHITECTURE",
+    "consumer_manifest": ".simple-deploy.json",
+    "caller_workflow": ".github/workflows/simple-deploy.yml",
+    "shared_workflow_sha": "e05ed760791a127c7c9628696806ef39c9fe329c",
+    "generic_rpi5_deployer_source_sha": "ff20fcf64ba62c95e5f15eeb481c3c66bb5c9708",
+    "target_alias": "rozkalns-weather-public-rpi5",
+    "compose_project": "rozkalns-weather-public",
+    "compose_file": "deploy/docker-compose.public.yml",
+    "compose_service": "weather",
+    "persistent_volume": "weather_data",
+    "liveness_path": "/health",
+    "readiness_path": "/ready",
+    "one_time_live_cutover_required": true
   }
 }

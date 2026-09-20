@@ -29,6 +29,10 @@ def test_reconciliation_tracks_current_source_lineage_without_runtime_claim() ->
     assert rpi["source_state_proves_host_installation"] is False
     assert rpi["source_state_proves_deployment"] is False
     assert rpi["fresh_current_main_and_ci_required_before_live"] is True
+    lifecycle = binding["lifecycle"]
+    assert lifecycle["current_ordinary_release_role"] == "LEGACY_SUPERSEDED"
+    assert lifecycle["superseded_by"] == "SIMPLE_DEPLOY_V1"
+    assert lifecycle["generic_rpi5_deployer_source_sha"] == "ff20fcf64ba62c95e5f15eeb481c3c66bb5c9708"
 
 
 def test_queue_handoff_requires_final_merged_weather_sha_and_grants_no_live_authority() -> None:
@@ -84,7 +88,7 @@ def test_rollout_readiness_does_not_encode_current_operator_host_state() -> None
 def test_runtime_descriptor_points_to_post_merge_queue_and_jit_reconciliation() -> None:
     runtime = json.loads((ROOT / "deploy/runtime-descriptor.json").read_text())
     assessment = runtime["rollout_readiness"]["current_source_assessment"]
-    assert assessment == "SOURCE_READY_REQUIRES_POST_MERGE_QUEUE_AND_FRESH_JIT_RECONCILIATION"
+    assert assessment == "SIMPLE_DEPLOY_V1_CANARY_SOURCE_READY_CUTOVER_NOT_ACTIVE"
     assert "BLOCKED_EXTERNAL_RPI5_SOURCE_AND_QUEUE_RECOVERY" not in json.dumps(runtime)
 
 
