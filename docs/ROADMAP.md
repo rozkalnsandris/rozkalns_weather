@@ -62,10 +62,10 @@ requesting final LIVE authority. Weather source readiness is not runtime evidenc
 
 - [x] shared SIMPLE-DEPLOY v1 accepted at `ops-workflows@e05ed760791a127c7c9628696806ef39c9fe329c`.
 - [x] generic trusted pull-deployer source accepted at `RPi5_main@ff20fcf64ba62c95e5f15eeb481c3c66bb5c9708`.
-- [ ] issue #142 Weather canary source adoption: tiny caller, manifest, image-based Compose, canonical docs/contracts.
-- [ ] one separately authorized SIMPLE-DEPLOY RPi5 cutover and Weather target activation.
-- [ ] prove one end-to-end merged Weather release by immutable digest with `/health` and `/ready`.
-- [ ] production schema/corpus bootstrap and recurring public ingest remain separate data/host operations.
+- [x] issue #142 Weather canary source adoption: tiny caller, manifest, image-based Compose, canonical docs/contracts.
+- [x] separately authorized SIMPLE-DEPLOY RPi5 cutover, schema-init prerequisite and Weather target activation completed; accepted runtime handoff records `/health=200` and `/ready=200`.
+- [ ] issue #146: prove the first genuine standing `AUTO_DEPLOY_SAFE` merged Weather release by immutable digest with `/health` and `/ready`.
+- [ ] production corpus bootstrap/backfill and recurring public ingest remain separate data/host operations.
 
 The older Weather broker/operator/queue/JIT/Composite milestones below are retained as **legacy source history** only and are superseded for ordinary application releases.
 
@@ -90,8 +90,9 @@ The older Weather broker/operator/queue/JIT/Composite milestones below are retai
 - [x] Issue #30 deterministic first-rollout JIT preflight package: exact SHA/CI/queue/host/operator/baseline/auth/budget PASS/BLOCKED validation, with stale queue binding exposed as a blocker and no LIVE authorization creation/consumption.
 - [x] Issue #31 production public corpus bootstrap source contract: explicit schema-init separation, WMO 10416 14-day truth chunks, exact ICON-D2/IFS/AIFS 00/06/12/18 scope, <=180-day bounds, ordered-prefix checkpoint/resume, revision-drift fail-closed and no delete/restore/implicit migration.
 - [x] deterministic rollout-readiness package: source-only preflight, <=180-day WMO 10416 + ICON-D2/IFS/AIFS bootstrap envelope, ordered checkpoint/resume, recovery decision, explicit systemd timer semantics, post-rollout evidence validator and fail-closed stage matrix.
-- [ ] first SIMPLE-DEPLOY canary cutover under one separate exact RPi5 LIVE authorization; old operator/queue/JIT/Composite prerequisites are legacy only.
-- [ ] production public corpus schema/bootstrap/backfill under explicit LIVE/data authority.
+- [x] first SIMPLE-DEPLOY canary cutover completed under separately authorized RPi5 LIVE gates; old operator/queue/JIT/Composite prerequisites are legacy only.
+- [ ] first standing post-cutover `AUTO_DEPLOY_SAFE` application release proof (#146).
+- [ ] production public corpus bootstrap/backfill and recurring ingest under explicit LIVE/data authority.
 - [ ] later private-home / WeatherNext runtime activation after private access and configuration are explicitly ready.
 - [ ] optional Cloudflare Access.
 
