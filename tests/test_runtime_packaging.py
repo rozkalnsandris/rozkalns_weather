@@ -107,6 +107,8 @@ def test_compose_candidate_has_fixed_jobs_and_no_private_env_file() -> None:
     assert "env_file:" not in compose
     assert "depends_on:" not in compose
     assert "ingest-weathernext" not in compose
+    assert "build:" not in compose
+    assert compose.count("image: ghcr.io/rozkalnsandris/rozkalns_weather:production") == 5
     assert "/ready" in compose
 
 

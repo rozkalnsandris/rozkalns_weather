@@ -17,7 +17,11 @@ def test_public_ui_source_handoff_is_reconciled_without_live_claim() -> None:
     assert payload["contract"] == "rozkalns-weather.public-ui-rollout-reconciliation.v1"
     assert payload["issue"] == 136
     assert payload["runtime_mode"] == "public-only"
-    assert payload["outcome"] == "SOURCE_READY_POST_MERGE_QUEUE_AND_JIT_RECONCILIATION_REQUIRED"
+    assert payload["outcome"] == "SIMPLE_DEPLOY_V1_CANARY_SOURCE_READY_CUTOVER_REQUIRED"
+    simple = payload["simple_deploy_v1"]
+    assert simple["role"] == "CURRENT_ORDINARY_APPLICATION_RELEASE_ARCHITECTURE"
+    assert simple["shared_workflow_sha"] == "e05ed760791a127c7c9628696806ef39c9fe329c"
+    assert simple["generic_rpi5_deployer_source_sha"] == "ff20fcf64ba62c95e5f15eeb481c3c66bb5c9708"
     assert payload["weather"]["reconciliation_anchor_sha"] == WEATHER_BASE_SHA
     assert payload["weather"]["ui_source_implemented"] is True
     assert payload["weather"]["ui_surfaces"] == ["Overview", "Models", "Accuracy", "Warnings-Radar"]
@@ -49,6 +53,8 @@ def test_queue_requires_final_merged_weather_sha_and_is_eligibility_only() -> No
     assert queue["refresh_authorized_by_issue_136"] is False
     assert queue["refresh_authorized_by_issue_140"] is False
     assert queue["ready_for_final_candidate_proven_by_source"] is False
+    assert queue["lifecycle_role"] == "LEGACY_SUPERSEDED_FOR_ORDINARY_APPLICATION_RELEASES"
+    assert queue["required_by_current_ordinary_release"] is False
 
 
 def test_static_reconciliation_has_no_point_in_time_host_snapshot_or_live_gate() -> None:
@@ -62,12 +68,13 @@ def test_static_reconciliation_has_no_point_in_time_host_snapshot_or_live_gate()
     assert jit["source_snapshot_may_not_substitute"] is True
 
 
-def test_required_external_sequence_starts_after_source_merge() -> None:
+def test_required_external_sequence_uses_simple_deploy_cutover_not_legacy_queue() -> None:
     sequence = _reconciliation()["required_external_sequence"]
-    assert sequence[0].startswith("reconcile ops-workflows issue 46 to the final merged Weather SHA")
-    assert sequence[2] == "collect fresh sanitized operator-installation proof and runtime baseline"
-    assert sequence[-2].startswith("run the existing first-public-rollout JIT preflight")
-    assert sequence[-1] == "only then request the bounded Composite STRICT LIVE rollout authorization"
+    assert sequence[0] == "complete Weather #142 source adoption and guarded merge"
+    assert "SIMPLE-DEPLOY cutover" in sequence[1]
+    assert "immutable digest" in sequence[2]
+    assert "schema and public corpus bootstrap" in sequence[3]
+    assert "ops-workflows issue 46" not in " ".join(sequence)
 
 
 def test_public_ui_does_not_depend_on_private_weathernext_or_home_coordinates() -> None:

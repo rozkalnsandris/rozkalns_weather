@@ -122,29 +122,17 @@ Runtime health/readiness:
 
 Public-provider failure ir redzama provider state, bet izolēta no citiem provider. WeatherNext `access_pending` nav public-only runtime blocker.
 
-## Public-only RPi5 candidate
+## Current deployment — SIMPLE-DEPLOY v1 canary
 
-Pirmais RPi5 rollout kandidāts ir intentionally public-only un neprasa WeatherNext credentials vai private home coordinates:
+Weather is a **consumer/canary**, not the deployment-platform owner. The current source contract is `docs/SIMPLE_DEPLOY_CANARY.md`, `.simple-deploy.json` and the tiny immutable-pinned `.github/workflows/simple-deploy.yml`. The accepted shared revision is `ops-workflows@e05ed760791a127c7c9628696806ef39c9fe329c`; the reviewed generic host source is `RPi5_main@ff20fcf64ba62c95e5f15eeb481c3c66bb5c9708`.
 
-- `deploy/docker-compose.public.yml` — fixed application/bootstrap/job service identities;
-- `deploy/runtime-descriptor.json` — machine-readable trusted deploy handoff;
-- `deploy/rollout-readiness.json` — canonical bounded rollout/state/recovery/evidence/failure contract;
-- `deploy/first-public-rollout-preflight.json` — deterministic JIT PASS/BLOCKED contract for exact source/CI/queue/host/operator/baseline/auth/budget evidence;
-- `deploy/production-public-corpus-bootstrap.json` — deterministic first production schema/truth/forecast bootstrap + checkpoint/recovery/integrity source contract;
-- `deploy/public-ingest-schedule.json` — explicit systemd timer identity, 30-minute cadence, `Persistent=true`, bounded jitter, overlap semantics un enable-last ordering;
-- `docs/RPI5_PUBLIC_RUNTIME_HANDOFF.md` — trust-boundary, corpus retention un reviewed `RPi5_main` adapter/bootstrap handoff contract.
+`deploy/docker-compose.public.yml` is image-based: ordinary application replacement uses the fixed `weather` service, retained `weather_data`, `WEATHER_RUNTIME_MODE=public-only`, `DATABASE_INIT_MODE=require-existing`, `/health` and `/ready`. The generic RPi5 reconciler resolves the `:production` pointer, freezes one immutable digest and deploys that exact digest.
 
-Fixed runtime mode ir `WEATHER_RUNTIME_MODE=public-only`; application service izmanto `DATABASE_INIT_MODE=require-existing`. Compose `weather` service nav `depends_on` saites uz schema/backfill jobiem. `schema-init`, historical corpus writes, backup/restore un recurring schedule activation ir redzami atsevišķas mutation classes — tās nav app startup vai application replacement side effects.
+One-time RPi5 install/target activation remains a separate exact LIVE cutover. Production SQLite schema/corpus writes, recurring-ingest scheduler activation, WeatherNext/private-home, secrets/permissions and Cloudflare/network changes remain separate gates.
 
-## Deployment
+### Legacy first-rollout control-plane evidence
 
-`Dockerfile`, `deploy/` un `docs/OPERATIONS.md` ir source-level deploy preparation. `rozkalns_weather` pats neiegūst RPi5 root/sudo/deploy authority. Weather-v9 recovery/control-plane closure ir pabeigta ārpus šī repo, tāpēc static Weather source vairs neglabā veco v7 host-capability gate kā pašreizēju blocker. `deploy/rpi5-source-binding.json` glabā tikai point-in-time source/control-plane lineage un skaidri neuzskata source snapshot par operator installation vai deployment proof.
-
-`rozkalns-weather rollout-live-preflight-validate` lasa tikai sanitized JIT evidence no stdin un atgriež `PASS` vai `BLOCKED`; tas pats neveido un nepatērē LIVE authorization. Pēc Issue #140 merge nākamais source/control-plane solis ir piesaistīt `ops-workflows#46` tieši jaunajam merged Weather SHA, svaigi pārbaudīt Weather un `RPi5_main` exact-SHA CI, un tikai tad JIT ievadē piegādāt verified operator installation proof + sanitized runtime baseline. Static `operator_host_installed=false` vai vecs host snapshot nav runtime authority.
-
-Composite STRICT LIVE gate kļūst iespējams tikai pēc JIT `PASS`; tas vēl prasa jaunu human authorization, exact host/target, bounded bootstrap scope, explicit recovery decision un precīzus mutation/read-only budgets. Queue READY paliek eligibility-only un pati nepiešķir LIVE authority. WeatherNext private activation ir atsevišķs ceļš un nav first public-only UI priekšnoteikums.
-
-RPi5, systemd/Docker, Cloudflare, credentials, private Google Cloud/BigQuery access, production SQLite/corpus writes un runtime mutation prasa atsevišķu LIVE autorizāciju.
+`deploy/rpi5-source-binding.json`, `deploy/first-public-rollout-preflight.json`, the historical `ops-workflows#46` queue and Weather operator/JIT/Composite contracts are retained for audit/regression compatibility only. They are **superseded for ordinary application releases** and are not prerequisites for SIMPLE-DEPLOY.
 
 ## Dokumentācija
 

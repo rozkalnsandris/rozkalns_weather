@@ -1,0 +1,42 @@
+{
+  "schema": "rozkalns.simple-deploy.consumer.v1",
+  "repository": "rozkalnsandris/rozkalns_weather",
+  "image": "ghcr.io/rozkalnsandris/rozkalns_weather",
+  "build": {
+    "context": ".",
+    "dockerfile": "Dockerfile",
+    "architecture": "linux/arm64"
+  },
+  "target": {
+    "alias": "rozkalns-weather-public-rpi5",
+    "runtime_class": "rpi5-compose"
+  },
+  "compose": {
+    "project": "rozkalns-weather-public",
+    "file": "deploy/docker-compose.public.yml",
+    "service": "weather"
+  },
+  "health": {
+    "liveness_path": "/health",
+    "readiness": {
+      "state": "required",
+      "path": "/ready"
+    }
+  },
+  "persistence": {
+    "volumes": [
+      "weather_data"
+    ]
+  },
+  "registry": {
+    "pull_profile": "public-anonymous-pull"
+  },
+  "forbidden_operations": [
+    "database-schema-data-mutation",
+    "destructive-recovery",
+    "secrets-credentials-permissions",
+    "cloudflare-dns-network",
+    "private-provider-activation",
+    "unrelated-host-control"
+  ]
+}

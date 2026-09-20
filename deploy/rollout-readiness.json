@@ -215,5 +215,11 @@
   ],
   "source_full_grants_live_authority": false,
   "source_full_grants_production_data_authority": false,
-  "first_public_rollout_preflight_descriptor": "deploy/first-public-rollout-preflight.json"
+  "first_public_rollout_preflight_descriptor": "deploy/first-public-rollout-preflight.json",
+  "lifecycle": {
+    "ordinary_application_release_role": "LEGACY_SUPERSEDED",
+    "superseded_by": "SIMPLE_DEPLOY_V1",
+    "data_bootstrap_and_acceptance_evidence_remains_separately_relevant": true,
+    "old_queue_operator_jit_required_for_current_ordinary_release": false
+  }
 }

@@ -23,8 +23,9 @@
     "jit_live_preflight_command": "rozkalns-weather rollout-live-preflight-validate",
     "jit_live_preflight_is_read_only": true,
     "jit_live_preflight_creates_or_consumes_authorization": false,
-    "current_source_assessment": "SOURCE_READY_REQUIRES_POST_MERGE_QUEUE_AND_FRESH_JIT_RECONCILIATION",
-    "production_public_corpus_bootstrap_descriptor": "deploy/production-public-corpus-bootstrap.json"
+    "current_source_assessment": "SIMPLE_DEPLOY_V1_CANARY_SOURCE_READY_CUTOVER_NOT_ACTIVE",
+    "production_public_corpus_bootstrap_descriptor": "deploy/production-public-corpus-bootstrap.json",
+    "legacy_first_rollout_preflight_role": "HISTORICAL_SENSITIVE_OPERATION_EVIDENCE_ONLY"
   },
   "packaging": {
     "kind": "docker-compose",
@@ -107,6 +108,25 @@
       "public ingest scheduling is independent of WeatherNext scheduling",
       "corpus integrity passes before recurring schedule activation"
     ],
-    "source_binding_descriptor": "deploy/rpi5-source-binding.json"
+    "source_binding_descriptor": "deploy/rpi5-source-binding.json",
+    "ordinary_application_release_path": "SIMPLE_DEPLOY_V1",
+    "legacy_control_plane_status": "SUPERSEDED_FOR_ORDINARY_APPLICATION_RELEASES"
+  },
+  "deployment_architecture": {
+    "current": "SIMPLE_DEPLOY_V1_CANARY_SOURCE",
+    "consumer_manifest": ".simple-deploy.json",
+    "caller_workflow": ".github/workflows/simple-deploy.yml",
+    "shared_workflow_repository": "rozkalnsandris/ops-workflows",
+    "shared_workflow_sha": "e05ed760791a127c7c9628696806ef39c9fe329c",
+    "generic_runtime_repository": "rozkalnsandris/RPi5_main",
+    "generic_runtime_source_sha": "ff20fcf64ba62c95e5f15eeb481c3c66bb5c9708",
+    "compose_project": "rozkalns-weather-public",
+    "compose_service": "weather",
+    "image": "ghcr.io/rozkalnsandris/rozkalns_weather",
+    "production_pointer_role": "discovery_only",
+    "deployment_identity": "immutable_registry_digest",
+    "one_time_cutover_required": true,
+    "source_merge_authorizes_live": false,
+    "legacy_weather_operator_queue_jit_role": "SUPERSEDED_FOR_ORDINARY_APPLICATION_RELEASES"
   }
 }

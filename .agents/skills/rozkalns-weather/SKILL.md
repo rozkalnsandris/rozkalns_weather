@@ -35,6 +35,12 @@ Private RPi5 runtime/deploy, Docker/systemd/timers, Google Cloud/BigQuery privat
 
 After a live mutation starts, an error, timeout, drift, or ambiguous result means preserve read-only evidence and STOP unless the exact recovery path was already authorized.
 
+## 3a. Current deployment platform
+
+For ordinary Weather application releases, treat Weather as a SIMPLE-DEPLOY v1 consumer. The canonical shared revision for issue #142 is `ops-workflows@e05ed760791a127c7c9628696806ef39c9fe329c` and the reviewed generic host source is `RPi5_main@ff20fcf64ba62c95e5f15eeb481c3c66bb5c9708`. Weather may own only the tiny caller, `.simple-deploy.json`, Dockerfile/Compose application identity, health/readiness, persistence and exclusion contract.
+
+Do not revive or extend the historical Weather broker/operator/queue/JIT/Composite chain as a current ordinary-release prerequisite. Before the one-time cutover, stricter existing LIVE rules remain in force; after successful activation only the reviewed `AUTO_DEPLOY_SAFE` application path may proceed automatically. Sensitive data/private/network/secret/host classes remain separately exact-gated.
+
 ## 4. Implement the smallest coherent source change
 
 1. State the verified problem or acceptance target in one sentence.

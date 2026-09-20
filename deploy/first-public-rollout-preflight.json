@@ -290,5 +290,11 @@
     "source_preflight_creates_live_authorization": false,
     "source_preflight_consumes_live_authorization": false,
     "source_preflight_performs_runtime_mutation": false
+  },
+  "lifecycle": {
+    "ordinary_application_release_role": "LEGACY_SUPERSEDED",
+    "superseded_by": "SIMPLE_DEPLOY_V1",
+    "retained_for": "historical_sensitive_first_rollout_evidence_and_regression_only",
+    "required_by_current_ordinary_release": false
   }
 }

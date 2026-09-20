@@ -17,6 +17,18 @@ Status reconciled after `AUDIT-HANDOFF` on 2026-09-09 and extended by Issue #19,
 The historical public rollout milestones below are point-in-time source evidence;
 they are not current host observations or an alternate WeatherNext next action.
 
+## Current deployment continuation — issue #142
+
+- GOAL: adopt shared SIMPLE-DEPLOY v1 as Weather's ordinary application-release path.
+- SHARED: `ops-workflows@e05ed760791a127c7c9628696806ef39c9fe329c`.
+- TRUSTED HOST SOURCE: `RPi5_main@ff20fcf64ba62c95e5f15eeb481c3c66bb5c9708`.
+- WEATHER OWNS: `.simple-deploy.json`, tiny immutable-pinned caller, image-based Compose/application health contract and persistence/exclusion identities.
+- CURRENT SOURCE STATE: canary adoption in progress; host cutover is not active.
+- NEXT RUNTIME GATE AFTER GUARDED MERGE: one separately authorized SIMPLE-DEPLOY RPi5 install/target cutover, followed by an end-to-end immutable-digest release proof.
+- DATA/PRIVATE/NETWORK: SQLite schema/corpus, recurring-ingest activation, WeatherNext/private-home, secrets and Cloudflare/network remain separate exact gates.
+
+The older Weather-specific broker/operator/`ops-workflows#46` queue/JIT/Composite sections retained later in this document are **legacy audit history**, superseded for ordinary application releases.
+
 ## Source-complete
 - FastAPI + SQLite immutable forecast corpus.
 - Location-aware forecast identity: `station_10416` and private runtime-only `home`.
@@ -107,7 +119,7 @@ they are not current host observations or an alternate WeatherNext next action.
 - `weathernext3_version_evolution_v1` report validation rejects private Google identity, credentials/tokens, SQL, coordinates, private paths, raw provider payloads/logs; source fixtures contain synthetic values only and do not claim empirical WeatherNext results.
 - `docs/WEATHERNEXT_VERSION_EVOLUTION.md` defines the exact later production corpus **read-only** gate. Source merge does not authorize production corpus reads/writes, BigQuery, scheduler or RPi5 mutation.
 
-## RPi5_main trusted-boundary source integration
+## Legacy RPi5_main Weather-specific control-plane integration — superseded for ordinary releases
 - `RPi5_main` Issue #408 / PR #409 is merged and registers the static `rozkalns-weather.public-runtime-release.v1` operation plus dedicated execution-disabled weather adapter.
 - `RPi5_main` Issue #410 / PR #415 is merged and adds the deterministic first-bootstrap composition for application release, volume ensure, explicit schema init, readiness, optional public smoke, bounded DWD truth and deterministic forecast backfill, integrity, and recurring public ingest scheduling.
 - `RPi5_main` Issue #432 / PR #433 is merged and composes the existing owner LIVE-AUTH/READY/replay protocol with the Weather bootstrap planner while keeping pre-activation execution disabled.
@@ -121,7 +133,7 @@ they are not current host observations or an alternate WeatherNext next action.
 - The source contracts do not provide arbitrary shell/path/argv/environment authority and do not include private runtime data.
 - Mutable `RPi5_main` source/executor/runtime state must always be freshly revalidated before any LIVE action.
 
-## Issue #30 first public rollout JIT preflight package
+## Legacy Issue #30 first public rollout JIT preflight package — superseded for ordinary releases
 - `deploy/first-public-rollout-preflight.json` freezes the source-side contract for exact Weather/RPi5 SHA + CI, READY queue identity, `rpi5` / `rozkalns-weather-public-rpi5`, reviewed operator/helper/checkout contracts, the 162-day `2026-04-02..2026-09-10` public benchmark window, explicit owner-selected recovery, release/supplemental/read-only budgets, and later authorization/baseline evidence.
 - `rozkalns-weather rollout-live-preflight-validate` consumes sanitized evidence only and returns `PASS` only when every required binding matches; otherwise it returns `BLOCKED` with stable reason codes. It creates no authorization, consumes no replay record and performs no runtime mutation.
 - Regression coverage includes stale Weather/RPi SHA or CI, queue source/target drift, host/target mismatch, missing operator-install proof, expired/replayed/modified authorization, baseline mismatch, budget drift and forbidden authority expansion.
@@ -136,7 +148,7 @@ they are not current host observations or an alternate WeatherNext next action.
 - No delete, restore, automatic repair, implicit migration or corpus rollback is authorized. Production schema/corpus writes remain a separate exact LIVE/data gate.
 
 ## Still external/live gated
-1. Before the first public-only rollout, separately authorize and verify the exact 23-artifact operator installation, independently refresh the READY queue to the final merged Weather SHA, then obtain a new Composite STRICT LIVE authorization after fresh source/CI/host/target/baseline preflight.
+1. Before the first SIMPLE-DEPLOY host cutover, separately authorize the exact generic RPi5 deployer installation/activation and fixed Weather target binding; the 23-artifact Weather operator/queue/JIT/Composite chain is legacy and not a current prerequisite.
 2. Production SQLite schema initialization and historical/public corpus population under separately bounded data-write/LIVE authority, with explicit date/model bounds and recovery decision.
 3. Any Docker/systemd/timer activation or host/filesystem/network mutation remains separately gated.
 4. WeatherNext access approval is established by #122; private runtime/linkage and live-access verification remain gated.

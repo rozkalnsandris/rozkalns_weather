@@ -1,6 +1,12 @@
-# Operations — private RPi5 deployment candidate
+# Operations — Weather SIMPLE-DEPLOY canary
 
-This is a deploy-ready **source contract**, not LIVE authorization. Source/CI state does not prove RPi5 deployment/runtime state.
+The current ordinary application-release architecture is shared SIMPLE-DEPLOY v1. Weather owns only `.simple-deploy.json`, the tiny immutable-pinned caller, its Dockerfile/Compose application contract and fixed health/persistence identities. Shared workflow: `ops-workflows@e05ed760791a127c7c9628696806ef39c9fe329c`. Generic trusted host source: `RPi5_main@ff20fcf64ba62c95e5f15eeb481c3c66bb5c9708`.
+
+After the separately authorized one-time RPi5 cutover, ordinary application release is merged source -> shared GHCR build/promotion -> frozen immutable digest -> generic Compose pull/up/wait -> `/health` + `/ready` -> receipt. The mutable `:production` tag is discovery only.
+
+No source merge or caller run authorizes generic RPi5 installation/activation, SQLite schema/corpus writes, recurring-ingest scheduler activation, WeatherNext/private-home, secrets/permissions, Cloudflare/network or destructive recovery.
+
+> **Legacy notice:** the historical rollout-preflight/operator/queue/JIT/Composite sections below are retained for audit/regression evidence and separately gated data/bootstrap context. They are superseded for ordinary application releases and must not be used as SIMPLE-DEPLOY prerequisites.
 
 ## Runtime classes
 
@@ -65,7 +71,7 @@ rozkalns-weather corpus-stats
 
 `readiness` does not perform provider network calls and does not implicitly initialize the SQLite schema when the runtime uses `DATABASE_INIT_MODE=require-existing`.
 
-## Deterministic rollout source preflight
+## Legacy first-rollout source preflight — superseded for ordinary application releases
 
 Run this only from the exact reviewed repository checkout whose fixed `deploy/` files will later be materialized. It is read-only, network-independent and does not inspect or mutate live RPi5 state:
 
@@ -274,9 +280,9 @@ rollback=<no implicit SQLite delete/restore/cleanup>
 
 Credential/IAM/ADC setup, Analytics Hub subscription/link mutation, private-home coordinates and production SQLite write remain distinct gates. Source merge is not authorization for any of them.
 
-## Trusted RPi5 boundary
+## Trusted RPi5 boundary — current SIMPLE-DEPLOY model
 
-`rozkalns_weather` is not autonomous host authority. The adapter contract is documented in `docs/RPI5_PUBLIC_RUNTIME_HANDOFF.md`, `deploy/runtime-descriptor.json` and `deploy/rollout-readiness.json`.
+`rozkalns_weather` is not autonomous host authority. Current ordinary releases use the generic SIMPLE-DEPLOY contract in `docs/SIMPLE_DEPLOY_CANARY.md`; the old Weather-specific adapter/queue/operator contracts remain legacy evidence only.
 
 Current source-side integration identity:
 
@@ -288,7 +294,7 @@ Current source-side integration identity:
 
 `RPi5_main` Issue #408 / PR #409 registered the static operation, #410 / PR #415 added deterministic bootstrap composition, #432 / PR #433 added preactivation, #435 / PR #436 added host-wiring/helper source, #455 added the successor privileged install/activation bridge, #454 / PR #460 added the source-ready Composite operator, and #462 added the source-only zero-input 23-artifact operator installer bridge. The canonical current checkout contract uses `RPi5_main-weather-public-runtime-install-trusted`; the earlier checkout is historical evidence only. These source interfaces do not prove host installation, runtime enablement or deployment and do not grant LIVE authority. `deploy/rpi5-source-binding.json` is a timestamped source reconciliation only; current `RPi5_main`, queue eligibility, exact-SHA CI and host state must still be freshly read before a real rollout.
 
-## First public rollout JIT preflight
+## Legacy first-public JIT preflight — superseded for ordinary application releases
 
 `deploy/first-public-rollout-preflight.json` is the machine contract. Feed only sanitized JIT evidence to:
 
@@ -300,9 +306,9 @@ The command emits `PASS` only when exact current Weather/RPi5 SHA + CI, matching
 
 At the Issue #30 source snapshot, `ops-workflows#46` still binds Weather `52d3fd0f...` while current Weather source is `7b188d56...`, so the current machine assessment is intentionally `BLOCKED`. This Weather issue does not have authority to refresh the queue.
 
-The **next owner LIVE gate** is operator installation only: freshly bind current exact `RPi5_main` SHA, host `rpi5`, target `rozkalns-weather-public-rpi5`, successor trusted-checkout bootstrap and `ops/deploy/weather-public-runtime-operator-install.json` / zero-argument installer bridge for exactly 23 artifacts. Verify exact hashes/root ownership/modes afterward. This installation does not authorize the Composite rollout; that later step requires a matching fresh queue plus a new human Composite STRICT LIVE-AUTH.
+Historical note: under the superseded design the next gate was the 23-artifact Weather operator installation. That is no longer the current ordinary-release gate. The current next host gate after #142 merge is one exact SIMPLE-DEPLOY generic-deployer + fixed Weather-target cutover.
 
-## Exact LIVE gate template
+## Legacy Composite LIVE gate template — superseded for ordinary application releases
 
 Before any RPi5 mutation bind **all** of the following in the exact owner-authorized LIVE envelope:
 

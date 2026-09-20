@@ -38,6 +38,14 @@ GitHub ir projekta canonical source of truth. Pirms darba nolasi šo failu, rele
 - Private RPi5 deploy/runtime, Docker/systemd/timers, `.env`, credentials, Google Cloud/BigQuery private access, Cloudflare, production SQLite/corpus write/migration/restore/delete, permissions/ownership un host/network mutation ir LIVE/STRICT un prasa exact authority saskaņā ar current weather + `rozkalnsandris/RPi5_main` trust boundary.
 - Pēc pirmās autorizētās mutation kļūdas, timeout, drift vai ambiguity savāc tikai read-only evidence un STOP; bez jaunas authority nav retry/rollback/cleanup/alternate path.
 
+## SIMPLE-DEPLOY consumer boundary
+
+- Weather ir SIMPLE-DEPLOY v1 consumer/canary, nevis shared deployment platform īpašnieks. Shared build/publish/promotion policy paliek `rozkalnsandris/ops-workflows`, bet trusted generic pull executor paliek `rozkalnsandris/RPi5_main`.
+- Pirms atsevišķi autorizēta one-time SIMPLE-DEPLOY cutover esošie LIVE/STRICT noteikumi paliek autoritatīvi; source merge pats neinstalē/neieslēdz deployer un neaktivizē Weather target.
+- Pēc veiksmīga reviewed cutover ordinary `AUTO_DEPLOY_SAFE` application release drīkst izmantot tikai fiksēto immutable-SHA-pinned SIMPLE-DEPLOY ceļu bez jauna per-release LIVE gate. Tas nepiešķir arbitrary Docker/systemd/root/path/argv authority.
+- DB/schema/corpus mutation, destructive recovery, credentials/secrets/permissions, Cloudflare/DNS/network, private-provider activation un unrelated host-control vienmēr paliek ārpus ordinary SIMPLE-DEPLOY un prasa savus exact gates.
+- Historical Weather broker/operator/queue/JIT/Composite LIVE materiāls drīkst palikt tikai kā skaidri `legacy`/`superseded` audit evidence, nevis current ordinary-release prerequisite.
+
 ## Implementation principles
 
 - Minimum-sufficient architecture: Python/FastAPI + SQLite + viegls web/PWA.
