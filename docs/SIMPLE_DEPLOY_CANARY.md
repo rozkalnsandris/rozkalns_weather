@@ -53,6 +53,8 @@ The `:production` tag is discovery only. The generic RPi5 deployer overlays the 
 
 Merging Weather source adoption may publish the caller-bound GHCR image/pointer on later `main` pushes, but it does **not** install or enable the generic host deployer and does not activate the Weather target on RPi5. The first host cutover remains one separate exact LIVE authorization binding the reviewed RPi5 source, host `rpi5`, Weather target, installed artifacts, registry/Compose identities, baseline and verification.
 
+Before target activation, the cutover must verify that `ghcr.io/rozkalnsandris/rozkalns_weather` is actually anonymous-pullable with no registry credentials. GitHub Actions publication with `GITHUB_TOKEN` is expected to link/inherit from the public repository, but actual package visibility remains a GitHub Packages setting and must be verified rather than inferred. If anonymous pull fails because visibility/access differs, STOP: changing package visibility or activating `private-read-only` auth requires a separate exact owner authorization and is not an automatic fallback.
+
 Until that cutover succeeds, existing production runtime state is not inferred from source. After successful cutover, ordinary already-classified `AUTO_DEPLOY_SAFE` application releases may use the fixed platform path without a fresh per-release LIVE approval.
 
 ## Sensitive operations remain separate

@@ -98,3 +98,11 @@ def test_current_docs_name_simple_deploy_and_legacy_boundary() -> None:
     ):
         text = (ROOT / relative).read_text().lower()
         assert "legacy" in text or "superseded" in text, relative
+
+
+def test_public_anonymous_pull_requires_verified_package_visibility() -> None:
+    text = (ROOT / "docs/SIMPLE_DEPLOY_CANARY.md").read_text()
+    assert "actually anonymous-pullable" in text
+    assert "package visibility remains a GitHub Packages setting" in text
+    assert "separate exact owner authorization" in text
+    assert "private-read-only" in text
