@@ -12,6 +12,7 @@ from rozkalns_weather.db import Database
 from rozkalns_weather.rollout import (
     BOOTSTRAP_STAGE_ORDER,
     build_rollout_plan,
+    validate_bootstrap_inputs,
     validate_completed_stages,
     validate_post_rollout_evidence,
     validate_source_package,
@@ -19,61 +20,38 @@ from rozkalns_weather.rollout import (
 )
 
 
-def test_source_package_contract_is_consistent_and_public_safe() -> None:
-    result = validate_source_package()
-    assert result["ok"] is True
-    assert result["target_alias"] == "rozkalns-weather-public-rpi5"
-    assert result["operation_id"] == "rozkalns-weather.public-runtime-release.v1"
-    assert result["privacy"] == {
-        "coordinates_exposed": False,
-        "credentials_exposed": False,
-        "host_private_paths_exposed": False,
-    }
+def test_source_package_fails_closed_while_truth_transport_is_blocked() -> None:
+    with pytest.raises(ValueError, match="production bootstrap status mismatch"):
+        validate_source_package()
 
 
-def test_rollout_plan_binds_exact_bounded_bootstrap_and_recovery() -> None:
-    result = build_rollout_plan(
-        source_sha="a" * 40,
-        start=date(2026, 4, 2),
-        end=date(2026, 4, 5),
-        models="ecmwf_aifs,icon_d2,ecmwf_ifs",
-        run_hours_utc="18,0,12,6",
-        recovery_decision="verified_backup_available",
-        completed_stages=BOOTSTRAP_STAGE_ORDER[:2],
-    )
-    assert result["state"] == "source_preflight_ready"
-    assert result["bootstrap"]["inclusive_days"] == 4
-    assert result["bootstrap"]["models"] == ["icon_d2", "ecmwf_ifs", "ecmwf_aifs"]
-    assert result["bootstrap"]["run_hours_utc"] == [0, 6, 12, 18]
-    assert result["bootstrap"]["truth_station_id"] == "10416"
-    assert result["stage_state"]["next_stage"] == "readiness_check"
-    assert result["recovery"]["automatic_restore_allowed"] is False
-    assert result["live_authority_granted"] is False
-    assert result["production_data_authority_granted"] is False
-    serialized = json.dumps(result)
-    assert "HOME_LAT" not in serialized
-    assert "HOME_LON" not in serialized
-    assert "/home/" not in serialized
-
-
-def test_bootstrap_rejects_unbounded_or_unsupported_inputs() -> None:
-    with pytest.raises(ValueError, match="180"):
-        build_rollout_plan(
-            source_sha="a" * 40,
-            start=date(2026, 4, 2),
-            end=date(2026, 10, 1),
-            models="icon_d2,ecmwf_ifs,ecmwf_aifs",
-            run_hours_utc="0,6,12,18",
-            recovery_decision="verified_backup_available",
-        )
-    with pytest.raises(ValueError, match="exactly"):
+def test_rollout_plan_fails_closed_while_truth_transport_is_blocked() -> None:
+    with pytest.raises(ValueError, match="production bootstrap status mismatch"):
         build_rollout_plan(
             source_sha="a" * 40,
             start=date(2026, 4, 2),
             end=date(2026, 4, 5),
+            models="ecmwf_aifs,icon_d2,ecmwf_ifs",
+            run_hours_utc="18,0,12,6",
+            recovery_decision="verified_backup_available",
+            completed_stages=BOOTSTRAP_STAGE_ORDER[:2],
+        )
+
+
+def test_bootstrap_rejects_unbounded_or_unsupported_inputs() -> None:
+    with pytest.raises(ValueError, match="180"):
+        validate_bootstrap_inputs(
+            start=date(2026, 4, 2),
+            end=date(2026, 10, 1),
+            models="icon_d2,ecmwf_ifs,ecmwf_aifs",
+            run_hours_utc="0,6,12,18",
+        )
+    with pytest.raises(ValueError, match="exactly"):
+        validate_bootstrap_inputs(
+            start=date(2026, 4, 2),
+            end=date(2026, 4, 5),
             models="icon_d2,ecmwf_ifs",
             run_hours_utc="0,6,12,18",
-            recovery_decision="verified_backup_available",
         )
     with pytest.raises(ValueError, match="exact ordered prefix"):
         validate_completed_stages(("volume_ensure", "readiness_check"))
@@ -144,7 +122,7 @@ def test_post_rollout_evidence_contract_passes_and_rejects_private_fields() -> N
         validate_post_rollout_evidence(bad)
 
 
-def test_rollout_preflight_cli_does_not_require_runtime_environment(monkeypatch, capsys) -> None:
+def test_rollout_preflight_cli_fails_closed_while_truth_transport_is_blocked(monkeypatch, capsys) -> None:
     monkeypatch.setattr(
         "sys.argv",
         [
@@ -164,9 +142,13 @@ def test_rollout_preflight_cli_does_not_require_runtime_environment(monkeypatch,
             "owner_accepts_proceeding_without_prewrite_backup",
         ],
     )
-    cli_main()
+    with pytest.raises(SystemExit) as exc_info:
+        cli_main()
+    assert exc_info.value.code == 2
     payload = json.loads(capsys.readouterr().out)
-    assert payload["state"] == "source_preflight_ready"
+    assert payload["state"] == "invalid"
+    assert payload["error"] == "production bootstrap status mismatch"
+    assert payload["production_data_authority_granted"] is False
     assert payload["privacy"]["credentials_exposed"] is False
 
 
