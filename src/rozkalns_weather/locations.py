@@ -13,9 +13,7 @@ class ReferenceLocation:
     timezone: str
 
 
-# Public WMO/airport station used as the verification reference. This is not the
-# private home point. Coordinates are public station metadata and intentionally
-# kept separate from HOME_LAT/HOME_LON.
+# Legacy WMO/airport reference retained for historical compatibility only.
 DWD_10416 = ReferenceLocation(
     id="station_10416",
     label="DWD Dortmund/Wickede 10416",
@@ -24,3 +22,17 @@ DWD_10416 = ReferenceLocation(
     elevation_m=127.0,
     timezone="Europe/Berlin",
 )
+
+# Canonical measured public benchmark from issue #153. Coordinates/elevation are
+# public DWD station metadata, not private home coordinates.
+DWD_CDC_05480 = ReferenceLocation(
+    id="station_dwd_cdc_05480",
+    label="DWD CDC Werl 05480",
+    lat=51.5763,
+    lon=7.8879,
+    elevation_m=85.0,
+    timezone="Europe/Berlin",
+)
+
+PUBLIC_BENCHMARK_LOCATION = DWD_CDC_05480
+PUBLIC_BENCHMARK_STATION_ID = "05480"
