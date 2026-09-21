@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "contract": "rozkalns-weather.production-public-corpus-bootstrap.v1",
-  "status": "SOURCE_BLOCKED_TRUTH_TRANSPORT_CAPABILITY_UNVERIFIED",
+  "status": "SOURCE_BLOCKED_NO_VERIFIED_DWD_HISTORICAL_TRANSPORT",
   "repository": "rozkalnsandris/rozkalns_weather",
   "target_alias": "rozkalns-weather-public-rpi5",
   "location": {"location_id": "station_10416", "truth_station_id": "10416"},
@@ -9,10 +9,14 @@
   "forecast_scope": {"models": ["icon_d2", "ecmwf_ifs", "ecmwf_aifs"], "run_hours_utc": [0, 6, 12, 18]},
   "truth_scope": {
     "chunk_days": 14,
-    "transport": "Bright Sky",
+    "transport": "none_verified",
+    "previous_transport": "Bright Sky",
     "source_authority": "DWD",
     "nearest_station_fallback_allowed": false,
-    "historical_transport_status": "unverified_historical_capability",
+    "historical_transport_status": "no_verified_dwd_historical_transport",
+    "decision": "NO_VERIFIED_DWD_HISTORICAL_TRANSPORT",
+    "decision_contract": "deploy/dwd-10416-historical-truth-decision.json",
+    "wmo_to_cdc_station_mapping_status": "UNVERIFIED",
     "block_reason": "TRUTH_TRANSPORT_HISTORICAL_CAPABILITY_UNVERIFIED",
     "live_backfill_allowed": false
   },
