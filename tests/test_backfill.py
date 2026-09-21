@@ -10,7 +10,11 @@ from rozkalns_weather.backfill import BackfillCheckpoint, PublicBackfillRunner, 
 from rozkalns_weather.db import Database
 from rozkalns_weather.locations import DWD_10416
 from rozkalns_weather.models import ForecastRun, ForecastValue, Observation
-from rozkalns_weather.providers.open_meteo import ICON_D2
+from rozkalns_weather.providers.open_meteo import (
+    ICON_D2,
+    OPEN_METEO_MODEL_RUN_UNAVAILABLE,
+    OpenMeteoTransportError,
+)
 
 
 def _db(tmp_path: Path) -> Database:
@@ -53,6 +57,20 @@ class ForecastStub:
                 ),
             ),
             source_metadata={"run_parameter_utc": init_time.strftime("%Y-%m-%dT%H:%M")},
+        )
+
+
+class UnavailableForecastStub:
+    def __init__(self) -> None:
+        self.calls: list[datetime] = []
+
+    def fetch(self, *, lat: float, lon: float, init_time: datetime, availability_time, retrieved_at=None) -> ForecastRun:
+        self.calls.append(init_time)
+        raise OpenMeteoTransportError(
+            OPEN_METEO_MODEL_RUN_UNAVAILABLE,
+            status_code=200,
+            content_type="application/json",
+            detail="requested exact model run is unavailable",
         )
 
 
@@ -117,6 +135,29 @@ def test_forecast_backfill_is_checkpoint_resumable_and_idempotent(tmp_path: Path
     )
     assert report["ok"] is True
     assert report["missing_runs"] == []
+
+
+def test_unavailable_run_does_not_advance_checkpoint_or_skip_to_later_run(tmp_path: Path) -> None:
+    database = _db(tmp_path)
+    checkpoint = tmp_path / "icon.json"
+    checkpoint.write_text(
+        json.dumps({"schema_version": 1, "completed": ["2026-04-02T00:00:00Z"]}),
+        encoding="utf-8",
+    )
+    stub = UnavailableForecastStub()
+    with pytest.raises(OpenMeteoTransportError) as caught:
+        PublicBackfillRunner(database, sleep=lambda _: None).forecast_runs(
+            model=ICON_D2,
+            start=date(2026, 4, 2),
+            end=date(2026, 4, 2),
+            run_hours=(0, 6, 12),
+            checkpoint_path=checkpoint,
+            rate_limit_seconds=0,
+            adapter=stub,
+        )
+    assert caught.value.reason_code == OPEN_METEO_MODEL_RUN_UNAVAILABLE
+    assert stub.calls == [datetime(2026, 4, 2, 6, tzinfo=timezone.utc)]
+    assert json.loads(checkpoint.read_text(encoding="utf-8"))["completed"] == ["2026-04-02T00:00:00Z"]
 
 
 def test_forecast_dry_run_performs_no_fetch_or_write(tmp_path: Path) -> None:

@@ -22,6 +22,8 @@ RECOVERY_DECISIONS = ("verified_backup_available", "owner_accepts_proceeding_wit
 TRUTH_SOURCE_AUTHORITY = "DWD"
 TRUTH_TRANSPORT = "DWD CDC Open Data"
 TRUTH_TRANSPORT_STATUS = "verified_frozen_window_product_coverage"
+FORECAST_TRANSPORT_BLOCK_REASON = "NO_COMPLETE_ICON_D2_EXACT_RUN_ARCHIVE_TRANSPORT"
+FORECAST_TRANSPORT_DECISION_CONTRACT = "deploy/icon-d2-exact-run-transport-decision.json"
 # Retained as a legacy reason-code identity because execution-evidence readers
 # may still encounter pre-#155 plans. It is not emitted by new plans.
 TRUTH_TRANSPORT_BLOCK_REASON = "TRUTH_TRANSPORT_HISTORICAL_CAPABILITY_UNVERIFIED"
@@ -89,13 +91,14 @@ def build_production_bootstrap_plan(*, source_sha: str, start: date, end: date, 
         "truth_source_authority": TRUTH_SOURCE_AUTHORITY,
         "truth_transport": TRUTH_TRANSPORT,
         "truth_transport_status": TRUTH_TRANSPORT_STATUS,
+        "icon_d2_exact_run_transport_status": FORECAST_TRANSPORT_BLOCK_REASON,
         "recovery_decision": recovery_decision,
     }
     fingerprint = hashlib.sha256(json.dumps(identity, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
     return {
         "schema_version": 1,
-        "state": "SOURCE_READY_REQUIRES_LIVE_DATA_AUTHORITY",
-        "block_reasons": [],
+        "state": "BLOCKED_SOURCE_CAPABILITY",
+        "block_reasons": [FORECAST_TRANSPORT_BLOCK_REASON],
         "bootstrap_fingerprint": fingerprint,
         "identity": identity,
         "truth_transport": {
@@ -117,6 +120,18 @@ def build_production_bootstrap_plan(*, source_sha: str, start: date, end: date, 
             "exact_public_station_coordinates": True,
             "nearest_station_fallback_allowed": False,
         },
+        "forecast_transport": {
+            "icon_d2": {
+                "transport": "Open-Meteo Single Runs API",
+                "status": FORECAST_TRANSPORT_BLOCK_REASON,
+                "decision_contract": FORECAST_TRANSPORT_DECISION_CONTRACT,
+                "exact_init_required": True,
+                "skip_ahead_allowed": False,
+                "live_backfill_allowed": False,
+            },
+            "ecmwf_ifs": {"transport": "Open-Meteo Single Runs API", "exact_init_required": True},
+            "ecmwf_aifs": {"transport": "Open-Meteo Single Runs API", "exact_init_required": True},
+        },
         "inclusive_days": inclusive_days,
         "truth_chunk_count": len(_truth_chunks(start, end)),
         "forecast_run_count_per_model": len(_run_keys(start, end)),
@@ -136,7 +151,12 @@ def evaluate_resume_evidence(plan: Mapping[str, object], evidence: Mapping[str, 
         raise ValueError("production bootstrap plan identity missing")
     start = date.fromisoformat(str(identity["start_date"]))
     end = date.fromisoformat(str(identity["end_date"]))
+    plan_reasons = plan.get("block_reasons")
     reasons: list[str] = []
+    if isinstance(plan_reasons, list) and all(isinstance(reason, str) for reason in plan_reasons):
+        reasons.extend(plan_reasons)
+    elif plan_reasons not in (None, []):
+        reasons.append("PLAN_BLOCK_REASONS_INVALID")
     if evidence.get("bootstrap_fingerprint") != plan.get("bootstrap_fingerprint"):
         reasons.append("BOOTSTRAP_FINGERPRINT_MISMATCH")
     if evidence.get("recovery_decision") != identity.get("recovery_decision"):

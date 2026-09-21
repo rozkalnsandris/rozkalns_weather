@@ -7,6 +7,8 @@ import pytest
 
 from rozkalns_weather.cli import main as cli_main
 from rozkalns_weather.production_bootstrap import (
+    FORECAST_TRANSPORT_BLOCK_REASON,
+    FORECAST_TRANSPORT_DECISION_CONTRACT,
     build_production_bootstrap_plan,
     evaluate_resume_evidence,
 )
@@ -64,7 +66,7 @@ def _complete_evidence() -> dict[str, object]:
     }
 
 
-def test_plan_freezes_bounds_chunks_scope_recovery_and_verified_truth_transport() -> None:
+def test_plan_freezes_bounds_scope_and_fails_closed_on_icon_d2_transport() -> None:
     plan = _plan()
     assert plan["inclusive_days"] == 14
     assert plan["truth_chunk_count"] == 1
@@ -73,8 +75,9 @@ def test_plan_freezes_bounds_chunks_scope_recovery_and_verified_truth_transport(
     assert plan["identity"]["run_hours_utc"] == [0, 6, 12, 18]
     assert plan["identity"]["benchmark_location_id"] == "station_05480"
     assert plan["identity"]["truth_station_id"] == "05480"
-    assert plan["state"] == "SOURCE_READY_REQUIRES_LIVE_DATA_AUTHORITY"
-    assert plan["block_reasons"] == []
+    assert plan["identity"]["icon_d2_exact_run_transport_status"] == FORECAST_TRANSPORT_BLOCK_REASON
+    assert plan["state"] == "BLOCKED_SOURCE_CAPABILITY"
+    assert plan["block_reasons"] == [FORECAST_TRANSPORT_BLOCK_REASON]
     assert plan["truth_transport"]["source_authority"] == "DWD"
     assert plan["truth_transport"]["transport"] == "DWD CDC Open Data"
     assert plan["truth_transport"]["station_id"] == "05480"
@@ -87,6 +90,14 @@ def test_plan_freezes_bounds_chunks_scope_recovery_and_verified_truth_transport(
         "models": ["icon_d2", "ecmwf_ifs", "ecmwf_aifs"],
         "exact_public_station_coordinates": True,
         "nearest_station_fallback_allowed": False,
+    }
+    assert plan["forecast_transport"]["icon_d2"] == {
+        "transport": "Open-Meteo Single Runs API",
+        "status": FORECAST_TRANSPORT_BLOCK_REASON,
+        "decision_contract": FORECAST_TRANSPORT_DECISION_CONTRACT,
+        "exact_init_required": True,
+        "skip_ahead_allowed": False,
+        "live_backfill_allowed": False,
     }
     assert plan["schema_init_explicit_only"] is True
     assert plan["production_data_authority_granted"] is False
@@ -109,10 +120,10 @@ def test_plan_rejects_unverified_window_and_unsupported_recovery() -> None:
         )
 
 
-def test_complete_evidence_passes_source_validation_without_granting_authority() -> None:
+def test_complete_evidence_cannot_override_source_capability_block() -> None:
     result = evaluate_resume_evidence(_plan(), _complete_evidence())
-    assert result["state"] == "PASS"
-    assert result["block_reasons"] == []
+    assert result["state"] == "BLOCKED"
+    assert result["block_reasons"] == [FORECAST_TRANSPORT_BLOCK_REASON]
     assert result["production_data_authority_granted"] is False
 
 
@@ -157,7 +168,7 @@ def test_resume_evidence_rejects_private_fields() -> None:
         evaluate_resume_evidence(_plan(), evidence)
 
 
-def test_production_bootstrap_plan_cli_is_runtime_independent_and_source_ready(monkeypatch, capsys) -> None:
+def test_production_bootstrap_plan_cli_is_runtime_independent_and_source_blocked(monkeypatch, capsys) -> None:
     monkeypatch.setattr(
         "sys.argv",
         [
@@ -175,6 +186,6 @@ def test_production_bootstrap_plan_cli_is_runtime_independent_and_source_ready(m
     )
     cli_main()
     payload = json.loads(capsys.readouterr().out)
-    assert payload["state"] == "SOURCE_READY_REQUIRES_LIVE_DATA_AUTHORITY"
-    assert payload["block_reasons"] == []
+    assert payload["state"] == "BLOCKED_SOURCE_CAPABILITY"
+    assert payload["block_reasons"] == [FORECAST_TRANSPORT_BLOCK_REASON]
     assert payload["production_data_authority_granted"] is False
