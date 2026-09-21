@@ -1,65 +1,62 @@
 # Production public corpus bootstrap contract
 
-Issue #31 freezes source behavior for a later, separately authorized production SQLite bootstrap. This document does not authorize a database, corpus, host or runtime mutation.
+This source contract prepares the first public corpus but **does not authorize any production SQLite, corpus, checkpoint, host or runtime mutation**.
 
-## Current truth-transport gate
+## Benchmark truth policy — issue #153
 
-The first separately authorized #148 production truth attempt exposed a source-contract gap before any observation insert or checkpoint publication: the frozen Bright Sky `/weather` request for exact WMO `10416` and the first `2026-04-02..2026-04-15` chunk returned HTTP 404.
+The approved measured benchmark is DWD Climate Data Center station **05480, Werl**. The old WMO `10416` / `station_10416` identity is retained only for legacy provenance and the separate MOSMIX local baseline; no CDC↔WMO mapping is inferred.
 
-Issue #151 reviewed authoritative/public DWD metadata instead of retrying that request. The result is now frozen in `deploy/dwd-10416-historical-truth-decision.json` as `NO_VERIFIED_DWD_HISTORICAL_TRANSPORT`.
+DWD remains the sole observation-truth authority. The measured benchmark variables are exactly:
 
-The reviewed evidence establishes all of the following without inventing an ID mapping:
+- `temperature_2m` from CDC hourly air-temperature product `TT_TU` (`degC`);
+- `precipitation_1h` from CDC hourly precipitation product `R1` (`mm`, hourly sum);
+- `wind_gust_10m` from CDC hourly extreme-wind product `FX_911` (`m/s`).
 
-- DWD publishes current forecast products under station namespace `10416`, including MOSMIX single-station products.
-- DWD Climate Data Center (CDC) publishes versioned `historical/` and `recent/` observation archives using its own station identifiers and station-specific files.
-- The reviewed CDC metadata did not provide an authoritative mapping from current WMO `10416` to a CDC station ID that covers the frozen `2026-04-02..2026-09-10` window. A legacy CDC Dortmund station ID `1032` exists in historical metadata but its listed coverage ends decades earlier and it is not treated as a mapping to current WMO `10416`.
-- The operational DWD SYNOP product family is distinct from the CDC historical archive and was not verified as a 162-day exact-station archive for this bootstrap.
-- Because exact station identity is unverified, the required truth-variable coverage (`temperature_2m`, `dew_point_2m`, `pressure_msl`, `relative_humidity_2m`, `wind_speed_10m`, `wind_gust_10m`, `precipitation_1h`, `cloud_cover`) is also not accepted as verified for the frozen exact-station window.
+Station identity is pinned to CDC `Stations_id=05480`. Missing value `-999` is omitted and never imputed. Nearest-station fallback, station substitution, synthetic observations and third-party truth are forbidden.
 
-This is deliberately a **verification failure**, not a claim that DWD can never expose such data. It means the repository has no reviewed, evidence-backed DWD transport that satisfies the exact `station_10416` historical contract today.
-
-The production descriptor therefore remains fail-closed with `SOURCE_BLOCKED_NO_VERIFIED_DWD_HISTORICAL_TRANSPORT`, `transport=none_verified`, `live_backfill_allowed=false`, and an explicit reference to the decision contract. The existing `production-bootstrap-plan` also remains blocked by `TRUTH_TRANSPORT_HISTORICAL_CAPABILITY_UNVERIFIED`; it must not be interpreted as LIVE/data-write readiness.
-
-Do not retry the same Bright Sky historical request, infer a CDC station ID from WMO `10416`, select the nearest station, substitute a different station, synthesize observations, or silently change truth provider. Any truth-policy or benchmark-station change is a separate owner decision and source issue.
-
-Official evidence reviewed for #151:
-
-- `https://opendata.dwd.de/weather/local_forecasts/mos/MOSMIX_L/single_stations/10416/kml/`
-- `https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/air_temperature/`
-- `https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/subdaily/wind/timeseries_overview/ZeitReihen_fk_termin_GE_30Jahre_DK_TER.html`
-- `https://opendata.dwd.de/weather/weather_reports/synoptic/germany/`
+Authoritative DWD evidence reviewed for #153 shows station 05480 in both `historical/` and `recent/` product families for all three measured variables. The source implementation pins the currently reviewed historical archives and the station-specific `*_05480_akt.zip` recent archives. `historical/` is versioned and updated annually; `recent/` is rolling and updated daily.
 
 ## Frozen first-bootstrap scope
 
-- benchmark location: `station_10416`; DWD truth station: WMO `10416`;
+- benchmark location: `station_dwd_cdc_05480`;
+- DWD truth station: CDC `05480` (Werl);
 - common archive start: `2026-04-02`;
-- first rollout source window: `2026-04-02..2026-09-10` (162 inclusive days, hard maximum 180);
+- first rollout window: `2026-04-02..2026-09-10` (162 inclusive days, hard maximum 180);
 - forecast models: exactly `icon_d2`, `ecmwf_ifs`, `ecmwf_aifs`;
 - forecast cycles: exactly `00/06/12/18 UTC`;
-- truth chunks: exact 14-day chunks, final chunk shortened only at the requested end date, but no truth write is allowed until a verified transport exists.
+- truth chunks: 14 days, with the final chunk shortened only at the requested end date;
+- source planning and dry-run remain network/DB independent;
+- `production_data_authority_granted=false` remains mandatory.
 
-`deploy/production-public-corpus-bootstrap.json` is the machine bootstrap contract. `deploy/dwd-10416-historical-truth-decision.json` is the machine evidence/decision contract for the historical truth blocker. `build_production_bootstrap_plan()` produces a deterministic fingerprint over source SHA, bounds, station, models, run hours, truth transport state and owner recovery decision. Source planning grants no production-data authority and remains blocked by the historical truth-transport gate.
+`deploy/production-public-corpus-bootstrap.json` is the machine contract. `build_production_bootstrap_plan()` fingerprints source SHA, bounds, benchmark identity, required truth variables, models, run hours, DWD CDC transport state and explicit recovery decision.
 
 ## Schema and backfill separation
 
-Schema initialization is an explicit mutation: `rozkalns-weather init-database`. Historical backfill must start only after the required schema already exists and is ready. `python -m rozkalns_weather.backfill` must not implicitly initialize or migrate a database.
+Schema initialization remains an explicit write operation: `rozkalns-weather init-database`. Historical backfill requires an already-ready schema and the canonical public benchmark location. `python -m rozkalns_weather.backfill` never implicitly initializes or migrates production SQLite.
 
-This means an old/incomplete production schema is a STOP condition. A future schema migration must be separately reviewed and authorized; a backfill command may not silently turn into a migration.
+Forecast backfill uses the same public Werl reference coordinates as truth, so measured verification cannot silently join a forecast point for one station to observations from another station. The legacy `station_10416` row/data is not deleted, rewritten or migrated.
 
-## Checkpoint and resume semantics
+## DWD CDC transport
 
-Checkpoint files use schema version 1 and atomic temporary-file replacement. Completed entries must be unique and form the exact ordered prefix of the requested truth chunks or forecast runs. Skipping ahead, unknown entries, duplicate checkpoint entries or a changed bootstrap fingerprint fail closed.
+The fixture-driven parser enforces:
 
-A crash after a database insert but before checkpoint publication is treated as an interrupted checkpoint. Same-payload forecast insertion remains idempotent through immutable payload-hash dedupe, but source validation does not silently repair or advance the checkpoint. Fresh resume evidence is required. If a repeated upstream run changes payload and creates a revision, production bootstrap integrity is blocked as revision drift rather than rewriting history.
+- exact `STATIONS_ID=05480`;
+- UTC `MESS_DATUM` (`YYYYMMDDHH`);
+- expected DWD CDC product column per variable;
+- exact units used by project semantics;
+- DWD provenance, product family/code, archive URL and quality-level metadata;
+- missing-value omission without imputation.
 
-## Integrity and destructive behavior
+For the frozen 2026 production window the rolling `recent` archives provide the observations. Versioned historical archives remain supported for older requested dates inside their reviewed station coverage.
 
-Completion requires zero missing runs, zero unexpected runs and zero revision drift for each frozen deterministic model, plus the complete exact-station truth chunk prefix from a separately reviewed transport. Immutable forecast snapshots remain mandatory.
+## Checkpoint, integrity and recovery
 
-There is no automatic delete, restore, cleanup, repair or SQLite rollback. Backup/restore is a separate mutation class. Application rollback never implies corpus rollback.
+Checkpoint schema remains version 1 with atomic replacement. Entries must be unique and the exact ordered prefix. A changed bootstrap fingerprint, station identity mismatch, skip-ahead, duplicate checkpoint, database-ahead ambiguity, revision drift or unexpected run blocks the operation.
 
-## Next owner decision
+Completion requires zero missing/unexpected/revised deterministic runs plus the complete pinned DWD truth prefix. No automatic retry, delete, restore, cleanup or repair is authorized.
 
-#151 does not authorize a replacement station or provider. Parent #148 remains blocked until the owner explicitly chooses a new truth-policy or station strategy, after which a separate source issue must review that choice and only then may production planning become write-ready.
+## Authority boundary
 
-Before another production corpus-write authorization is requested, source must contain an evidence-backed truth transport for the explicitly approved benchmark identity/policy. A fresh production bootstrap authorization must bind the reviewed merged Weather SHA and exact-SHA CI, exact production SQLite target, start/end dates, station, all three models, `00/06/12/18 UTC`, recovery decision, checkpoint fingerprint, verification postconditions and failure semantics. Any runtime/host/Docker/systemd mutation remains separately governed by the trusted `RPi5_main` boundary.
+A `SOURCE_READY` plan means only that the source contract is no longer blocked by the old WMO10416/Bright Sky transport assumption. It is **not** data-write authority.
+
+Before any production corpus write, parent #148 requires a fresh exact LIVE/DATA authorization bound to the merged Weather SHA, exact production target, window, station `05480`, models/cycles, recovery decision, plan fingerprint, postconditions and fail-closed semantics. RPi5/systemd recurring-ingest activation remains a later separate host gate and stays enable-last after corpus integrity PASS.
