@@ -10,11 +10,11 @@ from typing import Callable, TypeVar
 
 from .config import Settings
 from .db import Database
-from .locations import DWD_10416
+from .locations import BENCHMARK_LOCATION, DWD_10416
 from .models import ForecastRun, Observation
 from .providers.base import bytes_fetcher, json_fetcher
+from .providers.dwd_cdc import DwdCdcObservationAdapter
 from .providers.dwd_mosmix import DwdMosmixAdapter
-from .providers.dwd_observations import DwdObservationAdapter
 from .providers.open_meteo import ECMWF_AIFS, ECMWF_IFS, ICON_D2, OpenMeteoSingleRunAdapter
 from .providers.weathernext import WeatherNextBigQueryAdapter
 
@@ -97,7 +97,11 @@ class IngestOrchestrator:
         self.sleeper = sleeper
 
     def _ensure_locations(self) -> None:
+        # MOSMIX-L remains tied to the legacy WMO 10416 station. Verification truth,
+        # deterministic benchmark forecasts and WeatherNext use the owner-approved
+        # co-located DWD CDC 01303 benchmark.
         self.database.ensure_location(location_id=DWD_10416.id, label=DWD_10416.label, lat=DWD_10416.lat, lon=DWD_10416.lon, elevation_m=DWD_10416.elevation_m, timezone=DWD_10416.timezone)
+        self.database.ensure_location(location_id=BENCHMARK_LOCATION.id, label=BENCHMARK_LOCATION.label, lat=BENCHMARK_LOCATION.lat, lon=BENCHMARK_LOCATION.lon, elevation_m=BENCHMARK_LOCATION.elevation_m, timezone=BENCHMARK_LOCATION.timezone)
         if self.settings.home_configured:
             assert self.settings.home_lat is not None and self.settings.home_lon is not None
             self.database.ensure_home_location(label=self.settings.home_label, lat=self.settings.home_lat, lon=self.settings.home_lon, timezone=self.settings.home_timezone)
@@ -147,8 +151,8 @@ class IngestOrchestrator:
             detail = _failure_detail("local_persistence", "observation_write", exc)
             self.database.set_provider_status(provider, state="error", now=now, detail=detail)
             return ProviderOutcome(provider, "error", attempts, detail=detail)
-        self.database.set_provider_status(provider, state="ok", now=now, model_name="DWD Observations")
-        return ProviderOutcome(provider, "ok", attempts, locations=(DWD_10416.id,))
+        self.database.set_provider_status(provider, state="ok", now=now, model_name="DWD CDC Observations")
+        return ProviderOutcome(provider, "ok", attempts, locations=(BENCHMARK_LOCATION.id,))
 
     def _collect_open_meteo_model(self, model, now: datetime) -> ProviderOutcome:
         adapter = OpenMeteoSingleRunAdapter(model, fetcher=json_fetcher(self.timeout_seconds))
@@ -158,7 +162,7 @@ class IngestOrchestrator:
             detail = _failure_detail("upstream_or_transport", "metadata_fetch", exc)
             self.database.set_provider_status(model.provider_id, state="error", now=now, detail=detail)
             return ProviderOutcome(model.provider_id, "error", self.retry_attempts, detail=detail)
-        actions: list[tuple[str, Callable[[], ForecastRun]]] = [(DWD_10416.id, lambda a=adapter, m=metadata: a.fetch(lat=DWD_10416.lat, lon=DWD_10416.lon, init_time=m.init_time_utc, availability_time=m.availability_time_utc, retrieved_at=now))]
+        actions: list[tuple[str, Callable[[], ForecastRun]]] = [(BENCHMARK_LOCATION.id, lambda a=adapter, m=metadata: a.fetch(lat=BENCHMARK_LOCATION.lat, lon=BENCHMARK_LOCATION.lon, init_time=m.init_time_utc, availability_time=m.availability_time_utc, retrieved_at=now))]
         if self.settings.home_configured:
             assert self.settings.home_lat is not None and self.settings.home_lon is not None
             actions.append(("home", lambda a=adapter, m=metadata: a.fetch(lat=self.settings.home_lat, lon=self.settings.home_lon, init_time=m.init_time_utc, availability_time=m.availability_time_utc, retrieved_at=now)))
@@ -171,7 +175,7 @@ class IngestOrchestrator:
         with FileRunLock(self.database.lock_path):
             self._ensure_locations()
             results["dwd_mosmix_l"] = self._record_forecast_locations("dwd_mosmix_l", [(DWD_10416.id, lambda: DwdMosmixAdapter(fetcher=bytes_fetcher(self.timeout_seconds)).fetch(retrieved_at=now))], now)
-            results["dwd_observations"] = self._record_observations("dwd_observations", lambda: DwdObservationAdapter(fetcher=json_fetcher(self.timeout_seconds)).fetch(now=now), now)
+            results["dwd_observations"] = self._record_observations("dwd_observations", lambda: DwdCdcObservationAdapter(fetcher=bytes_fetcher(self.timeout_seconds)).fetch(now=now), now)
             for model in (ICON_D2, ECMWF_IFS, ECMWF_AIFS):
                 results[model.provider_id] = self._collect_open_meteo_model(model, now)
         return {key: value.as_dict() for key, value in results.items()}
@@ -184,7 +188,7 @@ class IngestOrchestrator:
             return ProviderOutcome("weathernext3", "access_pending", 0, detail="google_project_or_linked_dataset_pending").as_dict()
         assert self.settings.google_cloud_project and self.settings.weathernext_bigquery_dataset
         adapter = adapter or WeatherNextBigQueryAdapter(project=self.settings.google_cloud_project, dataset=self.settings.weathernext_bigquery_dataset)
-        actions: list[tuple[str, Callable[[], ForecastRun]]] = [(DWD_10416.id, lambda: adapter.fetch_latest_with_fallback(lat=DWD_10416.lat, lon=DWD_10416.lon, now=now))]
+        actions: list[tuple[str, Callable[[], ForecastRun]]] = [(BENCHMARK_LOCATION.id, lambda: adapter.fetch_latest_with_fallback(lat=BENCHMARK_LOCATION.lat, lon=BENCHMARK_LOCATION.lon, now=now))]
         if self.settings.home_configured:
             assert self.settings.home_lat is not None and self.settings.home_lon is not None
             actions.append(("home", lambda: adapter.fetch_latest_with_fallback(lat=self.settings.home_lat, lon=self.settings.home_lon, now=now)))
