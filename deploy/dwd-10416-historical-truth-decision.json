@@ -1,0 +1,72 @@
+{
+  "schema_version": 1,
+  "contract": "rozkalns-weather.dwd-10416-historical-truth-decision.v1",
+  "state": "BLOCKED",
+  "decision": "NO_VERIFIED_DWD_HISTORICAL_TRANSPORT",
+  "source_authority": "DWD",
+  "benchmark": {
+    "location_id": "station_10416",
+    "wmo_station_id": "10416",
+    "frozen_window": {
+      "start_date": "2026-04-02",
+      "end_date": "2026-09-10"
+    }
+  },
+  "station_mapping": {
+    "wmo_station_id": "10416",
+    "cdc_station_id": null,
+    "status": "UNVERIFIED"
+  },
+  "required_variables": [
+    "temperature_2m",
+    "dew_point_2m",
+    "pressure_msl",
+    "relative_humidity_2m",
+    "wind_speed_10m",
+    "wind_gust_10m",
+    "precipitation_1h",
+    "cloud_cover"
+  ],
+  "variable_coverage": {
+    "status": "NOT_VERIFIED_FOR_EXACT_STATION_AND_FROZEN_WINDOW"
+  },
+  "reviewed_official_evidence": [
+    {
+      "id": "dwd_mosmix_station_10416",
+      "url": "https://opendata.dwd.de/weather/local_forecasts/mos/MOSMIX_L/single_stations/10416/kml/",
+      "finding": "DWD publishes current forecast products under station namespace 10416.",
+      "proves_cdc_station_mapping": false
+    },
+    {
+      "id": "dwd_cdc_hourly_air_temperature",
+      "url": "https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly/air_temperature/",
+      "finding": "CDC publishes separate historical/recent station archives using CDC station identifiers and station-specific products.",
+      "proves_wmo_10416_mapping": false
+    },
+    {
+      "id": "dwd_cdc_legacy_dortmund_metadata",
+      "url": "https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/subdaily/wind/timeseries_overview/ZeitReihen_fk_termin_GE_30Jahre_DK_TER.html",
+      "finding": "CDC metadata exposes a legacy Dortmund station id 1032 with historical coverage ending in 1998; this is not evidence of a mapping to current WMO 10416.",
+      "proves_current_wmo_mapping": false
+    },
+    {
+      "id": "dwd_operational_synop",
+      "url": "https://opendata.dwd.de/weather/weather_reports/synoptic/germany/",
+      "finding": "The operational SYNOP feed is a different product family and was not verified as a 162-day exact-station historical archive for the frozen window.",
+      "proves_frozen_window": false
+    }
+  ],
+  "rejected_behaviors": {
+    "nearest_station_fallback": true,
+    "station_substitution": true,
+    "coordinate_nearest_lookup": true,
+    "synthetic_truth": true,
+    "implicit_third_party_provider_change": true
+  },
+  "authority": {
+    "source_auto_full_authorizes_production_write": false,
+    "source_merge_authorizes_production_write": false,
+    "production_sqlite_or_corpus_write_requires_separate_exact_live_data_authority": true
+  },
+  "next_gate": "EXPLICIT_TRUTH_POLICY_OR_STATION_STRATEGY_OWNER_DECISION"
+}
