@@ -3,22 +3,20 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from rozkalns_weather.production_bootstrap import (
-    TRUTH_TRANSPORT_BLOCK_REASON,
-    build_production_bootstrap_plan,
-)
+from rozkalns_weather.production_bootstrap import build_production_bootstrap_plan
 
 
 ROOT = Path(__file__).resolve().parents[1]
 DECISION_PATH = ROOT / "deploy" / "dwd-10416-historical-truth-decision.json"
 BOOTSTRAP_PATH = ROOT / "deploy" / "production-public-corpus-bootstrap.json"
+BENCHMARK_PATH = ROOT / "deploy" / "dwd-cdc-benchmark-station.json"
 
 
 def _load(path: Path) -> dict[str, object]:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def test_dwd_10416_historical_truth_decision_is_explicit_and_fail_closed() -> None:
+def test_dwd_10416_historical_truth_decision_remains_as_audit_evidence() -> None:
     decision = _load(DECISION_PATH)
     assert decision["contract"] == "rozkalns-weather.dwd-10416-historical-truth-decision.v1"
     assert decision["state"] == "BLOCKED"
@@ -29,24 +27,12 @@ def test_dwd_10416_historical_truth_decision_is_explicit_and_fail_closed() -> No
         "wmo_station_id": "10416",
         "frozen_window": {"start_date": "2026-04-02", "end_date": "2026-09-10"},
     }
-    assert decision["station_mapping"] == {
-        "wmo_station_id": "10416",
-        "cdc_station_id": None,
-        "status": "UNVERIFIED",
-    }
-    assert decision["variable_coverage"]["status"] == "NOT_VERIFIED_FOR_EXACT_STATION_AND_FROZEN_WINDOW"
-    assert decision["rejected_behaviors"] == {
-        "nearest_station_fallback": True,
-        "station_substitution": True,
-        "coordinate_nearest_lookup": True,
-        "synthetic_truth": True,
-        "implicit_third_party_provider_change": True,
-    }
+    assert decision["station_mapping"] == {"wmo_station_id": "10416", "cdc_station_id": None, "status": "UNVERIFIED"}
+    assert decision["rejected_behaviors"]["nearest_station_fallback"] is True
     assert decision["authority"]["source_auto_full_authorizes_production_write"] is False
-    assert decision["authority"]["source_merge_authorizes_production_write"] is False
 
 
-def test_official_evidence_does_not_claim_an_unproven_station_mapping() -> None:
+def test_official_10416_evidence_still_does_not_claim_an_unproven_mapping() -> None:
     decision = _load(DECISION_PATH)
     evidence = decision["reviewed_official_evidence"]
     assert isinstance(evidence, list)
@@ -61,23 +47,22 @@ def test_official_evidence_does_not_claim_an_unproven_station_mapping() -> None:
     )
 
 
-def test_production_descriptor_binds_the_decision_and_remains_non_write_ready() -> None:
+def test_new_production_descriptor_explicitly_supersedes_10416_as_benchmark() -> None:
     descriptor = _load(BOOTSTRAP_PATH)
-    truth = descriptor["truth_scope"]
-    assert descriptor["status"] == "SOURCE_BLOCKED_NO_VERIFIED_DWD_HISTORICAL_TRANSPORT"
-    assert truth["source_authority"] == "DWD"
-    assert truth["transport"] == "none_verified"
-    assert truth["decision"] == "NO_VERIFIED_DWD_HISTORICAL_TRANSPORT"
-    assert truth["decision_contract"] == "deploy/dwd-10416-historical-truth-decision.json"
-    assert truth["wmo_to_cdc_station_mapping_status"] == "UNVERIFIED"
-    assert truth["nearest_station_fallback_allowed"] is False
-    assert truth["live_backfill_allowed"] is False
-    authority = descriptor["authority"]
-    assert authority["source_auto_full_authorizes_production_write"] is False
-    assert authority["source_merge_authorizes_production_write"] is False
+    benchmark = _load(BENCHMARK_PATH)
+    assert descriptor["status"] == "SOURCE_READY_REQUIRES_EXPLICIT_LIVE_DATA_AUTHORIZATION"
+    assert descriptor["location"]["location_id"] == "station_dwd_cdc_01303"
+    assert descriptor["location"]["truth_station_id"] == "01303"
+    assert descriptor["location"]["benchmark_decision_contract"] == "deploy/dwd-cdc-benchmark-station.json"
+    assert benchmark["decision"] == "VERIFIED_DWD_CDC_BENCHMARK_STATION"
+    assert benchmark["station"]["dwd_station_id"] == "01303"
+    assert descriptor["truth_scope"]["nearest_station_fallback_allowed"] is False
+    assert descriptor["truth_scope"]["third_party_truth_allowed"] is False
+    assert descriptor["truth_scope"]["live_backfill_authorized"] is False
+    assert descriptor["authority"]["source_merge_authorizes_production_write"] is False
 
 
-def test_runtime_plan_still_fails_closed_until_a_later_verified_transport_change() -> None:
+def test_runtime_plan_is_source_ready_but_never_grants_live_data_authority() -> None:
     from datetime import date
 
     plan = build_production_bootstrap_plan(
@@ -86,6 +71,8 @@ def test_runtime_plan_still_fails_closed_until_a_later_verified_transport_change
         end=date(2026, 4, 3),
         recovery_decision="verified_backup_available",
     )
-    assert plan["state"] == "BLOCKED_BY_TRUTH_TRANSPORT_CAPABILITY"
-    assert plan["block_reasons"] == [TRUTH_TRANSPORT_BLOCK_REASON]
+    assert plan["state"] == "READY_FOR_EXPLICIT_LIVE_DATA_AUTHORIZATION"
+    assert plan["block_reasons"] == []
+    assert plan["identity"]["truth_station_id"] == "01303"
+    assert plan["identity"]["benchmark_location_id"] == "station_dwd_cdc_01303"
     assert plan["production_data_authority_granted"] is False
