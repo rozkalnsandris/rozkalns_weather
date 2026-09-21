@@ -11,6 +11,29 @@ Nav mērķa kopēt Meteo & Radar vizuālo dizainu. No tā izmantojam tikai ideju
 - daily cards;
 - ātri nolasāmiem precipitation/temperature indikatoriem.
 
+## Canonical consumer Overview visual reference — #170
+
+Issue #170 consumer-weather implementation follows this approved mobile-first visual direction:
+
+![Consumer weather Overview reference v1](./ui/consumer-weather-overview-reference-v1.webp)
+
+Canonical asset: `docs/ui/consumer-weather-overview-reference-v1.webp`.
+
+The reference fixes the intended **information hierarchy and visual direction**, not literal weather values. All temperatures, precipitation, conditions and model values visible in the mockup are illustrative UI placeholders only and must never be treated as real provider/WeatherNext data.
+
+The implemented Overview should preserve these structural decisions:
+
+- weather-first hero with large temperature, condition, feels-like and daily high/low;
+- scannable next-hours forecast with temperature and precipitation;
+- compact next-days forecast with min/max temperature range and precipitation;
+- current-condition detail tiles;
+- first-page `Model Snapshot` showing WeatherNext 3, ICON-D2, ECMWF IFS and AIFS side by side so disagreement is visible without opening `Models`;
+- detailed provider/model analysis remains in `Models`;
+- DWD warning state remains visually distinct and authoritative;
+- `Overview`, `Models`, `Radar`, `Accuracy`, `Status` remain primary navigation destinations.
+
+Provider-level values must remain attributable and must not be hidden behind a fabricated Combined value. WeatherNext 3 values are shown only when genuine data is available; otherwise the UI keeps an explicit pending/unavailable state.
+
 ## Primary navigation
 
 Minimum tabs/sections:
