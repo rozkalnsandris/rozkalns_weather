@@ -4,113 +4,141 @@
 forecast snapshot -> observation -> verification -> WeatherNext comparison
 ```
 
-## Current WeatherNext handoff — issue #125
+## Current project state
 
-**BLOCKED_BY_EXTERNAL_SOURCE_CAPABILITY**. See `WEATHERNEXT_FINAL_LIVE_PLAN.md`:
-finish the narrow trusted private execution/binding bridge in `RPi5_main` before
-requesting final LIVE authority. Weather source readiness is not runtime evidence.
+The first usable public-only Weather Web UI milestone (#136) is **completed**.
 
-## Phase 0 — access
-- [x] WeatherNext-first goal/privacy/methodology.
-- [x] Runtime-only home config contract.
-- [x] WeatherNext allowlist approved; canonical approval evidence is issue #122. Live access remains unverified.
-- [ ] Private Google Cloud + home runtime configured.
+Current public baseline:
 
-## Phase 1 — robust public baseline
 - [x] FastAPI + SQLite immutable corpus.
-- [x] DWD MOSMIX-L 10416 + observations.
-- [x] ICON-D2 / IFS / AIFS adapters.
-- [x] Ingest orchestration, locking, retry, failure isolation.
-- [x] Idempotency/revisions/integrity/stats/backup.
-- [x] Public provider smoke tooling.
-- [x] Single Runs init provenance and availability metadata contract.
-- [x] Bounded/resumable exact-run public backfill framework with dry-run/rate-limit/checkpoint.
-- [x] Common archive window contract from 2026-04-02; older IFS history separated from common series.
-- [x] Historical DWD WMO 10416 truth backfill without nearest-station fallback.
-- [x] Missing-run/revision/integrity reconciliation for immutable backfill snapshots.
-- [x] Explicit SQLite schema-init + privacy-safe readiness commands; RPi5 candidate can require an existing schema instead of creating it on app startup.
-- [x] Issue #32 read-only public corpus completeness/integrity report with expected/present provider, run-hour and lead-bucket coverage, provenance/revision/truth-gap classification and separate historical IFS-only context.
-- [x] Issue #33 provider freshness + ingest-health observability with separate local-scheduler vs upstream/transport failure domains and privacy-safe API/PWA provenance.
+- [x] Shared SIMPLE-DEPLOY v1 ordinary application-release path.
+- [x] One-time RPi5 SIMPLE-DEPLOY cutover.
+- [x] First standing `AUTO_DEPLOY_SAFE` Weather release proof — #146.
+- [x] Production public schema/corpus bootstrap — #148.
+- [x] Recurring public ingest enabled and verified.
+- [x] Overview / Models / Accuracy / Warnings-Radar usable with real public data.
+- [x] `/health`, `/ready`, `/api/readiness` and provider-health runtime contracts.
+- [x] DWD official warning authority preserved.
 
-## Phase 2 — WeatherNext 3
-- [x] BigQuery 0.05°/0.1° schema/query contract.
-- [x] `mean/p10/p25/p50/p75/p90`.
-- [x] hourly interim + synoptic run classes.
-- [x] dissemination latency/readiness diagnostics.
-- [x] station benchmark + optional home collection design.
-- [x] deterministic first-access source readiness: linked-dataset/schema fingerprint, dry-run cost cap, bounded `station_10416` canary, provenance/evidence validation and explicit first-snapshot write gate separation.
-- [x] deterministic sustained-collection source readiness: post-canary snapshot admission, target-disseminated cadence/dedupe, missing-run recovery ledger, model/schema boundaries and privacy-safe freshness health.
-- [ ] live BigQuery access verified.
-- [ ] first real WeatherNext snapshot stored.
+Canonical measured benchmark:
 
-## Phase 3 — verification
-- [x] station-only location-matched truth join.
-- [x] MAE/RMSE/bias + lead buckets + model versions.
-- [x] WeatherNext p10–p90 coverage.
-- [x] common-case monthly comparison by lead bucket.
-- [x] precipitation amount/probability separation.
-- [x] Public ICON-D2-EPS / IFS ENS / AIFS ENS member adapters with retention/provenance semantics.
-- [x] Genuine ensemble CRPS, empirical intervals, WIS-style scoring, member-fraction event probability, Brier and reliability primitives.
-- [x] Common-sample leaderboard abstraction with explicit comparison mode, `n`, lead bucket and model-version boundaries.
-- [x] Bootstrap MAE confidence interval only for statistically usable sample (`n >= 30`).
-- [x] Matched temperature/precipitation/wind-gust event verification summaries.
-- [x] WeatherNext 2 `legacy_ai_context` comparator contract; never a WN3 substitute or strict-run comparator without exact provenance.
-- [ ] populate larger historical public corpus after explicit corpus-write authority.
-- [ ] optional full-ensemble WeatherNext 3 CRPS/Brier if private source later exposes defensible members.
+- `station_05480` / DWD CDC 05480 (Werl);
+- fixed common benchmark window `2026-08-13..2026-08-26`;
+- ICON-D2 / ECMWF IFS / ECMWF AIFS exact `00/06/12/18 UTC` deterministic runs;
+- DWD CDC observations as measured truth.
 
-## Current application-release path — SIMPLE-DEPLOY v1
+`station_10416` is legacy/MOSMIX reference compatibility only. The old `2026-04-02..2026-09-10` bootstrap attempt and old 10416 corpus remain historical evidence, not the current readiness contract.
 
-- [x] shared SIMPLE-DEPLOY v1 accepted at `ops-workflows@e05ed760791a127c7c9628696806ef39c9fe329c`.
-- [x] generic trusted pull-deployer source accepted at `RPi5_main@ff20fcf64ba62c95e5f15eeb481c3c66bb5c9708`.
-- [x] issue #142 Weather canary source adoption: tiny caller, manifest, image-based Compose, canonical docs/contracts.
-- [x] separately authorized SIMPLE-DEPLOY RPi5 cutover, schema-init prerequisite and Weather target activation completed; accepted runtime handoff records `/health=200` and `/ready=200`.
-- [ ] issue #146: prove the first genuine standing `AUTO_DEPLOY_SAFE` merged Weather release by immutable digest with `/health` and `/ready`.
-- [ ] production corpus bootstrap/backfill and recurring public ingest remain separate data/host operations.
+## Phase 0 — public/runtime foundation
 
-The older Weather broker/operator/queue/JIT/Composite milestones below are retained as **legacy source history** only and are superseded for ordinary application releases.
+- [x] Runtime-only private-home configuration contract.
+- [x] Public-only runtime works without WeatherNext credentials or private home coordinates.
+- [x] Immutable forecast snapshots + observation truth + verification schema.
+- [x] Public provider adapters and provenance.
+- [x] Provider failure isolation, freshness and ingest-health observability.
+- [x] Corpus integrity, revisions, stats and reproducibility contracts.
+- [x] Public-only PWA and safety/radar surfaces.
 
-## Phase 4 — private PWA / RPi5 runtime
-- [x] Overview / Models / Accuracy / Warnings-Radar.
-- [x] current DWD station truth clearly labeled.
-- [x] home forecast charts/daily cards.
-- [x] provider init/freshness states.
-- [x] WeatherNext uncertainty surface.
-- [x] Accuracy v3 provider classes, lead-bucket sample/confidence and precipitation calibration surface.
-- [x] deterministic public-only RPi5 application packaging + fixed machine-readable deploy descriptor.
-- [x] public collector schedule and explicit non-destructive corpus-bootstrap contract.
-- [x] weather-side trusted-boundary handoff contract for a future `RPi5_main` static adapter.
-- [x] `RPi5_main` static source adapter/operation registration reviewed and merged via Issue #408 / PR #409.
-- [x] `RPi5_main` deterministic first-bootstrap source composition merged via Issue #410 / PR #415.
-- [x] `RPi5_main` source-only Weather LIVE-AUTH/READY pre-activation composition merged via Issue #432 / PR #433.
-- [x] `RPi5_main` trusted Weather host-wiring/helper source bridge merged via Issue #435 / PR #436; at that milestone host/runtime activation and production mutation remained disabled pending later reviewed operator/install source and a separate exact STRICT LIVE gate.
-- [x] `RPi5_main` successor privileged helper install/activation bridge completed via Issue #455; the legacy trusted checkout is evidence-only and the successor install-trusted checkout is canonical.
-- [x] `RPi5_main` source-ready Weather Composite operator merged via Issue #454 / PR #460; operator host installation, LIVE authority and production mutation remain separate gates.
-- [x] `RPi5_main` source-only zero-input 23-artifact Weather operator installer bridge completed via Issue #462; source status remains install-disabled and requires a separate exact LIVE gate.
-- [x] Weather-side rollout source binding reconciled via Issue #29 without claiming host readiness or deployment.
-- [x] Issue #30 deterministic first-rollout JIT preflight package: exact SHA/CI/queue/host/operator/baseline/auth/budget PASS/BLOCKED validation, with stale queue binding exposed as a blocker and no LIVE authorization creation/consumption.
-- [x] Issue #31 production public corpus bootstrap source contract: explicit schema-init separation, WMO 10416 14-day truth chunks, exact ICON-D2/IFS/AIFS 00/06/12/18 scope, <=180-day bounds, ordered-prefix checkpoint/resume, revision-drift fail-closed and no delete/restore/implicit migration.
-- [x] deterministic rollout-readiness package: source-only preflight, <=180-day WMO 10416 + ICON-D2/IFS/AIFS bootstrap envelope, ordered checkpoint/resume, recovery decision, explicit systemd timer semantics, post-rollout evidence validator and fail-closed stage matrix.
-- [x] first SIMPLE-DEPLOY canary cutover completed under separately authorized RPi5 LIVE gates; old operator/queue/JIT/Composite prerequisites are legacy only.
-- [ ] first standing post-cutover `AUTO_DEPLOY_SAFE` application release proof (#146).
-- [ ] production public corpus bootstrap/backfill and recurring ingest under explicit LIVE/data authority.
-- [ ] later private-home / WeatherNext runtime activation after private access and configuration are explicitly ready.
-- [ ] optional Cloudflare Access.
+## Phase 1 — current public benchmark
 
-## Phase 5 — DWD safety/radar
-- [x] warning lifecycle normalization.
+- [x] DWD CDC 05480 selected and pinned as canonical measured benchmark — #155/#156.
+- [x] Dedicated CDC historical/recent truth transport for benchmark variables.
+- [x] Forecast/truth co-location at `station_05480`.
+- [x] Fixed common exact-run window `2026-08-13..2026-08-26` proven retrievable — #159/#160.
+- [x] Production corpus bootstrap completed with preserved historical rows.
+- [x] IFS cycle-aware lead-bucket integrity — #161/#162.
+- [x] Recurring ingest activated and first scheduled run verified.
+- [x] Public-only Warnings/Radar fallback uses privacy-safe public reference — #163/#164.
+- [x] Public-only Overview/Models default aligned to `station_05480` — #165/#166.
+
+## Phase 2 — WeatherNext 3 private access
+
+WeatherNext 3 remains the primary research model. Real private access is intentionally separate from the completed public UI milestone.
+
+- [x] WeatherNext access request approved.
+- [x] BigQuery schema/query/cost/provenance source contracts.
+- [x] Summary statistics `mean/p10/p25/p50/p75/p90` contract.
+- [x] Hourly interim + synoptic run-class contracts.
+- [ ] **#168** migrate first-access canary source contract from legacy `station_10416` to canonical `station_05480`.
+- [ ] **#122** execute bounded private read-only BigQuery first-access gate only after #168 and a fresh exact owner authorization.
+- [ ] Persist first real WeatherNext snapshot under a separate production-data authorization.
+- [ ] Enable sustained private WeatherNext collection only after access/provenance/cost/runtime proof.
+
+No WeatherNext real value may be fabricated. Private Google identity, credentials and home coordinates never belong in GitHub evidence.
+
+## Phase 3 — verification depth
+
+Completed foundations:
+
+- [x] station-only location-matched truth joins;
+- [x] MAE/RMSE/bias, lead buckets and model-version dimensions;
+- [x] WeatherNext quantile coverage contracts;
+- [x] precipitation amount/probability separation;
+- [x] public ensemble adapters and genuine ensemble verification primitives;
+- [x] common-sample comparison with explicit `n` and confidence handling;
+- [x] event verification summaries;
+- [x] provider/model provenance and immutable snapshot history.
+
+Next candidates after WeatherNext first-access alignment:
+
+- [ ] #78 DWD observation finality/revision-window contract at `station_05480`.
+- [ ] #83 end-to-end value provenance trace.
+- [ ] #100 spatial collocation/grid-identity provenance.
+- [ ] #76 cross-artifact privacy leakage scanner.
+- [ ] first month of real WeatherNext corpus and version-aware measured analysis after enough real samples exist.
+- [ ] optional full-member WeatherNext ensemble metrics only if the private source exposes defensible members.
+
+## Phase 4 — deployment / operations
+
+Current ordinary application release path is complete and standing:
+
+```text
+AUTO-RUN FULL
+-> CI PASS
+-> guarded merge
+-> shared SIMPLE-DEPLOY
+-> immutable GHCR digest
+-> generic RPi5 pull reconciler
+-> /health + /ready
+-> LIVE
+```
+
+- [x] shared SIMPLE-DEPLOY v1 accepted at `ops-workflows@e05ed760791a127c7c9628696806ef39c9fe329c`;
+- [x] generic trusted pull deployer installed/active;
+- [x] Weather canary adoption completed;
+- [x] one-time target activation completed;
+- [x] first standing ordinary release proof completed (#146);
+- [x] public corpus and recurring ingest completed (#148 plus later source fixes/gates).
+
+Historical Weather broker/operator/queue/JIT/Composite paths remain audit evidence only and are superseded for ordinary application releases.
+
+DB/schema/corpus mutation, private-provider access, credentials, Cloudflare/network, filesystem ownership and host/systemd changes are still separate exact owner gates where applicable.
+
+## Phase 5 — safety / radar
+
+- [x] DWD warning lifecycle normalization.
 - [x] DWD authority separation.
+- [x] public-only Warnings/Radar reference without private coordinates.
 - [x] radar observed/nowcast contract.
-- [ ] live home-centered map validation.
+- [ ] optional later private-home centered map validation after private-home activation is explicitly authorized.
 
 ## Phase 6 — WeatherNext evolution
-- [x] monthly report generator.
-- [x] model-version + lead-bucket dimensions.
-- [x] notable misses archive payload.
-- [x] release-note hook without fabricated events.
-- [x] public benchmark runway while private WeatherNext runtime and first access remain gated.
-- [x] first-month verification source readiness: station common-times/model-version/lead-bucket eligibility, summary-quantile calibration and sanitized evidence/report contract.
-- [x] version-change comparative reporting source readiness: verified model/schema boundary, deterministic before/after windows, strict common station samples, skill/quantile/freshness deltas, deterministic notable cases and privacy-safe report contract.
-- [ ] first month of real WeatherNext 3 corpus.
-- [ ] version-change comparative reports against real corpus.
 
-AQI/pollen/UV and Combined weighting remain lower priority until enough real corpus exists.
+- [x] monthly report generator source contract.
+- [x] model-version + lead-bucket dimensions.
+- [x] notable-case/report payload foundations.
+- [x] version-change comparative-report source readiness.
+- [ ] real WeatherNext first-access evidence.
+- [ ] first month of real WeatherNext corpus.
+- [ ] version-change comparative reports against defensible real corpus.
+
+## Deferred / lower priority
+
+Until enough real verification corpus exists:
+
+- Combined weighting;
+- AQI/pollen/UV;
+- publication-oriented WeatherNext analytics;
+- private-home enhancements not required for the public benchmark.
+
+Canonical current work selection lives in controller issue #9. Mutable runtime state must be freshly read rather than inferred from this roadmap.
