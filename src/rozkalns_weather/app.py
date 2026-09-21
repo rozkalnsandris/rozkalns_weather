@@ -120,6 +120,33 @@ def _public_location_label(location_id: str, settings: Settings) -> str:
     return DWD_10416.label
 
 
+def _safety_reference(settings: Settings) -> tuple[float, float, dict[str, object]]:
+    if settings.home_configured:
+        return (
+            float(settings.home_lat),
+            float(settings.home_lon),
+            {
+                "id": "home",
+                "label": settings.home_label,
+                "context": "configured_private_home",
+                "coordinates_exposed": False,
+            },
+        )
+    if settings.runtime_mode == "public-only":
+        return (
+            BENCHMARK_LOCATION.lat,
+            BENCHMARK_LOCATION.lon,
+            {
+                "id": BENCHMARK_LOCATION.id,
+                "label": BENCHMARK_LOCATION.label,
+                "station_id": CDC_STATION_ID,
+                "context": "public_reference",
+                "coordinates_exposed": False,
+            },
+        )
+    raise HTTPException(status_code=503, detail="home location is not configured")
+
+
 def create_app(settings: Settings | None = None, database: Database | None = None) -> FastAPI:
     settings = settings or Settings.from_env()
     database = database or Database(settings.database_url)
@@ -426,15 +453,16 @@ def create_app(settings: Settings | None = None, database: Database | None = Non
 
     @app.get("/api/warnings")
     def warnings() -> dict[str, object]:
-        if not settings.home_configured:
-            raise HTTPException(status_code=503, detail="home location is not configured")
-        return fetch_dwd_alerts(lat=settings.home_lat, lon=settings.home_lon)  # type: ignore[arg-type]
+        lat, lon, reference = _safety_reference(settings)
+        return {**fetch_dwd_alerts(lat=lat, lon=lon), "reference_location": reference}
 
     @app.get("/api/radar")
     def radar() -> dict[str, object]:
-        if not settings.home_configured:
-            raise HTTPException(status_code=503, detail="home location is not configured")
-        return fetch_radar_point(lat=settings.home_lat, lon=settings.home_lon)  # type: ignore[arg-type]
+        lat, lon, reference = _safety_reference(settings)
+        return {
+            **fetch_radar_point(lat=lat, lon=lon, center_location_id=str(reference["id"])),
+            "reference_location": reference,
+        }
 
     return app
 
