@@ -119,13 +119,14 @@
       <div class="panel warning" data-warning-authority="DWD">
         <div class="panel-title">DWD official warnings</div>
         <p>DWD warning slānis ir autoritatīvs un atdalīts no modeļiem.</p>
+        <p class="muted">Ja privātais home punkts nav konfigurēts, public-only režīmā warnings izmanto publisko DWD CDC Werl 05480 reference punktu. Precīzas koordinātas API/UI netiek izpaustas.</p>
         <div id="warningsState" class="surface-state state-loading" role="status" aria-live="polite" aria-atomic="true">LOADING · warning data has not been requested</div>
         <button id="loadWarnings">Ielādēt warnings</button>
         <pre id="warningsOutput"></pre>
       </div>
       <div class="panel">
         <div class="panel-title">DWD radar</div>
-        <p class="muted">Radar observed/nowcast nav model forecast.</p>
+        <p class="muted">Radar observed/nowcast nav model forecast. Public-only režīmā bez privāta home punkta centrs ir publiskais DWD CDC Werl 05480 reference punkts; koordinātas netiek izpaustas.</p>
         <div id="radarState" class="surface-state state-loading" role="status" aria-live="polite" aria-atomic="true">LOADING · radar data has not been requested</div>
         <button id="loadRadar">Ielādēt radar metadata</button>
         <pre id="radarOutput"></pre>
