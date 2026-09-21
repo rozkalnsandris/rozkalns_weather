@@ -45,13 +45,19 @@ def test_decision_rejects_approximation_and_preserves_integrity() -> None:
     assert authority["production_corpus_write_authority"] is False
 
 
-def test_production_bootstrap_descriptor_binds_the_transport_blocker() -> None:
+def test_production_bootstrap_descriptor_preserves_legacy_blocker_but_uses_verified_fixed_window() -> None:
     descriptor = _json("deploy/production-public-corpus-bootstrap.json")
-    assert descriptor["status"] == "BLOCKED_BY_ICON_D2_EXACT_RUN_ARCHIVE_TRANSPORT"
+    assert descriptor["status"] == "SOURCE_READY_REQUIRES_EXACT_LIVE_DATA_AUTHORITY"
     scope = descriptor["forecast_scope"]
-    assert scope["exact_run_transport_decision_contract"] == "deploy/icon-d2-exact-run-transport-decision.json"
-    assert scope["icon_d2_historical_transport_status"] == "NO_COMPLETE_ICON_D2_EXACT_RUN_ARCHIVE_TRANSPORT"
-    assert scope["icon_d2_live_backfill_allowed"] is False
+    assert scope["exact_run_transport_decision_contract"] == "deploy/exact-run-common-window.json"
+    assert scope["exact_run_transport_status"] == "VERIFIED_COMPLETE_FIXED_WINDOW"
+    assert scope["exact_init_required"] is True
+    assert scope["full_horizon_required"] is True
+    assert scope["live_backfill_allowed"] is False
     assert scope["skip_unavailable_run_allowed"] is False
     assert scope["synthetic_or_imputed_run_allowed"] is False
-    assert descriptor["recovery"]["live_resume_allowed_while_source_blocked"] is False
+    preserved = descriptor["preserved_historical_evidence"]
+    assert preserved["legacy_exact_run_decision_contract"] == "deploy/icon-d2-exact-run-transport-decision.json"
+    assert preserved["legacy_block_reason"] == "NO_COMPLETE_ICON_D2_EXACT_RUN_ARCHIVE_TRANSPORT"
+    assert preserved["icon_d2_completed_runs"] == 279
+    assert preserved["legacy_checkpoint_reusable_for_new_window"] is False
