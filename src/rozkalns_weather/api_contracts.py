@@ -189,11 +189,11 @@ API_CONTRACTS: dict[str, dict[str, Any]] = {
                 "properties": {
                     "id": {"type": "string"},
                     "label": {"type": "string"},
-                    "station_id": {"type": "string", "enum": ["10416"]},
+                    "station_id": {"type": "string", "enum": ["05480"]},
                     "coordinates_exposed": {"type": "boolean", "enum": [False]},
                 },
             },
-            "truth_source": {"type": "string", "enum": ["DWD WMO 10416"]},
+            "truth_source": {"type": "string", "enum": ["DWD CDC 05480"]},
             "observations": {
                 "type": "array",
                 "items": {
