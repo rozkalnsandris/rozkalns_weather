@@ -14,8 +14,9 @@ from typing import Iterable, Mapping, Sequence
 from .backfill import COMMON_BENCHMARK_START
 from .config import Settings
 from .db import Database, SCHEMA_SQL
-from .locations import DWD_10416
+from .locations import BENCHMARK_LOCATION
 from .probabilistic import brier_from_members, ensemble_crps, interval_score, weighted_interval_score
+from .providers.dwd_cdc_observations import CDC_STATION_ID
 from .verification import ErrorPair, LEAD_BUCKETS, lead_bucket, sample_evidence, summarize
 
 EXPORT_CONTRACT = "public-benchmark-export-v1"
@@ -30,54 +31,19 @@ TEMPERATURE_INTERVAL_ALPHA = 0.2
 _SHA40_RE = re.compile(r"^[0-9a-f]{40}$")
 _HASH64_RE = re.compile(r"^[0-9a-f]{64}$")
 _FORBIDDEN_KEYS = {
-    "lat",
-    "latitude",
-    "lon",
-    "lng",
-    "longitude",
-    "home_lat",
-    "home_lon",
-    "credential",
-    "credentials",
-    "secret",
-    "token",
-    "password",
-    "api_key",
-    "google_cloud_project",
-    "database_path",
-    "runtime_path",
-    "private_path",
-    "raw_log",
-    "raw_logs",
-    "source_metadata_json",
+    "lat", "latitude", "lon", "lng", "longitude", "home_lat", "home_lon",
+    "credential", "credentials", "secret", "token", "password", "api_key",
+    "google_cloud_project", "database_path", "runtime_path", "private_path",
+    "raw_log", "raw_logs", "source_metadata_json",
 }
 _FORECAST_REQUIRED = (
-    "provider",
-    "model_provider",
-    "model_name",
-    "model_version",
-    "location_id",
-    "init_time_utc",
-    "retrieved_at_utc",
-    "init_time_quality",
-    "source_surface",
-    "raw_payload_hash",
-    "revision",
-    "valid_time_utc",
-    "lead_hours",
-    "variable",
-    "statistic",
-    "value",
-    "unit",
+    "provider", "model_provider", "model_name", "model_version", "location_id",
+    "init_time_utc", "retrieved_at_utc", "init_time_quality", "source_surface",
+    "raw_payload_hash", "revision", "valid_time_utc", "lead_hours", "variable",
+    "statistic", "value", "unit",
 )
 _OBSERVATION_REQUIRED = (
-    "source_provider",
-    "station_id",
-    "location_id",
-    "observed_at_utc",
-    "variable",
-    "value",
-    "unit",
+    "source_provider", "station_id", "location_id", "observed_at_utc", "variable", "value", "unit",
 )
 
 
@@ -100,9 +66,8 @@ def _sha256(data: bytes) -> str:
 
 
 def _parse_utc(value: object, *, field: str) -> datetime:
-    text = str(value)
     try:
-        parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+        parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
     except ValueError as exc:
         raise BenchmarkExportError("INVALID_TIMESTAMP", f"{field} must be ISO-8601 UTC") from exc
     if parsed.tzinfo is None or parsed.utcoffset() != timedelta(0):
@@ -114,10 +79,7 @@ def _window(start: date, end: date) -> tuple[str, str]:
     if end < start:
         raise BenchmarkExportError("INVALID_WINDOW", "end must not be before start")
     if start < COMMON_BENCHMARK_START:
-        raise BenchmarkExportError(
-            "NON_COMMON_WINDOW",
-            f"export start must be on or after {COMMON_BENCHMARK_START.isoformat()}",
-        )
+        raise BenchmarkExportError("NON_COMMON_WINDOW", f"export start must be on or after {COMMON_BENCHMARK_START.isoformat()}")
     start_dt = datetime.combine(start, time.min, tzinfo=timezone.utc)
     end_dt = datetime.combine(end + timedelta(days=1), time.min, tzinfo=timezone.utc)
     return start_dt.isoformat().replace("+00:00", "Z"), end_dt.isoformat().replace("+00:00", "Z")
@@ -134,8 +96,8 @@ def _validate_forecast_row(row: Mapping[str, object]) -> None:
     missing = [field for field in _FORECAST_REQUIRED if row.get(field) in (None, "")]
     if missing:
         raise BenchmarkExportError("INCOMPLETE_PROVENANCE", f"forecast provenance missing: {','.join(missing)}")
-    if row["location_id"] != DWD_10416.id:
-        raise BenchmarkExportError("NON_STATION_LOCATION", "only station_10416 may be exported")
+    if row["location_id"] != BENCHMARK_LOCATION.id:
+        raise BenchmarkExportError("NON_STATION_LOCATION", f"only {BENCHMARK_LOCATION.id} may be exported")
     provider = str(row["provider"])
     if provider not in EXPORT_PROVIDERS:
         raise BenchmarkExportError("UNSUPPORTED_PROVIDER", f"provider {provider} is outside public benchmark export scope")
@@ -147,11 +109,9 @@ def _validate_forecast_row(row: Mapping[str, object]) -> None:
         raise BenchmarkExportError("UNSUPPORTED_STATISTIC", f"{provider} requires deterministic/mean statistics")
     if provider in ENSEMBLE_PROVIDERS and not re.fullmatch(r"member_\d+", statistic):
         raise BenchmarkExportError("UNSUPPORTED_STATISTIC", f"{provider} requires genuine member_N statistics")
-    raw_hash = str(row["raw_payload_hash"])
-    if not _HASH64_RE.fullmatch(raw_hash):
+    if not _HASH64_RE.fullmatch(str(row["raw_payload_hash"])):
         raise BenchmarkExportError("INVALID_PROVENANCE_HASH", "raw_payload_hash must be 64 lowercase hex characters")
-    revision = int(row["revision"])
-    if revision < 1:
+    if int(row["revision"]) < 1:
         raise BenchmarkExportError("INVALID_REVISION", "revision must be >= 1")
     init_time = _parse_utc(row["init_time_utc"], field="init_time_utc")
     _parse_utc(row["retrieved_at_utc"], field="retrieved_at_utc")
@@ -173,10 +133,10 @@ def _validate_observation_row(row: Mapping[str, object]) -> None:
     missing = [field for field in _OBSERVATION_REQUIRED if row.get(field) in (None, "")]
     if missing:
         raise BenchmarkExportError("INCOMPLETE_TRUTH_PROVENANCE", f"observation provenance missing: {','.join(missing)}")
-    if row["source_provider"] != "DWD" or str(row["station_id"]) != "10416":
-        raise BenchmarkExportError("NON_DWD_TRUTH", "truth export requires DWD WMO 10416")
-    if row["location_id"] != DWD_10416.id:
-        raise BenchmarkExportError("NON_STATION_LOCATION", "truth export requires station_10416")
+    if row["source_provider"] != "DWD" or str(row["station_id"]) != CDC_STATION_ID:
+        raise BenchmarkExportError("NON_DWD_TRUTH", f"truth export requires DWD CDC {CDC_STATION_ID}")
+    if row["location_id"] != BENCHMARK_LOCATION.id:
+        raise BenchmarkExportError("NON_STATION_LOCATION", f"truth export requires {BENCHMARK_LOCATION.id}")
     if str(row["variable"]) not in EXPORT_VARIABLES:
         raise BenchmarkExportError("UNSUPPORTED_VARIABLE", "truth variable is outside benchmark export scope")
     _parse_utc(row["observed_at_utc"], field="observed_at_utc")
@@ -215,10 +175,7 @@ def _validate_rows(
         versions[str(row["provider"])].add(str(row["model_version"]))
     missing_deterministic = sorted(set(DETERMINISTIC_PROVIDERS) - set(versions))
     if missing_deterministic:
-        raise BenchmarkExportError(
-            "MISSING_DETERMINISTIC_PROVIDER",
-            f"public benchmark export requires all deterministic providers: {','.join(missing_deterministic)}",
-        )
+        raise BenchmarkExportError("MISSING_DETERMINISTIC_PROVIDER", f"public benchmark export requires all deterministic providers: {','.join(missing_deterministic)}")
     mixed = {provider: sorted(values) for provider, values in versions.items() if len(values) > 1}
     if mixed:
         raise BenchmarkExportError("MIXED_MODEL_VERSIONS", f"split export at model-version boundaries: {mixed}")
@@ -237,16 +194,11 @@ def _latest_revision_rows(rows: Sequence[Mapping[str, object]]) -> list[dict[str
     for row in rows:
         key = (str(row["provider"]), str(row["model_name"]), str(row["model_version"]), str(row["init_time_utc"]))
         latest[key] = max(latest.get(key, 0), int(row["revision"]))
-    output = [
-        dict(row)
-        for row in rows
-        if int(row["revision"]) == latest[(str(row["provider"]), str(row["model_name"]), str(row["model_version"]), str(row["init_time_utc"]))]
-    ]
-    return output
+    return [dict(row) for row in rows if int(row["revision"]) == latest[(str(row["provider"]), str(row["model_name"]), str(row["model_version"]), str(row["init_time_utc"]))]]
 
 
 def _selected_deterministic_rows(rows: Sequence[Mapping[str, object]]) -> list[dict[str, object]]:
-    selected: dict[tuple[str, str, str], dict[str, object]] = {}
+    selected: dict[tuple[str, str, str, str], dict[str, object]] = {}
     candidates = [row for row in _latest_revision_rows(rows) if str(row["provider"]) in DETERMINISTIC_PROVIDERS]
     candidates.sort(key=lambda row: str(row["retrieved_at_utc"]), reverse=True)
     candidates.sort(key=lambda row: float(row["lead_hours"]))
@@ -271,14 +223,9 @@ def _deterministic_metrics(
     truth = _truth_map(observations)
     grouped: dict[tuple[str, str], dict[str, dict[str, object]]] = defaultdict(dict)
     for row in selected:
-        bucket = lead_bucket(float(row["lead_hours"]))
-        grouped[(str(row["variable"]), bucket)][f"{row['provider']}|{row['valid_time_utc']}"] = row
+        grouped[(str(row["variable"]), lead_bucket(float(row["lead_hours"])))][f"{row['provider']}|{row['valid_time_utc']}"] = row
     output: list[dict[str, object]] = []
-    versions_by_provider = {
-        str(row["provider"]): str(row["model_version"])
-        for row in selected
-        if str(row["provider"]) in DETERMINISTIC_PROVIDERS
-    }
+    versions_by_provider = {str(row["provider"]): str(row["model_version"]) for row in selected if str(row["provider"]) in DETERMINISTIC_PROVIDERS}
     for variable in EXPORT_VARIABLES:
         for _lower, _upper, bucket in LEAD_BUCKETS:
             bucket_rows = grouped.get((variable, bucket), {})
@@ -286,48 +233,21 @@ def _deterministic_metrics(
                 continue
             providers = list(DETERMINISTIC_PROVIDERS)
             times_by_provider = {
-                provider: {
-                    key.split("|", 1)[1]
-                    for key in bucket_rows
-                    if key.startswith(provider + "|")
-                }
+                provider: {key.split("|", 1)[1] for key in bucket_rows if key.startswith(provider + "|")}
                 for provider in providers
             }
             common_times = set.intersection(*(times_by_provider[provider] for provider in providers))
             common_times = {valid for valid in common_times if (valid, variable) in truth}
             provider_metrics: list[dict[str, object]] = []
             for provider in providers:
-                pairs = []
+                pairs: list[ErrorPair] = []
                 model_version = versions_by_provider.get(provider)
                 for valid in sorted(common_times):
                     row = grouped[(variable, bucket)][f"{provider}|{valid}"]
                     model_version = str(row["model_version"])
-                    pairs.append(
-                        ErrorPair(
-                            provider=provider,
-                            model_version=model_version,
-                            lead_hours=float(row["lead_hours"]),
-                            forecast=float(row["value"]),
-                            observed=truth[(valid, variable)],
-                        )
-                    )
-                provider_metrics.append(
-                    {
-                        "provider": provider,
-                        "model_version": model_version,
-                        **summarize(pairs, expected_n=len(common_times)),
-                    }
-                )
-            output.append(
-                {
-                    "variable": variable,
-                    "lead_bucket": bucket,
-                    "providers": providers,
-                    "common_valid_times": sorted(common_times),
-                    "n_common": len(common_times),
-                    "metrics": provider_metrics,
-                }
-            )
+                    pairs.append(ErrorPair(provider=provider, model_version=model_version, lead_hours=float(row["lead_hours"]), forecast=float(row["value"]), observed=truth[(valid, variable)]))
+                provider_metrics.append({"provider": provider, "model_version": model_version, **summarize(pairs, expected_n=len(common_times))})
+            output.append({"variable": variable, "lead_bucket": bucket, "providers": providers, "common_valid_times": sorted(common_times), "n_common": len(common_times), "metrics": provider_metrics})
     return output
 
 
@@ -335,14 +255,12 @@ def _ensemble_metrics(
     rows: Sequence[Mapping[str, object]], observations: Sequence[Mapping[str, object]]
 ) -> list[dict[str, object]]:
     truth = _truth_map(observations)
-    latest = _latest_revision_rows(rows)
     grouped: dict[tuple[str, str, str, str, str], list[Mapping[str, object]]] = defaultdict(list)
-    for row in latest:
+    for row in _latest_revision_rows(rows):
         provider = str(row["provider"])
         if provider not in ENSEMBLE_PROVIDERS:
             continue
-        key = (provider, str(row["model_version"]), str(row["init_time_utc"]), str(row["valid_time_utc"]), str(row["variable"]))
-        grouped[key].append(row)
+        grouped[(provider, str(row["model_version"]), str(row["init_time_utc"]), str(row["valid_time_utc"]), str(row["variable"]))].append(row)
     buckets: dict[tuple[str, str, str], list[tuple[list[float], float]]] = defaultdict(list)
     for (provider, version, _init, valid, variable), member_rows in sorted(grouped.items()):
         if (valid, variable) not in truth:
@@ -351,48 +269,29 @@ def _ensemble_metrics(
         lead_values = {float(row["lead_hours"]) for row in member_rows}
         if len(lead_values) != 1:
             raise BenchmarkExportError("ENSEMBLE_LEAD_MISMATCH", "ensemble members must share lead_hours")
-        bucket = lead_bucket(next(iter(lead_values)))
-        buckets[(provider, version, variable + "|" + bucket)].append((members, truth[(valid, variable)]))
+        buckets[(provider, version, variable + "|" + lead_bucket(next(iter(lead_values))))].append((members, truth[(valid, variable)]))
     output: list[dict[str, object]] = []
     for (provider, version, variable_bucket), pairs in sorted(buckets.items()):
         variable, bucket = variable_bucket.split("|", 1)
         crps_values = [ensemble_crps(members, observed) for members, observed in pairs]
-        row: dict[str, object] = {
-            "provider": provider,
-            "model_version": version,
-            "variable": variable,
-            "lead_bucket": bucket,
-            **sample_evidence(len(pairs)),
-            "mean_crps": mean(crps_values) if crps_values else None,
-        }
+        row: dict[str, object] = {"provider": provider, "model_version": version, "variable": variable, "lead_bucket": bucket, **sample_evidence(len(pairs)), "mean_crps": mean(crps_values) if crps_values else None}
         if variable == "temperature_2m":
             intervals = [interval_score(members, observed, alpha=TEMPERATURE_INTERVAL_ALPHA) for members, observed in pairs]
-            row.update(
-                {
-                    "interval_alpha": TEMPERATURE_INTERVAL_ALPHA,
-                    "coverage": mean(float(item["covered"]) for item in intervals) if intervals else None,
-                    "mean_interval_width": mean(float(item["width"]) for item in intervals) if intervals else None,
-                    "mean_wis": mean(weighted_interval_score(members, observed) for members, observed in pairs) if pairs else None,
-                }
-            )
+            row.update({
+                "interval_alpha": TEMPERATURE_INTERVAL_ALPHA,
+                "coverage": mean(float(item["covered"]) for item in intervals) if intervals else None,
+                "mean_interval_width": mean(float(item["width"]) for item in intervals) if intervals else None,
+                "mean_wis": mean(weighted_interval_score(members, observed) for members, observed in pairs) if pairs else None,
+            })
         if variable == "precipitation_1h":
-            brier = brier_from_members(
-                [members for members, _observed in pairs],
-                [observed for _members, observed in pairs],
-                threshold=PRECIP_EVENT_THRESHOLD_MM,
-            )
-            row.update({"precipitation_event_threshold_mm": PRECIP_EVENT_THRESHOLD_MM, **brier})
+            row.update({"precipitation_event_threshold_mm": PRECIP_EVENT_THRESHOLD_MM, **brier_from_members([members for members, _ in pairs], [observed for _, observed in pairs], threshold=PRECIP_EVENT_THRESHOLD_MM)})
         output.append(row)
     return output
 
 
 def build_benchmark_export_files(
-    *,
-    source_sha: str,
-    start: date,
-    end: date,
-    forecast_rows: Sequence[Mapping[str, object]],
-    observation_rows: Sequence[Mapping[str, object]],
+    *, source_sha: str, start: date, end: date,
+    forecast_rows: Sequence[Mapping[str, object]], observation_rows: Sequence[Mapping[str, object]],
 ) -> tuple[dict[str, bytes], dict[str, object]]:
     if not _SHA40_RE.fullmatch(source_sha):
         raise BenchmarkExportError("INVALID_SOURCE_SHA", "source_sha must be an exact 40-character lowercase commit SHA")
@@ -410,28 +309,17 @@ def build_benchmark_export_files(
         "schema_version": EXPORT_SCHEMA_VERSION,
         "contract": EXPORT_CONTRACT,
         "source_sha": source_sha,
-        "corpus_schema": {
-            "version": 1,
-            "ddl_sha256": _sha256(SCHEMA_SQL.encode("utf-8")),
-        },
+        "corpus_schema": {"version": 1, "ddl_sha256": _sha256(SCHEMA_SQL.encode("utf-8"))},
         "common_window": {
-            "start": start.isoformat(),
-            "end": end.isoformat(),
-            "start_inclusive_utc": start_iso,
-            "end_exclusive_utc": end_iso,
-            "common_archive_start": COMMON_BENCHMARK_START.isoformat(),
-            "location_id": DWD_10416.id,
-            "truth_source": "DWD WMO 10416",
+            "start": start.isoformat(), "end": end.isoformat(), "start_inclusive_utc": start_iso,
+            "end_exclusive_utc": end_iso, "common_archive_start": COMMON_BENCHMARK_START.isoformat(),
+            "location_id": BENCHMARK_LOCATION.id, "truth_source": f"DWD CDC {CDC_STATION_ID} (Werl)",
         },
-        "providers": {
-            "deterministic": list(DETERMINISTIC_PROVIDERS),
-            "ensemble": list(ENSEMBLE_PROVIDERS),
-            "model_versions": model_versions,
-        },
+        "providers": {"deterministic": list(DETERMINISTIC_PROVIDERS), "ensemble": list(ENSEMBLE_PROVIDERS), "model_versions": model_versions},
         "verification_configuration": {
             "variables": list(EXPORT_VARIABLES),
             "lead_buckets": [label for _lower, _upper, label in LEAD_BUCKETS],
-            "common_sample_policy": "intersection across present deterministic providers by variable/lead bucket; DWD truth required",
+            "common_sample_policy": "intersection across present deterministic providers by variable/lead bucket; pinned DWD CDC truth required",
             "forecast_selection": "latest immutable revision, then smallest lead within provider/variable/lead-bucket/valid-time, latest retrieval tie-break",
             "sample_sufficiency_contract": "common-sample-sufficiency-v1",
             "deterministic_statistics": sorted(DETERMINISTIC_STATISTICS),
@@ -439,14 +327,7 @@ def build_benchmark_export_files(
             "temperature_interval_alpha": TEMPERATURE_INTERVAL_ALPHA,
             "precipitation_event_threshold_mm": PRECIP_EVENT_THRESHOLD_MM,
         },
-        "privacy": {
-            "station_only": True,
-            "coordinates_exposed": False,
-            "credentials_exposed": False,
-            "database_path_exposed": False,
-            "raw_private_logs_exposed": False,
-            "source_metadata_exported": False,
-        },
+        "privacy": {"station_only": True, "coordinates_exposed": False, "credentials_exposed": False, "database_path_exposed": False, "raw_private_logs_exposed": False, "source_metadata_exported": False},
         "files": ["forecasts.ndjson", "observations.ndjson", "metrics.json", "manifest.json", "checksums.json"],
     }
     files: dict[str, bytes] = {
@@ -457,16 +338,10 @@ def build_benchmark_export_files(
     }
     checksums = {name: _sha256(data) for name, data in sorted(files.items())}
     files["checksums.json"] = _canonical_json(checksums)
-    bundle_fingerprint = _sha256(files["checksums.json"])
     summary = {
-        "state": "PASS",
-        "contract": EXPORT_CONTRACT,
-        "source_sha": source_sha,
-        "forecast_rows": len(forecasts),
-        "observation_rows": len(observations),
-        "file_count": len(files),
-        "bundle_fingerprint_sha256": bundle_fingerprint,
-        "read_only_corpus": True,
+        "state": "PASS", "contract": EXPORT_CONTRACT, "source_sha": source_sha,
+        "forecast_rows": len(forecasts), "observation_rows": len(observations), "file_count": len(files),
+        "bundle_fingerprint_sha256": _sha256(files["checksums.json"]), "read_only_corpus": True,
         "privacy": manifest["privacy"],
     }
     return files, summary
@@ -503,7 +378,7 @@ def load_benchmark_rows(database: Database, *, start: date, end: date) -> tuple[
                       AND v.valid_time_utc>=? AND v.valid_time_utc<?
                     ORDER BY r.provider,r.model_version,r.init_time_utc,r.retrieved_at_utc,r.revision,
                              v.valid_time_utc,v.variable,v.statistic,v.accumulation_window_minutes""",
-                (DWD_10416.id, *EXPORT_PROVIDERS, *EXPORT_VARIABLES, start_iso, end_iso),
+                (BENCHMARK_LOCATION.id, *EXPORT_PROVIDERS, *EXPORT_VARIABLES, start_iso, end_iso),
             ).fetchall()
         ]
         observation_rows = [
@@ -511,11 +386,11 @@ def load_benchmark_rows(database: Database, *, start: date, end: date) -> tuple[
             for row in connection.execute(
                 f"""SELECT source_provider,station_id,location_id,observed_at_utc,variable,value,unit,quality_status
                     FROM observations
-                    WHERE source_provider='DWD' AND station_id='10416' AND location_id=?
+                    WHERE source_provider='DWD' AND station_id=? AND location_id=?
                       AND variable IN ({variables})
                       AND observed_at_utc>=? AND observed_at_utc<?
                     ORDER BY observed_at_utc,variable""",
-                (DWD_10416.id, *EXPORT_VARIABLES, start_iso, end_iso),
+                (CDC_STATION_ID, BENCHMARK_LOCATION.id, *EXPORT_VARIABLES, start_iso, end_iso),
             ).fetchall()
         ]
     return forecast_rows, observation_rows
@@ -527,13 +402,7 @@ def write_benchmark_export_bundle(
     if output_dir.exists():
         raise BenchmarkExportError("OUTPUT_EXISTS", "output directory must not already exist")
     forecast_rows, observation_rows = load_benchmark_rows(database, start=start, end=end)
-    files, summary = build_benchmark_export_files(
-        source_sha=source_sha,
-        start=start,
-        end=end,
-        forecast_rows=forecast_rows,
-        observation_rows=observation_rows,
-    )
+    files, summary = build_benchmark_export_files(source_sha=source_sha, start=start, end=end, forecast_rows=forecast_rows, observation_rows=observation_rows)
     output_dir.mkdir(parents=True)
     for name, content in sorted(files.items()):
         (output_dir / name).write_bytes(content)
@@ -542,7 +411,6 @@ def write_benchmark_export_bundle(
 
 def main() -> None:
     import argparse
-
     parser = argparse.ArgumentParser(prog="python -m rozkalns_weather.benchmark_export")
     parser.add_argument("--source-sha", required=True)
     parser.add_argument("--start", required=True, help="common-window start YYYY-MM-DD")
@@ -552,21 +420,9 @@ def main() -> None:
     settings = Settings.from_env()
     database = Database(settings.database_url)
     try:
-        summary = write_benchmark_export_bundle(
-            database,
-            source_sha=args.source_sha,
-            start=date.fromisoformat(args.start),
-            end=date.fromisoformat(args.end),
-            output_dir=Path(args.output),
-        )
+        summary = write_benchmark_export_bundle(database, source_sha=args.source_sha, start=date.fromisoformat(args.start), end=date.fromisoformat(args.end), output_dir=Path(args.output))
     except (BenchmarkExportError, ValueError) as exc:
-        payload = {
-            "state": "BLOCKED",
-            "reason_code": getattr(exc, "reason_code", "INVALID_ARGUMENT"),
-            "detail": str(exc),
-            "production_data_authority_granted": False,
-            "runtime_live_authority_granted": False,
-        }
+        payload = {"state": "BLOCKED", "reason_code": getattr(exc, "reason_code", "INVALID_ARGUMENT"), "detail": str(exc), "production_data_authority_granted": False, "runtime_live_authority_granted": False}
         print(json.dumps(payload, sort_keys=True, indent=2))
         raise SystemExit(3)
     print(json.dumps(summary, sort_keys=True, indent=2))

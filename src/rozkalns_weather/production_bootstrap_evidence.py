@@ -9,7 +9,6 @@ from .production_bootstrap import (
     MODELS,
     RUN_HOURS,
     SOURCE_SHA_RE,
-    TRUTH_TRANSPORT_BLOCK_REASON,
     _run_keys,
     _truth_chunks,
     build_production_bootstrap_plan,
@@ -61,7 +60,9 @@ def _result(plan: Mapping[str, object], state: str, reasons: list[str], progress
             "end_date": identity["end_date"],
             "models": list(identity["models"]),
             "run_hours_utc": list(identity["run_hours_utc"]),
+            "benchmark_location_id": identity["benchmark_location_id"],
             "truth_station_id": identity["truth_station_id"],
+            "truth_variables": list(identity["truth_variables"]),
             "recovery_decision": identity["recovery_decision"],
         },
         "progress": progress,
@@ -118,7 +119,10 @@ def validate_execution_evidence(plan: Mapping[str, object], evidence: Mapping[st
     if bound is None:
         reasons.append("BOOTSTRAP_IDENTITY_MISSING")
     else:
-        for field in ("start_date", "end_date", "truth_station_id", "recovery_decision"):
+        for field in (
+            "start_date", "end_date", "benchmark_location_id", "truth_station_id",
+            "truth_variables", "recovery_decision",
+        ):
             if bound.get(field) != identity.get(field):
                 reasons.append(f"{field.upper()}_MISMATCH")
         if bound.get("models") != list(MODELS):
@@ -135,6 +139,12 @@ def validate_execution_evidence(plan: Mapping[str, object], evidence: Mapping[st
         completed = truth.get("completed_chunks")
         completed_n = len(completed) if isinstance(completed, list) else 0
         progress["truth"] = {"completed": completed_n, "expected": len(expected_truth)}
+        if truth.get("station_id") != identity.get("truth_station_id"):
+            reasons.append("TRUTH_STATION_MISMATCH")
+        if truth.get("location_id") != identity.get("benchmark_location_id"):
+            reasons.append("TRUTH_LOCATION_MISMATCH")
+        if truth.get("variables") != identity.get("truth_variables"):
+            reasons.append("TRUTH_VARIABLE_SCOPE_MISMATCH")
         if truth.get("expected_chunk_count") != len(expected_truth):
             reasons.append("TRUTH_EXPECTED_COUNT_MISMATCH")
         if truth.get("present_chunk_count") != completed_n:
@@ -156,6 +166,8 @@ def validate_execution_evidence(plan: Mapping[str, object], evidence: Mapping[st
             completed_n = len(completed) if isinstance(completed, list) else 0
             forecast_progress[model] = {"completed": completed_n, "expected": len(expected_runs)}
             prefix = model.upper()
+            if section.get("location_id") != identity.get("benchmark_location_id"):
+                reasons.append(f"{prefix}_LOCATION_MISMATCH")
             if section.get("expected_run_count") != len(expected_runs):
                 reasons.append(f"{prefix}_EXPECTED_COUNT_MISMATCH")
             if section.get("present_run_count") != completed_n:
@@ -175,7 +187,7 @@ def validate_execution_evidence(plan: Mapping[str, object], evidence: Mapping[st
 
     partial = "PARTIAL_BOOTSTRAP_INCOMPLETE" in base_reasons
     for reason in base_reasons:
-        if reason in {"PARTIAL_BOOTSTRAP_INCOMPLETE", TRUTH_TRANSPORT_BLOCK_REASON}:
+        if reason == "PARTIAL_BOOTSTRAP_INCOMPLETE":
             continue
         if reason == "CORPUS_INTEGRITY_NOT_PROVEN" and partial:
             integrity = _as_map(evidence.get("integrity"))

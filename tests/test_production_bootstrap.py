@@ -7,7 +7,6 @@ import pytest
 
 from rozkalns_weather.cli import main as cli_main
 from rozkalns_weather.production_bootstrap import (
-    TRUTH_TRANSPORT_BLOCK_REASON,
     build_production_bootstrap_plan,
     evaluate_resume_evidence,
 )
@@ -37,50 +36,83 @@ def _complete_evidence() -> dict[str, object]:
     runs = _runs(date(2026, 4, 2), date(2026, 4, 15))
 
     def model_state() -> dict[str, object]:
-        return {"completed_runs": list(runs), "revision_drift_runs": [], "unexpected_runs": [], "database_ahead_of_checkpoint": False}
+        return {
+            "location_id": "station_05480",
+            "completed_runs": list(runs),
+            "revision_drift_runs": [],
+            "unexpected_runs": [],
+            "database_ahead_of_checkpoint": False,
+        }
 
     return {
         "bootstrap_fingerprint": plan["bootstrap_fingerprint"],
         "recovery_decision": "verified_backup_available",
         "schema": {"state": "ready", "implicit_migration_performed": False},
-        "truth": {"station_id": "10416", "completed_chunks": ["2026-04-02..2026-04-15"], "database_ahead_of_checkpoint": False},
-        "forecasts": {"icon_d2": model_state(), "ecmwf_ifs": model_state(), "ecmwf_aifs": model_state()},
+        "truth": {
+            "station_id": "05480",
+            "location_id": "station_05480",
+            "variables": list(plan["identity"]["truth_variables"]),
+            "completed_chunks": ["2026-04-02..2026-04-15"],
+            "database_ahead_of_checkpoint": False,
+        },
+        "forecasts": {
+            "icon_d2": model_state(),
+            "ecmwf_ifs": model_state(),
+            "ecmwf_aifs": model_state(),
+        },
         "integrity": {"ok": True},
     }
 
 
-def test_plan_freezes_bounds_chunks_scope_recovery_and_truth_transport_gate() -> None:
+def test_plan_freezes_bounds_chunks_scope_recovery_and_verified_truth_transport() -> None:
     plan = _plan()
     assert plan["inclusive_days"] == 14
     assert plan["truth_chunk_count"] == 1
     assert plan["forecast_run_count_per_model"] == 56
     assert plan["identity"]["models"] == ["icon_d2", "ecmwf_ifs", "ecmwf_aifs"]
     assert plan["identity"]["run_hours_utc"] == [0, 6, 12, 18]
-    assert plan["identity"]["truth_station_id"] == "10416"
-    assert plan["state"] == "BLOCKED_BY_TRUTH_TRANSPORT_CAPABILITY"
-    assert plan["block_reasons"] == [TRUTH_TRANSPORT_BLOCK_REASON]
-    assert plan["truth_transport"] == {
-        "source_authority": "DWD",
-        "transport": "Bright Sky",
-        "station_id": "10416",
-        "historical_capability": "unverified_historical_capability",
-        "live_backfill_allowed": False,
+    assert plan["identity"]["benchmark_location_id"] == "station_05480"
+    assert plan["identity"]["truth_station_id"] == "05480"
+    assert plan["state"] == "SOURCE_READY_REQUIRES_LIVE_DATA_AUTHORITY"
+    assert plan["block_reasons"] == []
+    assert plan["truth_transport"]["source_authority"] == "DWD"
+    assert plan["truth_transport"]["transport"] == "DWD CDC Open Data"
+    assert plan["truth_transport"]["station_id"] == "05480"
+    assert plan["truth_transport"]["location_id"] == "station_05480"
+    assert plan["truth_transport"]["historical_capability"] == "verified_frozen_window_product_coverage"
+    assert plan["truth_transport"]["coverage_revalidation_required_before_live"] is True
+    assert plan["truth_transport"]["live_backfill_allowed"] is False
+    assert plan["forecast_colocation"] == {
+        "location_id": "station_05480",
+        "models": ["icon_d2", "ecmwf_ifs", "ecmwf_aifs"],
+        "exact_public_station_coordinates": True,
+        "nearest_station_fallback_allowed": False,
     }
     assert plan["schema_init_explicit_only"] is True
     assert plan["production_data_authority_granted"] is False
 
 
-def test_plan_rejects_unbounded_window_and_unsupported_recovery() -> None:
-    with pytest.raises(ValueError, match="180"):
-        build_production_bootstrap_plan(source_sha="a" * 40, start=date(2026, 4, 2), end=date(2026, 10, 1), recovery_decision="verified_backup_available")
+def test_plan_rejects_unverified_window_and_unsupported_recovery() -> None:
+    with pytest.raises(ValueError, match="source-verified only through 2026-09-10"):
+        build_production_bootstrap_plan(
+            source_sha="a" * 40,
+            start=date(2026, 4, 2),
+            end=date(2026, 10, 1),
+            recovery_decision="verified_backup_available",
+        )
     with pytest.raises(ValueError, match="unsupported recovery"):
-        build_production_bootstrap_plan(source_sha="a" * 40, start=date(2026, 4, 2), end=date(2026, 4, 3), recovery_decision="auto_restore")
+        build_production_bootstrap_plan(
+            source_sha="a" * 40,
+            start=date(2026, 4, 2),
+            end=date(2026, 4, 3),
+            recovery_decision="auto_restore",
+        )
 
 
-def test_complete_evidence_remains_blocked_until_truth_transport_is_verified() -> None:
+def test_complete_evidence_passes_source_validation_without_granting_authority() -> None:
     result = evaluate_resume_evidence(_plan(), _complete_evidence())
-    assert result["state"] == "BLOCKED"
-    assert result["block_reasons"] == [TRUTH_TRANSPORT_BLOCK_REASON]
+    assert result["state"] == "PASS"
+    assert result["block_reasons"] == []
     assert result["production_data_authority_granted"] is False
 
 
@@ -91,7 +123,9 @@ def test_partial_duplicate_revision_and_interrupted_states_fail_closed() -> None
     assert "PARTIAL_BOOTSTRAP_INCOMPLETE" in evaluate_resume_evidence(plan, partial)["block_reasons"]
 
     duplicate = _complete_evidence()
-    duplicate["forecasts"]["ecmwf_ifs"]["completed_runs"].append(duplicate["forecasts"]["ecmwf_ifs"]["completed_runs"][-1])
+    duplicate["forecasts"]["ecmwf_ifs"]["completed_runs"].append(
+        duplicate["forecasts"]["ecmwf_ifs"]["completed_runs"][-1]
+    )
     assert "ECMWF_IFS_CHECKPOINT_DUPLICATE" in evaluate_resume_evidence(plan, duplicate)["block_reasons"]
 
     revision = _complete_evidence()
@@ -103,6 +137,19 @@ def test_partial_duplicate_revision_and_interrupted_states_fail_closed() -> None
     assert "INTERRUPTED_CHECKPOINT_RESUME_REQUIRED" in evaluate_resume_evidence(plan, interrupted)["block_reasons"]
 
 
+def test_station_location_and_variable_scope_mismatch_fail_closed() -> None:
+    evidence = _complete_evidence()
+    evidence["truth"]["station_id"] = "10416"
+    evidence["truth"]["location_id"] = "station_10416"
+    evidence["truth"]["variables"] = ["temperature_2m"]
+    evidence["forecasts"]["icon_d2"]["location_id"] = "station_10416"
+    reasons = evaluate_resume_evidence(_plan(), evidence)["block_reasons"]
+    assert "TRUTH_STATION_MISMATCH" in reasons
+    assert "TRUTH_LOCATION_MISMATCH" in reasons
+    assert "TRUTH_VARIABLE_SCOPE_MISMATCH" in reasons
+    assert "ICON_D2_LOCATION_MISMATCH" in reasons
+
+
 def test_resume_evidence_rejects_private_fields() -> None:
     evidence = _complete_evidence()
     evidence["database_path"] = "/private/path/weather.db"
@@ -110,7 +157,7 @@ def test_resume_evidence_rejects_private_fields() -> None:
         evaluate_resume_evidence(_plan(), evidence)
 
 
-def test_production_bootstrap_plan_cli_is_runtime_independent_and_blocked(monkeypatch, capsys) -> None:
+def test_production_bootstrap_plan_cli_is_runtime_independent_and_source_ready(monkeypatch, capsys) -> None:
     monkeypatch.setattr(
         "sys.argv",
         [
@@ -128,6 +175,6 @@ def test_production_bootstrap_plan_cli_is_runtime_independent_and_blocked(monkey
     )
     cli_main()
     payload = json.loads(capsys.readouterr().out)
-    assert payload["state"] == "BLOCKED_BY_TRUTH_TRANSPORT_CAPABILITY"
-    assert payload["block_reasons"] == [TRUTH_TRANSPORT_BLOCK_REASON]
+    assert payload["state"] == "SOURCE_READY_REQUIRES_LIVE_DATA_AUTHORITY"
+    assert payload["block_reasons"] == []
     assert payload["production_data_authority_granted"] is False

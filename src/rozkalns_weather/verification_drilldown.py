@@ -16,7 +16,7 @@ from .benchmark_export import (
 )
 from .db import Database
 from .events import EventPair, summarize_events
-from .locations import DWD_10416
+from .locations import BENCHMARK_LOCATION
 from .probabilistic import (
     brier_from_members,
     ensemble_crps,
@@ -24,6 +24,7 @@ from .probabilistic import (
     reliability_from_members,
     weighted_interval_score,
 )
+from .providers.dwd_cdc_observations import CDC_STATION_ID
 from .reporting import EVENT_DEFINITIONS
 from .verification import ErrorPair, lead_bucket, sample_confidence, summarize
 
@@ -82,7 +83,7 @@ def _truth_map(observations: Sequence[Mapping[str, object]]) -> dict[tuple[str, 
     return {
         (str(row["observed_at_utc"]), str(row["variable"])): float(row["value"])
         for row in observations
-        if str(row.get("source_provider")) == "DWD" and str(row.get("station_id")) == "10416"
+        if str(row.get("source_provider")) == "DWD" and str(row.get("station_id")) == CDC_STATION_ID
     }
 
 
@@ -425,8 +426,8 @@ def build_verification_drilldown(
         "contract": DRILLDOWN_CONTRACT,
         "state": "PASS",
         "window": {"start": start.isoformat(), "end": end.isoformat()},
-        "comparison_location": {"id": DWD_10416.id, "station_id": "10416", "coordinates_exposed": False},
-        "truth_source": "DWD WMO 10416",
+        "comparison_location": {"id": BENCHMARK_LOCATION.id, "station_id": CDC_STATION_ID, "coordinates_exposed": False},
+        "truth_source": f"DWD CDC {CDC_STATION_ID} (Werl)",
         "dimensions": ["provider", "model_version", "init_cycle_utc", "lead_bucket", "variable", "month"],
         "sample_policy": "strict common valid-times across the exact provider class, split by exact model-version cohort",
         "deterministic": {"providers": list(DETERMINISTIC_PROVIDERS), "slices": _deterministic_slices(forecast_rows, observation_rows)},

@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 from rozkalns_weather.app import create_app
 from rozkalns_weather.config import Settings
 from rozkalns_weather.db import Database
-from rozkalns_weather.locations import DWD_10416
+from rozkalns_weather.locations import DWD_CDC_05480
 from rozkalns_weather.models import ForecastRun, ForecastValue, Observation
 from rozkalns_weather.verification_drilldown import build_verification_drilldown, month_bounds
 
@@ -28,6 +28,7 @@ def _forecast(
         "provider": provider,
         "model_name": provider,
         "model_version": version,
+        "location_id": DWD_CDC_05480.id,
         "init_time_utc": init,
         "retrieved_at_utc": init,
         "revision": revision,
@@ -42,8 +43,8 @@ def _forecast(
 def _truth(valid: str, variable: str = "temperature_2m", value: float = 10.0) -> dict[str, object]:
     return {
         "source_provider": "DWD",
-        "station_id": "10416",
-        "location_id": DWD_10416.id,
+        "station_id": "05480",
+        "location_id": DWD_CDC_05480.id,
         "observed_at_utc": valid,
         "variable": variable,
         "value": value,
@@ -56,6 +57,17 @@ def _build(rows, truth):
         observation_rows=truth,
         start=date(2026, 4, 1),
         end=date(2026, 4, 30),
+    )
+
+
+def _ensure_cdc_benchmark(database: Database) -> None:
+    database.ensure_location(
+        location_id=DWD_CDC_05480.id,
+        label=DWD_CDC_05480.label,
+        lat=DWD_CDC_05480.lat,
+        lon=DWD_CDC_05480.lon,
+        elevation_m=DWD_CDC_05480.elevation_m,
+        timezone=DWD_CDC_05480.timezone,
     )
 
 
@@ -139,13 +151,14 @@ def test_api_and_pwa_expose_drilldown_navigation(tmp_path) -> None:
     settings = Settings.from_env({"DATABASE_URL": f"sqlite:///{tmp_path / 'weather.db'}"})
     database = Database(settings.database_url)
     client = TestClient(create_app(settings=settings, database=database))
+    _ensure_cdc_benchmark(database)
     valid = datetime(2026, 9, 10, 6, tzinfo=timezone.utc)
     init = datetime(2026, 9, 10, 0, tzinfo=timezone.utc)
     database.insert_observations([
         Observation(
             source_provider="DWD",
-            station_id="10416",
-            location_id=DWD_10416.id,
+            station_id="05480",
+            location_id=DWD_CDC_05480.id,
             observed_at_utc=valid,
             variable="temperature_2m",
             value=10.0,
@@ -178,7 +191,7 @@ def test_api_and_pwa_expose_drilldown_navigation(tmp_path) -> None:
                     ),
                 ),
             ),
-            location_id=DWD_10416.id,
+            location_id=DWD_CDC_05480.id,
         )
     response = client.get("/api/verification/drilldown?month=2026-09")
     assert response.status_code == 200

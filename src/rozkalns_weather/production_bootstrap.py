@@ -7,18 +7,23 @@ import re
 from typing import Mapping
 
 from .backfill import iter_run_times
+from .locations import BENCHMARK_LOCATION
 from .models import utc_iso
+from .providers.dwd_cdc_observations import CDC_STATION_ID, REQUIRED_VARIABLES
 
 SOURCE_SHA_RE = re.compile(r"^[0-9a-f]{40}$")
 COMMON_START = date(2026, 4, 2)
+VERIFIED_TRUTH_END = date(2026, 9, 10)
 MAX_DAYS = 180
 TRUTH_CHUNK_DAYS = 14
 MODELS = ("icon_d2", "ecmwf_ifs", "ecmwf_aifs")
 RUN_HOURS = (0, 6, 12, 18)
 RECOVERY_DECISIONS = ("verified_backup_available", "owner_accepts_proceeding_without_prewrite_backup")
 TRUTH_SOURCE_AUTHORITY = "DWD"
-TRUTH_TRANSPORT = "Bright Sky"
-TRUTH_TRANSPORT_STATUS = "unverified_historical_capability"
+TRUTH_TRANSPORT = "DWD CDC Open Data"
+TRUTH_TRANSPORT_STATUS = "verified_frozen_window_product_coverage"
+# Retained as a legacy reason-code identity because execution-evidence readers
+# may still encounter pre-#155 plans. It is not emitted by new plans.
 TRUTH_TRANSPORT_BLOCK_REASON = "TRUTH_TRANSPORT_HISTORICAL_CAPABILITY_UNVERIFIED"
 FORBIDDEN_KEYS = frozenset({"home_lat", "home_lon", "credentials", "credential", "raw_logs", "raw_log", "database_path", "host_path", "env", "environment"})
 
@@ -62,6 +67,10 @@ def build_production_bootstrap_plan(*, source_sha: str, start: date, end: date, 
         raise ValueError("bootstrap end date must not be before start date")
     if start < COMMON_START:
         raise ValueError(f"production common benchmark starts at {COMMON_START.isoformat()}")
+    if end > VERIFIED_TRUTH_END:
+        raise ValueError(
+            f"DWD CDC benchmark coverage is source-verified only through {VERIFIED_TRUTH_END.isoformat()}; refresh source evidence before expanding the bootstrap"
+        )
     inclusive_days = (end - start).days + 1
     if inclusive_days > MAX_DAYS:
         raise ValueError(f"production bootstrap exceeds {MAX_DAYS} inclusive days")
@@ -73,7 +82,9 @@ def build_production_bootstrap_plan(*, source_sha: str, start: date, end: date, 
         "end_date": end.isoformat(),
         "models": list(MODELS),
         "run_hours_utc": list(RUN_HOURS),
-        "truth_station_id": "10416",
+        "benchmark_location_id": BENCHMARK_LOCATION.id,
+        "truth_station_id": CDC_STATION_ID,
+        "truth_variables": list(REQUIRED_VARIABLES),
         "truth_chunk_days": TRUTH_CHUNK_DAYS,
         "truth_source_authority": TRUTH_SOURCE_AUTHORITY,
         "truth_transport": TRUTH_TRANSPORT,
@@ -83,16 +94,28 @@ def build_production_bootstrap_plan(*, source_sha: str, start: date, end: date, 
     fingerprint = hashlib.sha256(json.dumps(identity, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
     return {
         "schema_version": 1,
-        "state": "BLOCKED_BY_TRUTH_TRANSPORT_CAPABILITY",
-        "block_reasons": [TRUTH_TRANSPORT_BLOCK_REASON],
+        "state": "SOURCE_READY_REQUIRES_LIVE_DATA_AUTHORITY",
+        "block_reasons": [],
         "bootstrap_fingerprint": fingerprint,
         "identity": identity,
         "truth_transport": {
             "source_authority": TRUTH_SOURCE_AUTHORITY,
             "transport": TRUTH_TRANSPORT,
-            "station_id": "10416",
+            "station_id": CDC_STATION_ID,
+            "location_id": BENCHMARK_LOCATION.id,
+            "station_name": "Werl",
+            "required_variables": list(REQUIRED_VARIABLES),
+            "verified_window_start": COMMON_START.isoformat(),
+            "verified_window_end": VERIFIED_TRUTH_END.isoformat(),
             "historical_capability": TRUTH_TRANSPORT_STATUS,
+            "coverage_revalidation_required_before_live": True,
             "live_backfill_allowed": False,
+        },
+        "forecast_colocation": {
+            "location_id": BENCHMARK_LOCATION.id,
+            "models": list(MODELS),
+            "exact_public_station_coordinates": True,
+            "nearest_station_fallback_allowed": False,
         },
         "inclusive_days": inclusive_days,
         "truth_chunk_count": len(_truth_chunks(start, end)),
@@ -114,8 +137,6 @@ def evaluate_resume_evidence(plan: Mapping[str, object], evidence: Mapping[str, 
     start = date.fromisoformat(str(identity["start_date"]))
     end = date.fromisoformat(str(identity["end_date"]))
     reasons: list[str] = []
-    if plan.get("state") == "BLOCKED_BY_TRUTH_TRANSPORT_CAPABILITY":
-        reasons.append(TRUTH_TRANSPORT_BLOCK_REASON)
     if evidence.get("bootstrap_fingerprint") != plan.get("bootstrap_fingerprint"):
         reasons.append("BOOTSTRAP_FINGERPRINT_MISMATCH")
     if evidence.get("recovery_decision") != identity.get("recovery_decision"):
@@ -133,8 +154,12 @@ def evaluate_resume_evidence(plan: Mapping[str, object], evidence: Mapping[str, 
         reason = _prefix_reason(truth.get("completed_chunks"), expected_truth, "TRUTH")
         if reason:
             reasons.append(reason)
-        if truth.get("station_id") != "10416":
+        if truth.get("station_id") != CDC_STATION_ID:
             reasons.append("TRUTH_STATION_MISMATCH")
+        if truth.get("location_id") != BENCHMARK_LOCATION.id:
+            reasons.append("TRUTH_LOCATION_MISMATCH")
+        if truth.get("variables") != list(REQUIRED_VARIABLES):
+            reasons.append("TRUTH_VARIABLE_SCOPE_MISMATCH")
         if truth.get("database_ahead_of_checkpoint") is True:
             reasons.append("INTERRUPTED_CHECKPOINT_RESUME_REQUIRED")
     forecasts = evidence.get("forecasts")
@@ -151,6 +176,8 @@ def evaluate_resume_evidence(plan: Mapping[str, object], evidence: Mapping[str, 
             reason = _prefix_reason(model_state.get("completed_runs"), expected_runs, model.upper())
             if reason:
                 reasons.append(reason)
+            if model_state.get("location_id") != BENCHMARK_LOCATION.id:
+                reasons.append(f"{model.upper()}_LOCATION_MISMATCH")
             completed = model_state.get("completed_runs")
             if isinstance(completed, list) and len(completed) == len(expected_runs):
                 complete_models += 1

@@ -13,9 +13,10 @@ from fastapi.staticfiles import StaticFiles
 from .config import Settings
 from .db import Database
 from .leaderboard import SkillSample, common_sample_leaderboard
-from .locations import DWD_10416
+from .locations import BENCHMARK_LOCATION, DWD_10416
 from .models import parse_time
 from .providers import PROVIDERS
+from .providers.dwd_cdc_observations import CDC_STATION_ID
 from .providers.weathernext import access_state
 from .provider_health import PUBLIC_PROVIDER_HEALTH_POLICIES, classify_public_provider_health
 from .radar_warnings import fetch_dwd_alerts, fetch_radar_point
@@ -111,13 +112,23 @@ def _temperature_common_samples(rows: list[dict[str, object]]) -> list[SkillSamp
     ]
 
 
+def _public_location_label(location_id: str, settings: Settings) -> str:
+    if location_id == "home":
+        return settings.home_label
+    if location_id == BENCHMARK_LOCATION.id:
+        return BENCHMARK_LOCATION.label
+    return DWD_10416.label
+
+
 def create_app(settings: Settings | None = None, database: Database | None = None) -> FastAPI:
     settings = settings or Settings.from_env()
     database = database or Database(settings.database_url)
 
     # Development/test mode may create the schema automatically. The reviewed
     # RPi5 public runtime sets DATABASE_INIT_MODE=require-existing so container
-    # startup cannot implicitly create or mutate the production corpus.
+    # startup cannot implicitly create the production schema. The legacy 10416
+    # location remains the existing current-reference identity; issue #155 does
+    # not create the new benchmark row on application startup.
     if settings.database_init_mode == "auto":
         database.initialize()
 
@@ -229,9 +240,9 @@ def create_app(settings: Settings | None = None, database: Database | None = Non
             "home": home_payload,
             "location": home_payload,
             "verification_reference": {
-                "id": DWD_10416.id,
-                "label": DWD_10416.label,
-                "station_id": "10416",
+                "id": BENCHMARK_LOCATION.id,
+                "label": BENCHMARK_LOCATION.label,
+                "station_id": CDC_STATION_ID,
                 "coordinates_exposed": False,
             },
             "database": schema_state,
@@ -241,39 +252,44 @@ def create_app(settings: Settings | None = None, database: Database | None = Non
     @app.get("/api/current")
     def current() -> dict[str, object]:
         require_database_ready()
-        observations = database.latest_observations(location_id=DWD_10416.id)
+        observations = database.latest_observations(location_id=BENCHMARK_LOCATION.id)
         return {
             "location": {
-                "id": DWD_10416.id,
-                "label": DWD_10416.label,
-                "station_id": "10416",
+                "id": BENCHMARK_LOCATION.id,
+                "label": BENCHMARK_LOCATION.label,
+                "station_id": CDC_STATION_ID,
                 "coordinates_exposed": False,
             },
-            "truth_source": "DWD WMO 10416",
+            "truth_source": f"DWD CDC {CDC_STATION_ID}",
             "observations": observations,
             "state": "observed" if observations else "not_observed_yet",
             "note": "Station truth is not presented as a measurement at the private home point.",
         }
 
     @app.get("/api/hourly")
-    def hourly(hours: int = Query(48, ge=1, le=360), variable: str = Query("temperature_2m"),
-               location_id: Literal["home", "station_10416"] = Query("home")) -> dict[str, object]:
+    def hourly(
+        hours: int = Query(48, ge=1, le=360),
+        variable: str = Query("temperature_2m"),
+        location_id: Literal["home", "station_05480", "station_10416"] = Query("home"),
+    ) -> dict[str, object]:
         require_database_ready()
         return {
             "hours": hours,
             "variable": variable,
-            "location": {"id": location_id, "label": settings.home_label if location_id == "home" else DWD_10416.label, "coordinates_exposed": False},
+            "location": {"id": location_id, "label": _public_location_label(location_id, settings), "coordinates_exposed": False},
             "series": database.latest_hourly(hours=hours, variable=variable, location_id=location_id),
         }
 
     @app.get("/api/daily")
-    def daily(days: int = Query(10, ge=1, le=15),
-              location_id: Literal["home", "station_10416"] = Query("home")) -> dict[str, object]:
+    def daily(
+        days: int = Query(10, ge=1, le=15),
+        location_id: Literal["home", "station_05480", "station_10416"] = Query("home"),
+    ) -> dict[str, object]:
         require_database_ready()
         return {
             "days": days,
             "timezone": settings.home_timezone,
-            "location": {"id": location_id, "label": settings.home_label if location_id == "home" else DWD_10416.label, "coordinates_exposed": False},
+            "location": {"id": location_id, "label": _public_location_label(location_id, settings), "coordinates_exposed": False},
             "days_by_provider": _daily_payload(database, days=days, timezone_name=settings.home_timezone, location_id=location_id),
         }
 
@@ -290,13 +306,23 @@ def create_app(settings: Settings | None = None, database: Database | None = Non
     @app.get("/api/verification/truth-quality")
     def verification_truth_quality(days: int = Query(90, ge=1, le=3650)) -> dict[str, object]:
         require_database_ready()
-        return database_truth_quality(database, days=days, location_id=DWD_10416.id)
+        return database_truth_quality(
+            database,
+            days=days,
+            location_id=BENCHMARK_LOCATION.id,
+            station_id=CDC_STATION_ID,
+        )
 
     @app.get("/api/verification/summary")
     def verification_summary(days: int = Query(90, ge=1, le=3650)) -> dict[str, object]:
         require_database_ready()
-        truth_quality = database_truth_quality(database, days=days, location_id=DWD_10416.id)
-        rows = database.temperature_verification_pairs(days=days, location_id=DWD_10416.id)
+        truth_quality = database_truth_quality(
+            database,
+            days=days,
+            location_id=BENCHMARK_LOCATION.id,
+            station_id=CDC_STATION_ID,
+        )
+        rows = database.temperature_verification_pairs(days=days, location_id=BENCHMARK_LOCATION.id)
         common_sample_slices = common_sample_leaderboard(_temperature_common_samples(rows))
         by_provider = defaultdict(list)
         by_bucket = defaultdict(lambda: defaultdict(list))
@@ -328,7 +354,7 @@ def create_app(settings: Settings | None = None, database: Database | None = Non
             "variable": "temperature_2m",
             "comparison_mode": "station_run_skill",
             "sample_sufficiency_contract": "common-sample-sufficiency-v1",
-            "comparison_location": {"id": DWD_10416.id, "station_id": "10416"},
+            "comparison_location": {"id": BENCHMARK_LOCATION.id, "station_id": CDC_STATION_ID},
             "matching_tolerance_minutes": 0,
             "verification_ready": truth_quality["verification_ready"],
             "truth_quality": truth_quality,
@@ -348,12 +374,17 @@ def create_app(settings: Settings | None = None, database: Database | None = Non
     @app.get("/api/verification/precipitation")
     def precipitation_verification(days: int = Query(90, ge=1, le=3650)) -> dict[str, object]:
         require_database_ready()
-        truth_quality = database_truth_quality(database, days=days, location_id=DWD_10416.id)
+        truth_quality = database_truth_quality(
+            database,
+            days=days,
+            location_id=BENCHMARK_LOCATION.id,
+            station_id=CDC_STATION_ID,
+        )
         threshold = settings.precipitation_event_threshold_mm
         rows = database.precipitation_verification_pairs(
             days=days,
             threshold_mm=threshold,
-            location_id=DWD_10416.id,
+            location_id=BENCHMARK_LOCATION.id,
         )
         prob = defaultdict(list)
         amount = defaultdict(list)
@@ -379,7 +410,7 @@ def create_app(settings: Settings | None = None, database: Database | None = Non
             )
         return {
             "window_days": days,
-            "comparison_location": {"id": DWD_10416.id, "station_id": "10416"},
+            "comparison_location": {"id": BENCHMARK_LOCATION.id, "station_id": CDC_STATION_ID},
             "event_version": PRECIP_EVENT_VERSION,
             "occurrence_threshold_mm_per_hour": threshold,
             "sample_sufficiency_contract": "common-sample-sufficiency-v1",

@@ -11,23 +11,22 @@ from rozkalns_weather.truth_quality import assess_dwd_truth
 
 def _metadata(
     *,
-    station_name: str = "Dortmund",
-    dwd_station_id: str = "01234",
+    station_name: str = "Werl",
+    dwd_station_id: str = "05480",
 ) -> dict[str, object]:
     return {
         "source_authority": "DWD",
-        "wmo_station_id": "10416",
-        "reference_location_id": "station_10416",
+        "dwd_cdc_station_id": dwd_station_id,
+        "reference_location_id": "station_05480",
         "station_identity_pinned": True,
         "station_name": station_name,
-        "dwd_station_id": dwd_station_id,
     }
 
 
 def _obs(
     hour: int,
     *,
-    station_id: str = "10416",
+    station_id: str = "05480",
     variable: str = "temperature_2m",
     value: float = 20.0,
     unit: str = "degC",
@@ -37,7 +36,7 @@ def _obs(
     return Observation(
         source_provider="DWD",
         station_id=station_id,
-        location_id="station_10416",
+        location_id="station_05480",
         observed_at_utc=datetime(2026, 9, 11, hour, tzinfo=timezone.utc),
         variable=variable,
         value=value,
@@ -52,7 +51,8 @@ def test_valid_truth_is_verification_ready() -> None:
     assert result["state"] == "valid"
     assert result["verification_ready"] is True
     assert result["reason_codes"] == []
-    assert result["station_id"] == "10416"
+    assert result["station_id"] == "05480"
+    assert result["location_id"] == "station_05480"
     assert result["max_temperature_gap_hours"] == 1.0
 
 
@@ -61,7 +61,7 @@ def test_station_mismatch_and_conflicting_duplicate_block() -> None:
     conflicting = {
         "source_provider": "DWD",
         "station_id": "99999",
-        "location_id": "station_10416",
+        "location_id": "station_05480",
         "observed_at_utc": "2026-09-11T08:00:00Z",
         "variable": "temperature_2m",
         "value": 25.0,
@@ -69,8 +69,8 @@ def test_station_mismatch_and_conflicting_duplicate_block() -> None:
         "quality_status": "observed",
         "source_metadata": {
             "source_authority": "DWD",
-            "wmo_station_id": "99999",
-            "reference_location_id": "station_10416",
+            "dwd_cdc_station_id": "99999",
+            "reference_location_id": "station_05480",
             "station_identity_pinned": True,
         },
     }
@@ -78,7 +78,7 @@ def test_station_mismatch_and_conflicting_duplicate_block() -> None:
     assert result["state"] == "blocking"
     assert result["verification_ready"] is False
     assert "STATION_ID_MISMATCH" in result["reason_codes"]
-    assert "SOURCE_WMO_MISMATCH" in result["reason_codes"]
+    assert "SOURCE_STATION_MISMATCH" in result["reason_codes"]
     assert "CONFLICTING_DUPLICATE" in result["reason_codes"]
 
 
@@ -102,8 +102,8 @@ def test_malformed_or_naive_timestamp_and_unit_drift_block() -> None:
     records = [
         {
             "source_provider": "DWD",
-            "station_id": "10416",
-            "location_id": "station_10416",
+            "station_id": "05480",
+            "location_id": "station_05480",
             "observed_at_utc": "2026-09-11 08:00:00",
             "variable": "temperature_2m",
             "value": 20.0,
@@ -130,7 +130,7 @@ def test_quality_flag_and_station_metadata_drift_are_suspect() -> None:
     second = _obs(
         9,
         quality_status="provisional",
-        metadata=_metadata(station_name="Dortmund changed", dwd_station_id="56789"),
+        metadata=_metadata(station_name="Werl changed"),
     )
     result = assess_dwd_truth([first, second])
     assert result["state"] == "suspect"
@@ -153,8 +153,8 @@ def test_verification_api_exposes_truth_readiness(tmp_path) -> None:
     observations = [
         Observation(
             source_provider="DWD",
-            station_id="10416",
-            location_id="station_10416",
+            station_id="05480",
+            location_id="station_05480",
             observed_at_utc=now - timedelta(hours=1),
             variable="temperature_2m",
             value=19.0,
@@ -164,8 +164,8 @@ def test_verification_api_exposes_truth_readiness(tmp_path) -> None:
         ),
         Observation(
             source_provider="DWD",
-            station_id="10416",
-            location_id="station_10416",
+            station_id="05480",
+            location_id="station_05480",
             observed_at_utc=now,
             variable="temperature_2m",
             value=20.0,

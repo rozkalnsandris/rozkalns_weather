@@ -36,10 +36,12 @@ def _plan():
 
 def _complete_evidence() -> dict[str, object]:
     plan = _plan()
+    identity = plan["identity"]
     runs = _runs(date(2026, 4, 2), date(2026, 4, 15))
 
     def model_state() -> dict[str, object]:
         return {
+            "location_id": identity["benchmark_location_id"],
             "completed_runs": list(runs),
             "expected_run_count": len(runs),
             "present_run_count": len(runs),
@@ -63,7 +65,9 @@ def _complete_evidence() -> dict[str, object]:
             "end_date": "2026-04-15",
             "models": ["icon_d2", "ecmwf_ifs", "ecmwf_aifs"],
             "run_hours_utc": [0, 6, 12, 18],
-            "truth_station_id": "10416",
+            "benchmark_location_id": identity["benchmark_location_id"],
+            "truth_station_id": identity["truth_station_id"],
+            "truth_variables": list(identity["truth_variables"]),
             "recovery_decision": "verified_backup_available",
         },
         "schema": {
@@ -73,7 +77,9 @@ def _complete_evidence() -> dict[str, object]:
             "command": SCHEMA_INIT_COMMAND,
         },
         "truth": {
-            "station_id": "10416",
+            "station_id": identity["truth_station_id"],
+            "location_id": identity["benchmark_location_id"],
+            "variables": list(identity["truth_variables"]),
             "completed_chunks": ["2026-04-02..2026-04-15"],
             "expected_chunk_count": 1,
             "present_chunk_count": 1,
@@ -92,11 +98,11 @@ def _complete_evidence() -> dict[str, object]:
 
 def test_complete_execution_evidence_passes_without_granting_authority() -> None:
     result = validate_execution_evidence(_plan(), _complete_evidence())
-
     assert result["state"] == "PASS"
     assert result["block_reasons"] == []
     assert result["progress"]["complete"] is True
-    assert result["bindings"]["truth_station_id"] == "10416"
+    assert result["bindings"]["truth_station_id"] == "05480"
+    assert result["bindings"]["benchmark_location_id"] == "station_05480"
     assert result["authority"]["production_data_authority_granted"] is False
     assert result["authority"]["automatic_retry_allowed"] is False
 
@@ -107,9 +113,7 @@ def test_clean_ordered_prefix_is_in_progress_not_blocked() -> None:
     evidence["forecasts"]["icon_d2"]["completed_runs"] = completed
     evidence["forecasts"]["icon_d2"]["present_run_count"] = len(completed)
     evidence["integrity"] = {"ok": None}
-
     result = validate_execution_evidence(_plan(), evidence)
-
     assert result["state"] == "IN_PROGRESS"
     assert result["block_reasons"] == []
     assert result["progress"]["complete"] is False
@@ -119,21 +123,31 @@ def test_wrong_source_and_stale_recovery_decision_block() -> None:
     evidence = _complete_evidence()
     evidence["source_sha"] = "b" * 40
     evidence["identity"]["recovery_decision"] = "owner_accepts_proceeding_without_prewrite_backup"
-
     result = validate_execution_evidence(_plan(), evidence)
-
     assert result["state"] == "BLOCKED"
     assert "SOURCE_SHA_MISMATCH" in result["block_reasons"]
     assert "RECOVERY_DECISION_MISMATCH" in result["block_reasons"]
+
+
+def test_station_location_and_variable_bindings_block_drift() -> None:
+    evidence = _complete_evidence()
+    evidence["identity"]["truth_station_id"] = "10416"
+    evidence["truth"]["location_id"] = "station_10416"
+    evidence["truth"]["variables"] = ["temperature_2m"]
+    evidence["forecasts"]["ecmwf_aifs"]["location_id"] = "station_10416"
+    result = validate_execution_evidence(_plan(), evidence)
+    assert result["state"] == "BLOCKED"
+    assert "TRUTH_STATION_ID_MISMATCH" in result["block_reasons"]
+    assert "TRUTH_LOCATION_MISMATCH" in result["block_reasons"]
+    assert "TRUTH_VARIABLE_SCOPE_MISMATCH" in result["block_reasons"]
+    assert "ECMWF_AIFS_LOCATION_MISMATCH" in result["block_reasons"]
 
 
 def test_interrupted_write_and_checkpoint_database_divergence_block() -> None:
     evidence = _complete_evidence()
     evidence["truth"]["write_interrupted"] = True
     evidence["forecasts"]["ecmwf_ifs"]["database_ahead_of_checkpoint"] = True
-
     result = validate_execution_evidence(_plan(), evidence)
-
     assert result["state"] == "BLOCKED"
     assert "INTERRUPTED_WRITE_REQUIRES_STOP" in result["block_reasons"]
     assert "CHECKPOINT_DATABASE_DIVERGENCE" in result["block_reasons"]
@@ -144,9 +158,7 @@ def test_count_mismatch_revision_drift_and_unbound_database_block() -> None:
     evidence["database_identity"] = "other-db"
     evidence["forecasts"]["ecmwf_aifs"]["present_run_count"] -= 1
     evidence["forecasts"]["ecmwf_aifs"]["revision_drift_runs"] = ["2026-04-02T00:00:00Z"]
-
     result = validate_execution_evidence(_plan(), evidence)
-
     assert result["state"] == "BLOCKED"
     assert "DATABASE_IDENTITY_UNBOUND" in result["block_reasons"]
     assert "ECMWF_AIFS_PRESENT_COUNT_MISMATCH" in result["block_reasons"]
@@ -160,9 +172,7 @@ def test_count_mismatch_revision_drift_and_unbound_database_block() -> None:
 def test_private_evidence_is_rejected_without_echoing_value(private_key: str) -> None:
     evidence = _complete_evidence()
     evidence[private_key] = "/private/value" if private_key.endswith("path") else "private-value"
-
     result = validate_execution_evidence(_plan(), evidence)
-
     assert result["state"] == "BLOCKED"
     assert result["block_reasons"] == ["PRIVATE_EVIDENCE_REJECTED"]
     assert "/private/value" not in json.dumps(result)
@@ -172,8 +182,6 @@ def test_private_evidence_is_rejected_without_echoing_value(private_key: str) ->
 def test_malformed_execution_evidence_fails_closed_without_exception() -> None:
     evidence = _complete_evidence()
     evidence["forecasts"] = "not-an-object"
-
     result = validate_execution_evidence(_plan(), evidence)
-
     assert result["state"] == "BLOCKED"
     assert "FORECAST_EVIDENCE_MISSING" in result["block_reasons"]

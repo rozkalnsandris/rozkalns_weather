@@ -1,12 +1,10 @@
 from __future__ import annotations
 
+from datetime import date
 import json
 from pathlib import Path
 
-from rozkalns_weather.production_bootstrap import (
-    TRUTH_TRANSPORT_BLOCK_REASON,
-    build_production_bootstrap_plan,
-)
+from rozkalns_weather.production_bootstrap import build_production_bootstrap_plan
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -61,15 +59,18 @@ def test_official_evidence_does_not_claim_an_unproven_station_mapping() -> None:
     )
 
 
-def test_production_descriptor_binds_the_decision_and_remains_non_write_ready() -> None:
+def test_legacy_decision_remains_audit_evidence_while_new_descriptor_pins_cdc_benchmark() -> None:
     descriptor = _load(BOOTSTRAP_PATH)
     truth = descriptor["truth_scope"]
-    assert descriptor["status"] == "SOURCE_BLOCKED_NO_VERIFIED_DWD_HISTORICAL_TRANSPORT"
+    assert descriptor["status"] == "SOURCE_READY_REQUIRES_EXACT_LIVE_DATA_AUTHORITY"
+    assert descriptor["location"]["location_id"] == "station_05480"
+    assert descriptor["location"]["truth_station_id"] == "05480"
     assert truth["source_authority"] == "DWD"
-    assert truth["transport"] == "none_verified"
-    assert truth["decision"] == "NO_VERIFIED_DWD_HISTORICAL_TRANSPORT"
-    assert truth["decision_contract"] == "deploy/dwd-10416-historical-truth-decision.json"
-    assert truth["wmo_to_cdc_station_mapping_status"] == "UNVERIFIED"
+    assert truth["transport"] == "DWD CDC Open Data"
+    assert truth["station_id"] == "05480"
+    assert truth["location_id"] == "station_05480"
+    assert truth["historical_transport_status"] == "verified_frozen_window_product_coverage"
+    assert truth["legacy_10416_decision_contract"] == "deploy/dwd-10416-historical-truth-decision.json"
     assert truth["nearest_station_fallback_allowed"] is False
     assert truth["live_backfill_allowed"] is False
     authority = descriptor["authority"]
@@ -77,15 +78,15 @@ def test_production_descriptor_binds_the_decision_and_remains_non_write_ready() 
     assert authority["source_merge_authorizes_production_write"] is False
 
 
-def test_runtime_plan_still_fails_closed_until_a_later_verified_transport_change() -> None:
-    from datetime import date
-
+def test_new_runtime_plan_is_source_ready_but_still_has_no_live_data_authority() -> None:
     plan = build_production_bootstrap_plan(
         source_sha="a" * 40,
         start=date(2026, 4, 2),
         end=date(2026, 4, 3),
         recovery_decision="verified_backup_available",
     )
-    assert plan["state"] == "BLOCKED_BY_TRUTH_TRANSPORT_CAPABILITY"
-    assert plan["block_reasons"] == [TRUTH_TRANSPORT_BLOCK_REASON]
+    assert plan["state"] == "SOURCE_READY_REQUIRES_LIVE_DATA_AUTHORITY"
+    assert plan["block_reasons"] == []
+    assert plan["identity"]["truth_station_id"] == "05480"
+    assert plan["identity"]["benchmark_location_id"] == "station_05480"
     assert plan["production_data_authority_granted"] is False

@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "contract": "rozkalns-weather.dwd-cdc-benchmark-station.v1",
+  "decision_issue": 155,
+  "parent_issue": 148,
+  "status": "SELECTED_VERIFIED_SOURCE_READY",
+  "truth_authority": "DWD",
+  "transport": "DWD CDC Open Data",
+  "station": {
+    "stations_id": "05480",
+    "name": "Werl",
+    "location_id": "station_05480",
+    "latitude": 51.5763,
+    "longitude": 7.8879,
+    "elevation_m": 85.0,
+    "timezone": "Europe/Berlin",
+    "coordinates_are_public_station_metadata": true,
+    "coordinates_are_private_home_coordinates": false
+  },
+  "frozen_verification_window": {
+    "start": "2026-04-02",
+    "end": "2026-09-10",
+    "coverage_revalidation_required_before_live_write": true
+  },
+  "truth_products": [
+    {"family": "air_temperature", "archive_code": "TU", "column": "TT_TU", "variable": "temperature_2m", "unit": "degC"},
+    {"family": "air_temperature", "archive_code": "TU", "column": "RF_TU", "variable": "relative_humidity_2m", "unit": "%"},
+    {"family": "dew_point", "archive_code": "TD", "column": "TD", "variable": "dew_point_2m", "unit": "degC"},
+    {"family": "pressure", "archive_code": "P0", "column": "P", "variable": "pressure_msl", "unit": "hPa", "note": "P is sea-level pressure; P0 is station-height pressure and is not mapped to pressure_msl"},
+    {"family": "wind", "archive_code": "FF", "column": "F", "variable": "wind_speed_10m", "unit": "m/s"},
+    {"family": "extreme_wind", "archive_code": "FX", "column": "FX_911", "variable": "wind_gust_10m", "unit": "m/s"},
+    {"family": "precipitation", "archive_code": "RR", "column": "R1", "variable": "precipitation_1h", "unit": "mm", "accumulation_window_minutes": 60},
+    {"family": "cloudiness", "archive_code": "N", "column": "V_N", "variable": "cloud_cover", "native_unit": "1/8", "unit": "%", "conversion": "value * 12.5"}
+  ],
+  "missing_value_policy": {
+    "dwd_sentinel_minus_999": "omit",
+    "imputation_allowed": false,
+    "zero_is_missing": false
+  },
+  "forecast_colocation": {
+    "location_id": "station_05480",
+    "models": ["icon_d2", "ecmwf_ifs", "ecmwf_aifs"],
+    "use_exact_pinned_station_coordinates": true,
+    "nearest_station_fallback_allowed": false,
+    "runtime_station_substitution_allowed": false
+  },
+  "legacy_compatibility": {
+    "station_10416_retained": true,
+    "station_10416_role": "legacy WMO/MOSMIX/current-reference compatibility only",
+    "existing_corpus_rewrite_authorized": false,
+    "wmo_or_mosmix_mapping_for_05480_claimed": false
+  },
+  "authority": {
+    "production_data_authority_granted": false,
+    "schema_migration_authority_granted": false,
+    "runtime_live_authority_granted": false,
+    "systemd_timer_authority_granted": false,
+    "cloudflare_or_network_authority_granted": false
+  }
+}
