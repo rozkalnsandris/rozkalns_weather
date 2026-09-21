@@ -8,7 +8,7 @@ import pytest
 
 from rozkalns_weather.backfill import BackfillCheckpoint, PublicBackfillRunner, _require_ready_station_database, forecast_integrity, iter_run_times
 from rozkalns_weather.db import Database
-from rozkalns_weather.locations import DWD_10416
+from rozkalns_weather.locations import BENCHMARK_LOCATION, BENCHMARK_TRUTH_STATION_ID
 from rozkalns_weather.models import ForecastRun, ForecastValue, Observation
 from rozkalns_weather.providers.open_meteo import ICON_D2
 
@@ -17,22 +17,22 @@ def _db(tmp_path: Path) -> Database:
     database = Database(f"sqlite:///{tmp_path / 'backfill.db'}")
     database.initialize()
     database.ensure_location(
-        location_id=DWD_10416.id,
-        label=DWD_10416.label,
-        lat=DWD_10416.lat,
-        lon=DWD_10416.lon,
-        elevation_m=DWD_10416.elevation_m,
-        timezone=DWD_10416.timezone,
+        location_id=BENCHMARK_LOCATION.id,
+        label=BENCHMARK_LOCATION.label,
+        lat=BENCHMARK_LOCATION.lat,
+        lon=BENCHMARK_LOCATION.lon,
+        elevation_m=BENCHMARK_LOCATION.elevation_m,
+        timezone=BENCHMARK_LOCATION.timezone,
     )
     return database
 
 
 class ForecastStub:
     def __init__(self) -> None:
-        self.calls: list[datetime] = []
+        self.calls: list[tuple[float, float, datetime]] = []
 
     def fetch(self, *, lat: float, lon: float, init_time: datetime, availability_time, retrieved_at=None) -> ForecastRun:
-        self.calls.append(init_time)
+        self.calls.append((lat, lon, init_time))
         return ForecastRun(
             provider=ICON_D2.provider_id,
             model_provider=ICON_D2.model_provider,
@@ -65,8 +65,8 @@ class ObservationStub:
         return [
             Observation(
                 source_provider="DWD",
-                station_id="10416",
-                location_id=DWD_10416.id,
+                station_id=BENCHMARK_TRUTH_STATION_ID,
+                location_id=BENCHMARK_LOCATION.id,
                 observed_at_utc=datetime.combine(start, datetime.min.time(), tzinfo=timezone.utc),
                 variable="temperature_2m",
                 value=10.0,
@@ -82,7 +82,7 @@ def test_iter_run_times_requires_explicit_cycle_hours() -> None:
     assert all(value.tzinfo == timezone.utc for value in values)
 
 
-def test_forecast_backfill_is_checkpoint_resumable_and_idempotent(tmp_path: Path) -> None:
+def test_forecast_backfill_is_checkpoint_resumable_idempotent_and_colocated(tmp_path: Path) -> None:
     database = _db(tmp_path)
     stub = ForecastStub()
     runner = PublicBackfillRunner(database, sleep=lambda _: None)
@@ -106,8 +106,10 @@ def test_forecast_backfill_is_checkpoint_resumable_and_idempotent(tmp_path: Path
         adapter=stub,
     )
     assert first["processed_runs"] == 2
+    assert first["location_id"] == BENCHMARK_LOCATION.id
     assert second["processed_runs"] == 0
     assert len(stub.calls) == 2
+    assert all(lat == BENCHMARK_LOCATION.lat and lon == BENCHMARK_LOCATION.lon for lat, lon, _ in stub.calls)
     report = forecast_integrity(
         database,
         model=ICON_D2,
@@ -132,11 +134,12 @@ def test_forecast_dry_run_performs_no_fetch_or_write(tmp_path: Path) -> None:
         adapter=stub,
     )
     assert result["state"] == "dry_run"
+    assert result["location_id"] == BENCHMARK_LOCATION.id
     assert result["planned_runs"] == ["2026-04-02T06:00:00Z"]
     assert stub.calls == []
 
 
-def test_truth_backfill_chunks_and_resumes(tmp_path: Path) -> None:
+def test_truth_backfill_chunks_and_resumes_on_pinned_cdc_station(tmp_path: Path) -> None:
     database = _db(tmp_path)
     stub = ObservationStub()
     runner = PublicBackfillRunner(database, sleep=lambda _: None)
@@ -158,6 +161,8 @@ def test_truth_backfill_chunks_and_resumes(tmp_path: Path) -> None:
         adapter=stub,
     )
     assert first["inserted_observations"] == 2
+    assert first["station_id"] == "01303"
+    assert first["location_id"] == BENCHMARK_LOCATION.id
     assert second["inserted_observations"] == 0
     assert stub.calls == [(date(2026, 4, 1), date(2026, 4, 2)), (date(2026, 4, 3), date(2026, 4, 3))]
 
@@ -191,9 +196,13 @@ def test_checkpoint_rejects_duplicates_and_skipped_prefix(tmp_path: Path) -> Non
         )
 
 
-def test_backfill_requires_explicit_preexisting_schema(tmp_path: Path) -> None:
+def test_backfill_requires_explicit_preexisting_schema_and_registered_benchmark(tmp_path: Path) -> None:
     path = tmp_path / "missing.db"
     database = Database(f"sqlite:///{path}")
     with pytest.raises(RuntimeError, match="explicit `rozkalns-weather init-database`"):
         _require_ready_station_database(database)
     assert not path.exists()
+
+    database.initialize()
+    with pytest.raises(RuntimeError, match=BENCHMARK_LOCATION.id):
+        _require_ready_station_database(database)
