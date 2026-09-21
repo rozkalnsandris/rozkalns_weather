@@ -6,12 +6,14 @@ import json
 from math import isfinite
 from typing import Any
 
+from .locations import BENCHMARK_LOCATION
 from .models import Observation, utc_iso
+from .providers.dwd_cdc_observations import CDC_STATION_ID
 from .semantics import VARIABLES
 
 TRUTH_QUALITY_CONTRACT = "dwd-truth-quality-v1"
-EXPECTED_STATION_ID = "10416"
-EXPECTED_LOCATION_ID = "station_10416"
+EXPECTED_STATION_ID = CDC_STATION_ID
+EXPECTED_LOCATION_ID = BENCHMARK_LOCATION.id
 
 _VALUE_BOUNDS: dict[str, tuple[float, float]] = {
     "temperature_2m": (-80.0, 60.0),
@@ -151,9 +153,11 @@ def assess_dwd_truth(
             authority = metadata.get("source_authority")
             if authority is not None and str(authority) != "DWD":
                 blocking.add("SOURCE_AUTHORITY_MISMATCH")
-            metadata_wmo = metadata.get("wmo_station_id")
-            if metadata_wmo is not None and str(metadata_wmo) != expected_station_id:
-                blocking.add("SOURCE_WMO_MISMATCH")
+            metadata_station = metadata.get("dwd_cdc_station_id")
+            if metadata_station is None:
+                metadata_station = metadata.get("wmo_station_id")
+            if metadata_station is not None and str(metadata_station) != expected_station_id:
+                blocking.add("SOURCE_STATION_MISMATCH")
             reference_location = metadata.get("reference_location_id")
             if reference_location is not None and str(reference_location) != expected_location_id:
                 blocking.add("SOURCE_REFERENCE_LOCATION_MISMATCH")
@@ -162,7 +166,7 @@ def assess_dwd_truth(
             station_name = metadata.get("station_name")
             if station_name:
                 station_names.add(str(station_name))
-            dwd_station_id = metadata.get("dwd_station_id")
+            dwd_station_id = metadata.get("dwd_cdc_station_id") or metadata.get("dwd_station_id")
             if dwd_station_id:
                 dwd_station_ids.add(str(dwd_station_id))
 
@@ -241,6 +245,7 @@ def database_truth_quality(
     *,
     days: int = 90,
     location_id: str = EXPECTED_LOCATION_ID,
+    station_id: str = EXPECTED_STATION_ID,
 ) -> dict[str, object]:
     if days < 1:
         raise ValueError("days must be >= 1")
@@ -249,9 +254,13 @@ def database_truth_quality(
             """SELECT source_provider,station_id,location_id,observed_at_utc,variable,value,unit,
                       quality_status,source_metadata_json
                FROM observations
-               WHERE source_provider='DWD' AND location_id=?
+               WHERE source_provider='DWD' AND location_id=? AND station_id=?
                  AND julianday(observed_at_utc)>=julianday('now',?)
                ORDER BY observed_at_utc,variable,id""",
-            (location_id, f"-{days} days"),
+            (location_id, station_id, f"-{days} days"),
         ).fetchall()
-    return assess_dwd_truth([dict(row) for row in rows], expected_location_id=location_id)
+    return assess_dwd_truth(
+        [dict(row) for row in rows],
+        expected_station_id=station_id,
+        expected_location_id=location_id,
+    )

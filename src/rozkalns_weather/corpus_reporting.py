@@ -8,8 +8,9 @@ from typing import Iterable
 
 from .backfill import ARCHIVE_START, COMMON_BENCHMARK_START, MODEL_REGISTRY, iter_run_times
 from .db import Database
-from .locations import DWD_10416
+from .locations import BENCHMARK_LOCATION
 from .models import utc_iso
+from .providers.dwd_cdc_observations import CDC_STATION_ID
 from .verification import LEAD_BUCKETS, lead_bucket
 
 DEFAULT_MODELS = ("icon_d2", "ecmwf_ifs", "ecmwf_aifs")
@@ -84,9 +85,7 @@ def _model_summary(
             if row["model_version"] in (None, ""):
                 model_version_missing += 1
     expected_by_hour = Counter(datetime.fromisoformat(value.replace("Z", "+00:00")).hour for value in expected_init_times)
-    present_by_hour = Counter(
-        datetime.fromisoformat(value.replace("Z", "+00:00")).hour for value in present if value in expected
-    )
+    present_by_hour = Counter(datetime.fromisoformat(value.replace("Z", "+00:00")).hour for value in present if value in expected)
     by_run_hour = {
         f"{hour:02d}": {
             "expected_runs": expected_by_hour.get(hour, 0),
@@ -169,6 +168,7 @@ def public_corpus_report(
         raise ValueError(f"report must include common comparison window from {COMMON_BENCHMARK_START.isoformat()}")
     start_iso, end_iso = _window(common_start, end)
     placeholders = ",".join("?" for _ in models)
+    location_id = BENCHMARK_LOCATION.id
     with _readonly_connection(database) as connection:
         runs = connection.execute(
             f"""SELECT provider,model_provider,model_name,model_version,location_id,init_time_utc,retrieved_at_utc,
@@ -176,7 +176,7 @@ def public_corpus_report(
                 FROM forecast_runs
                 WHERE location_id=? AND provider IN ({placeholders}) AND init_time_utc>=? AND init_time_utc<?
                 ORDER BY provider,init_time_utc,revision""",
-            (DWD_10416.id, *models, start_iso, end_iso),
+            (location_id, *models, start_iso, end_iso),
         ).fetchall()
         value_bounds = connection.execute(
             f"""SELECT r.provider,COUNT(*) AS value_count,MIN(v.valid_time_utc) AS first_valid_time_utc,
@@ -184,14 +184,14 @@ def public_corpus_report(
                 FROM forecast_runs r JOIN forecast_values v ON v.run_id=r.id
                 WHERE r.location_id=? AND r.provider IN ({placeholders}) AND r.init_time_utc>=? AND r.init_time_utc<?
                 GROUP BY r.provider ORDER BY r.provider""",
-            (DWD_10416.id, *models, start_iso, end_iso),
+            (location_id, *models, start_iso, end_iso),
         ).fetchall()
         lead_rows = connection.execute(
             f"""SELECT r.provider,r.init_time_utc,v.lead_hours,COUNT(*) AS n
                 FROM forecast_runs r JOIN forecast_values v ON v.run_id=r.id
                 WHERE r.location_id=? AND r.provider IN ({placeholders}) AND r.init_time_utc>=? AND r.init_time_utc<?
                 GROUP BY r.provider,r.init_time_utc,v.lead_hours ORDER BY r.provider,r.init_time_utc,v.lead_hours""",
-            (DWD_10416.id, *models, start_iso, end_iso),
+            (location_id, *models, start_iso, end_iso),
         ).fetchall()
         forecast_valid = {
             str(row[0])
@@ -202,16 +202,16 @@ def public_corpus_report(
                       AND r.init_time_utc>=? AND r.init_time_utc<?
                       AND v.valid_time_utc>=? AND v.valid_time_utc<?
                       AND v.variable='temperature_2m' AND v.statistic IN ('deterministic','mean')""",
-                (DWD_10416.id, *models, start_iso, end_iso, start_iso, end_iso),
+                (location_id, *models, start_iso, end_iso, start_iso, end_iso),
             ).fetchall()
         }
         observed_valid = {
             str(row[0])
             for row in connection.execute(
                 """SELECT DISTINCT observed_at_utc FROM observations
-                   WHERE source_provider='DWD' AND station_id='10416' AND location_id=?
+                   WHERE source_provider='DWD' AND station_id=? AND location_id=?
                      AND variable='temperature_2m' AND observed_at_utc>=? AND observed_at_utc<?""",
-                (DWD_10416.id, start_iso, end_iso),
+                (CDC_STATION_ID, location_id, start_iso, end_iso),
             ).fetchall()
         }
         observation_gaps = int(
@@ -219,11 +219,11 @@ def public_corpus_report(
                 """WITH ordered AS (
                      SELECT observed_at_utc,LAG(observed_at_utc) OVER (ORDER BY observed_at_utc) AS prev
                      FROM observations
-                     WHERE source_provider='DWD' AND station_id='10416' AND location_id=?
+                     WHERE source_provider='DWD' AND station_id=? AND location_id=?
                        AND variable='temperature_2m' AND observed_at_utc>=? AND observed_at_utc<?
                    ) SELECT COUNT(*) FROM ordered
                      WHERE prev IS NOT NULL AND (julianday(observed_at_utc)-julianday(prev))*24.0>2.01""",
-                (DWD_10416.id, start_iso, end_iso),
+                (CDC_STATION_ID, location_id, start_iso, end_iso),
             ).fetchone()[0]
         )
         ifs_history_start = utc_iso(datetime.combine(ARCHIVE_START["ecmwf_ifs"], time.min, tzinfo=timezone.utc))
@@ -232,7 +232,7 @@ def public_corpus_report(
                       MIN(init_time_utc) AS first_init_time_utc,MAX(init_time_utc) AS last_init_time_utc
                FROM forecast_runs WHERE location_id=? AND provider='ecmwf_ifs'
                  AND init_time_utc>=? AND init_time_utc<?""",
-            (DWD_10416.id, ifs_history_start, utc_iso(datetime.combine(COMMON_BENCHMARK_START, time.min, tzinfo=timezone.utc))),
+            (location_id, ifs_history_start, utc_iso(datetime.combine(COMMON_BENCHMARK_START, time.min, tzinfo=timezone.utc))),
         ).fetchone()
     rows_by_provider: dict[str, list[sqlite3.Row]] = defaultdict(list)
     for row in runs:
@@ -290,14 +290,14 @@ def public_corpus_report(
             "effective_start": common_start.isoformat(),
             "end": end.isoformat(),
             "common_archive_start": COMMON_BENCHMARK_START.isoformat(),
-            "location_id": DWD_10416.id,
+            "location_id": location_id,
             "models": list(models),
             "run_hours_utc": list(run_hours),
         },
         "models": model_summaries,
         "observations": {
             "source_provider": "DWD",
-            "station_id": "10416",
+            "station_id": CDC_STATION_ID,
             "variable": "temperature_2m",
             "forecast_valid_times_in_window": len(forecast_valid),
             "matched_truth_times": len(forecast_valid & observed_valid),

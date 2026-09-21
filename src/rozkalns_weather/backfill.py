@@ -9,9 +9,9 @@ import time as time_module
 from typing import Iterable
 
 from .db import Database
-from .locations import DWD_10416
+from .locations import BENCHMARK_LOCATION
 from .models import utc_iso
-from .providers.dwd_observations import DwdObservationAdapter
+from .providers.dwd_cdc_observations import CDC_STATION_ID, DwdCdcObservationAdapter
 from .runtime import database_schema_state
 from .providers.open_meteo import (
     ECMWF_AIFS,
@@ -97,10 +97,17 @@ def _require_ready_station_database(database: Database) -> None:
     state = database_schema_state(database)
     if state.get("state") != "ready":
         raise RuntimeError("database schema is not initialized; run explicit `rozkalns-weather init-database` first")
-    with database.connect() as connection:
-        row = connection.execute("SELECT id FROM locations WHERE id=?", (DWD_10416.id,)).fetchone()
-    if row is None:
-        raise RuntimeError("station_10416 location is missing; explicit schema initialization must establish it before backfill")
+
+
+def _ensure_benchmark_location(database: Database) -> None:
+    database.ensure_location(
+        location_id=BENCHMARK_LOCATION.id,
+        label=BENCHMARK_LOCATION.label,
+        lat=BENCHMARK_LOCATION.lat,
+        lon=BENCHMARK_LOCATION.lon,
+        elevation_m=BENCHMARK_LOCATION.elevation_m,
+        timezone=BENCHMARK_LOCATION.timezone,
+    )
 
 
 class PublicBackfillRunner:
@@ -132,20 +139,21 @@ class PublicBackfillRunner:
             return {
                 "state": "dry_run",
                 "model": model.provider_id,
-                "location_id": DWD_10416.id,
+                "location_id": BENCHMARK_LOCATION.id,
                 "planned_runs": [utc_iso(run) for run in planned],
                 "already_completed": len(runs) - len(planned),
                 "common_benchmark": start >= COMMON_BENCHMARK_START,
             }
+        _ensure_benchmark_location(self.database)
         inserted = 0
         for index, init_time in enumerate(planned):
             run = adapter.fetch(
-                lat=DWD_10416.lat,
-                lon=DWD_10416.lon,
+                lat=BENCHMARK_LOCATION.lat,
+                lon=BENCHMARK_LOCATION.lon,
                 init_time=init_time,
                 availability_time=None,
             )
-            self.database.insert_forecast_run(run, location_id=DWD_10416.id)
+            self.database.insert_forecast_run(run, location_id=BENCHMARK_LOCATION.id)
             checkpoint.completed.add(utc_iso(init_time))
             checkpoint.save()
             inserted += 1
@@ -154,7 +162,7 @@ class PublicBackfillRunner:
         return {
             "state": "complete",
             "model": model.provider_id,
-            "location_id": DWD_10416.id,
+            "location_id": BENCHMARK_LOCATION.id,
             "processed_runs": inserted,
             "checkpoint": str(checkpoint_path),
         }
@@ -168,14 +176,14 @@ class PublicBackfillRunner:
         dry_run: bool = False,
         chunk_days: int = 14,
         rate_limit_seconds: float = 1.0,
-        adapter: DwdObservationAdapter | None = None,
+        adapter: DwdCdcObservationAdapter | None = None,
     ) -> dict[str, object]:
         if end < start:
             raise ValueError("end date must not be before start date")
         if chunk_days < 1 or chunk_days > 31:
             raise ValueError("chunk_days must be between 1 and 31")
         checkpoint = BackfillCheckpoint.load(checkpoint_path)
-        adapter = adapter or DwdObservationAdapter()
+        adapter = adapter or DwdCdcObservationAdapter()
         all_chunks: list[tuple[date, date]] = []
         cursor = start
         while cursor <= end:
@@ -188,10 +196,11 @@ class PublicBackfillRunner:
         if dry_run:
             return {
                 "state": "dry_run",
-                "station_id": "10416",
-                "location_id": DWD_10416.id,
+                "station_id": CDC_STATION_ID,
+                "location_id": BENCHMARK_LOCATION.id,
                 "planned_chunks": [f"{a.isoformat()}..{b.isoformat()}" for a, b in chunks],
             }
+        _ensure_benchmark_location(self.database)
         inserted = 0
         for index, (chunk_start, chunk_end) in enumerate(chunks):
             observations = adapter.fetch_range(start=chunk_start, end=chunk_end)
@@ -202,8 +211,8 @@ class PublicBackfillRunner:
                 self.sleep(rate_limit_seconds)
         return {
             "state": "complete",
-            "station_id": "10416",
-            "location_id": DWD_10416.id,
+            "station_id": CDC_STATION_ID,
+            "location_id": BENCHMARK_LOCATION.id,
             "inserted_observations": inserted,
             "checkpoint": str(checkpoint_path),
         }
@@ -227,7 +236,7 @@ def forecast_integrity(
             (
                 model.provider_id,
                 model.model_name,
-                DWD_10416.id,
+                BENCHMARK_LOCATION.id,
                 f"{start.isoformat()}T00:00:00Z",
                 f"{(end + timedelta(days=1)).isoformat()}T00:00:00Z",
             ),
@@ -237,6 +246,7 @@ def forecast_integrity(
     return {
         "ok": not (expected - present) and not (present - expected) and not revisions,
         "model": model.provider_id,
+        "location_id": BENCHMARK_LOCATION.id,
         "expected_runs": len(expected),
         "present_runs": len(expected & present),
         "missing_runs": sorted(expected - present),
@@ -251,7 +261,7 @@ def main() -> None:
     parser.add_argument("--database-url", required=True, help="sqlite:/// path; use a non-production corpus unless separately authorized")
     sub = parser.add_subparsers(dest="command", required=True)
 
-    forecast = sub.add_parser("forecast", help="backfill exact Open-Meteo Single Runs")
+    forecast = sub.add_parser("forecast", help="backfill exact Open-Meteo Single Runs at the canonical public benchmark station")
     forecast.add_argument("--model", choices=sorted(MODEL_REGISTRY), required=True)
     forecast.add_argument("--start", type=_parse_date, required=True)
     forecast.add_argument("--end", type=_parse_date, required=True)
@@ -260,7 +270,7 @@ def main() -> None:
     forecast.add_argument("--rate-limit-seconds", type=float, default=1.0)
     forecast.add_argument("--dry-run", action="store_true")
 
-    truth = sub.add_parser("truth", help="backfill pinned DWD WMO 10416 observations through Bright Sky")
+    truth = sub.add_parser("truth", help="backfill pinned DWD CDC Werl 05480 observations from DWD Open Data")
     truth.add_argument("--start", type=_parse_date, required=True)
     truth.add_argument("--end", type=_parse_date, required=True)
     truth.add_argument("--checkpoint", type=Path, required=True)
