@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "contract": "rozkalns-weather.dwd-cdc-benchmark-station.v1",
+  "decision": "VERIFIED_DWD_CDC_BENCHMARK_STATION",
+  "truth_authority": "DWD",
+  "station": {
+    "dwd_station_id": "01303",
+    "name": "Essen-Bredeney",
+    "federal_state": "Nordrhein-Westfalen",
+    "location_id": "station_dwd_cdc_01303",
+    "latitude": 51.4041,
+    "longitude": 6.9677,
+    "elevation_m": 150.0,
+    "coordinates_are_public_station_metadata": true,
+    "private_home_point": false
+  },
+  "frozen_window": {
+    "start_date": "2026-04-02",
+    "end_date": "2026-09-10",
+    "coverage_basis": "DWD CDC recent is updated daily and rolls the last 500 days through yesterday"
+  },
+  "required_products": {
+    "temperature_relative_humidity": {"product_code": "TU", "archive": "air_temperature", "fields": ["TT_TU", "RF_TU"], "recent_station_zip": "stundenwerte_TU_01303_akt.zip"},
+    "dew_point": {"product_code": "TD", "archive": "dew_point", "fields": ["TD"], "recent_station_zip": "stundenwerte_TD_01303_akt.zip"},
+    "sea_level_pressure": {"product_code": "P0", "archive": "pressure", "fields": ["P"], "recent_station_zip": "stundenwerte_P0_01303_akt.zip", "note": "P is sea-level pressure; P0 is station-level pressure"},
+    "wind_speed": {"product_code": "FF", "archive": "wind", "fields": ["F"], "recent_station_zip": "stundenwerte_FF_01303_akt.zip"},
+    "wind_gust": {"product_code": "FX", "archive": "extreme_wind", "fields": ["FX_911"], "recent_station_zip": "stundenwerte_FX_01303_akt.zip"},
+    "precipitation": {"product_code": "RR", "archive": "precipitation", "fields": ["R1"], "recent_station_zip": "stundenwerte_RR_01303_akt.zip"},
+    "cloud_cover": {"product_code": "N", "archive": "cloudiness", "fields": ["V_N"], "native_unit": "okta", "normalized_unit": "%", "conversion": "percent = okta * 12.5", "recent_station_zip": "stundenwerte_N_01303_akt.zip"}
+  },
+  "official_base_url": "https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/hourly",
+  "station_metadata_contract": "Each recent station ZIP contains station metadata; *_Stundenwerte_Beschreibung_Stationen.txt documents current geographic position and temporal coverage.",
+  "recent_quality": {
+    "final_quality_control_complete": false,
+    "values_may_change_upstream": true,
+    "ingested_snapshots_must_preserve_retrieval_and_product_provenance": true
+  },
+  "forecast_colocation": {
+    "required": true,
+    "location_id": "station_dwd_cdc_01303",
+    "models": ["icon_d2", "ecmwf_ifs", "ecmwf_aifs"],
+    "forecast_adapter_accepts_explicit_lat_lon": true
+  },
+  "forbidden": {
+    "runtime_nearest_station_fallback": true,
+    "third_party_truth": true,
+    "synthetic_or_imputed_truth": true,
+    "home_coordinates": true
+  },
+  "authority": {
+    "source_selection_authorizes_live_data_write": false,
+    "source_merge_authorizes_live_data_write": false,
+    "production_data_write_requires_separate_exact_live_authority": true
+  }
+}
