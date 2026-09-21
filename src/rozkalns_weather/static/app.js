@@ -4,6 +4,20 @@ const qsa = (selector) => [...document.querySelectorAll(selector)];
 const DATA_CACHE_PREFIX = "rozkalns-weather:pwa-cache:v1:";
 const UI_STATES = ["loading", "fresh", "stale", "error", "offline"];
 const PUBLIC_PROVIDER_IDS = new Set(["dwd_observations", "dwd_mosmix_l", "icon_d2", "ecmwf_ifs", "ecmwf_aifs"]);
+const FORECAST_LOCATION_META = {
+  home: {
+    label: "Home",
+    note: "Privāta home prognoze; nav izmērīta station accuracy.",
+  },
+  station_05480: {
+    label: "DWD CDC 05480",
+    note: "Canonical public benchmark; station prognozes salīdzina pret DWD CDC 05480 observations.",
+  },
+  station_10416: {
+    label: "DWD 10416 · legacy MOSMIX",
+    note: "Legacy MOSMIX reference; nav pašreizējais measured benchmark.",
+  },
+};
 const loadedSafetySurfaces = new Set();
 let lastHealth = null;
 
@@ -267,13 +281,13 @@ function renderCurrent(result, healthMap) {
   const fallbackState = stateFromResult(result);
   const observed = (current.observations || []).map((item) => item.observed_at_utc).filter(Boolean).sort().at(-1) || null;
   if (fallbackState !== "fresh") {
-    setSurfaceState("currentState", fallbackState, `${cacheMessage(result)}; DWD observation ${formatTimestamp(observed)}. This is not current live evidence.`);
+    setSurfaceState("currentState", fallbackState, `${cacheMessage(result)}; DWD CDC 05480 observation ${formatTimestamp(observed)}. This is not current live evidence.`);
     return;
   }
   const dwdState = normalizedProviderState(healthMap.dwd_observations);
-  if (!current.observations?.length) setSurfaceState("currentState", "stale", "No stored DWD WMO 10416 observation is available yet.");
-  else if (dwdState === "fresh") setSurfaceState("currentState", "fresh", `DWD WMO 10416 observation ${formatTimestamp(observed)}.`);
-  else setSurfaceState("currentState", dwdState === "error" ? "error" : "stale", `DWD observation ${formatTimestamp(observed)}; provider health is ${healthMap.dwd_observations?.freshness_state || "unknown"}.`);
+  if (!current.observations?.length) setSurfaceState("currentState", "stale", "No stored DWD CDC 05480 observation is available yet.");
+  else if (dwdState === "fresh") setSurfaceState("currentState", "fresh", `DWD CDC 05480 observation ${formatTimestamp(observed)}.`);
+  else setSurfaceState("currentState", dwdState === "error" ? "error" : "stale", `DWD CDC 05480 observation ${formatTimestamp(observed)}; provider health is ${healthMap.dwd_observations?.freshness_state || "unknown"}.`);
 }
 
 function renderTemperature(result, healthMap) {
@@ -325,10 +339,10 @@ async function refresh() {
     if (sequence !== refreshSequence) return;
     lastHealth = healthResult.payload;
     if (!forecastLocationInitialized) {
-      qs("#forecastLocation").value = lastHealth.home.configured ? "home" : "station_10416";
+      qs("#forecastLocation").value = lastHealth.home.configured ? "home" : "station_05480";
       forecastLocationInitialized = true;
     }
-    qs("#statusBadge").textContent = lastHealth.home.configured ? "home configured" : "home config pending";
+    qs("#statusBadge").textContent = lastHealth.home.configured ? "home configured" : "public benchmark";
     qs("#providerGrid").innerHTML = providersCard(lastHealth.providers);
     const healthState = providerGridState(lastHealth, healthResult);
     setSurfaceState("providerState", healthState.state, healthState.message);
@@ -345,9 +359,9 @@ async function refresh() {
 
   if (sequence !== refreshSequence) return;
   const locationId = qs("#forecastLocation").value;
-  const locationLabel = locationId === "home" ? "Home" : "DWD 10416";
-  document.querySelectorAll(".forecast-location-label").forEach((node) => { node.textContent = locationLabel; });
-  qs("#forecastLocationNote").textContent = locationId === "home" ? "Privāta home prognoze; nav izmērīta station accuracy." : "Station prognoze; izmērīta accuracy tikai pret DWD 10416 observations.";
+  const locationMeta = FORECAST_LOCATION_META[locationId] || FORECAST_LOCATION_META.station_05480;
+  document.querySelectorAll(".forecast-location-label").forEach((node) => { node.textContent = locationMeta.label; });
+  qs("#forecastLocationNote").textContent = locationMeta.note;
   ["overviewChart", "modelsChart", "overviewPrecip", "modelsPrecip"].forEach((id) => {
     qs(`#${id}`).textContent = "Prognozes tiek ielādētas…";
     qs(`#${id}`).classList.add("empty");
