@@ -30,7 +30,16 @@
       "open_meteo_model_key": "ecmwf_ifs",
       "requested_horizon_days": 10,
       "exact_run_availability_proven": true,
-      "full_horizon_boundary_proven": true
+      "full_horizon_boundary_proven": true,
+      "lead_bucket_integrity_policy": "cycle_aware",
+      "cycle_horizon_hours": {
+        "00": 240,
+        "06": 144,
+        "12": 240,
+        "18": 144
+      },
+      "lead_bucket_expectation_rule": "a run is expected in a bucket only when the bucket lower bound is strictly below that cycle's horizon",
+      "authoritative_horizon_reference": "https://www.ecmwf.int/en/forecasts/datasets/open-data"
     },
     "ecmwf_aifs": {
       "model_provider": "ECMWF",
@@ -109,7 +118,8 @@
     "alternate_model_substitution_allowed": false,
     "provider_relabelling_allowed": false,
     "immutable_snapshot_semantics_required": true,
-    "revision_detection_required": true
+    "revision_detection_required": true,
+    "ifs_lead_bucket_expectations_cycle_aware": true
   },
   "authority": {
     "production_data_authority_granted": false,

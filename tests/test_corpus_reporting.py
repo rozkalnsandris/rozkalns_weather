@@ -41,10 +41,13 @@ def _run(
     retrieved_at: datetime | None = None,
     omit_lead_bucket: str | None = None,
 ) -> ForecastRun:
+    horizon_hours = model.forecast_days * 24
+    if model.provider_id == "ecmwf_ifs" and init.hour in {6, 18}:
+        horizon_hours = 144
     representative_leads = tuple(
         float(lower)
         for lower, _upper, label in LEAD_BUCKETS
-        if lower < model.forecast_days * 24 and label != omit_lead_bucket
+        if lower < horizon_hours and label != omit_lead_bucket
     )
     return ForecastRun(
         provider=model.provider_id,
@@ -75,6 +78,7 @@ def _populate_complete_day(
     omit_forecast: tuple[str, int] | None = None,
     missing_model_version_provider: str | None = None,
     omit_lead_bucket: tuple[str, str] | None = None,
+    omit_lead_bucket_at: tuple[str, int, str] | None = None,
 ) -> None:
     for hour in (0, 6, 12, 18):
         init = datetime(2026, 4, 2, hour, tzinfo=UTC)
@@ -83,6 +87,8 @@ def _populate_complete_day(
                 continue
             version = None if model.provider_id == missing_model_version_provider else "fixture-v1"
             omitted_bucket = omit_lead_bucket[1] if omit_lead_bucket and omit_lead_bucket[0] == model.provider_id else None
+            if omit_lead_bucket_at and omit_lead_bucket_at[:2] == (model.provider_id, hour):
+                omitted_bucket = omit_lead_bucket_at[2]
             database.insert_forecast_run(
                 _run(model, init, model_version=version, omit_lead_bucket=omitted_bucket),
                 location_id=DWD_CDC_05480.id,
@@ -119,10 +125,41 @@ def test_complete_common_day_passes_and_is_read_only(tmp_path: Path) -> None:
     assert all(item["expected_runs"] == 4 and item["present_runs"] == 4 for item in report["models"])
     assert all(item["by_run_hour_utc"]["00"]["expected_runs"] == 1 for item in report["models"])
     assert all(
-        all(bucket["present_runs"] == 4 for bucket in item["lead_bucket_coverage"].values())
+        all(bucket["present_runs"] == bucket["expected_runs"] for bucket in item["lead_bucket_coverage"].values())
         for item in report["models"]
     )
     assert before == after
+
+
+def test_ifs_cycle_aware_short_runs_do_not_require_7_10d(tmp_path: Path) -> None:
+    database = _database(tmp_path)
+    _populate_complete_day(database)
+    report = public_corpus_report(database, start=date(2026, 4, 2), end=date(2026, 4, 2))
+    ifs = next(item for item in report["models"] if item["provider"] == "ecmwf_ifs")
+    assert report["state"] == "PASS"
+    assert ifs["horizon_policy"] == {
+        "kind": "cycle_aware",
+        "ifs_short_cycle_hours_utc": [6, 18],
+        "ifs_short_cycle_horizon_hours": 144,
+    }
+    assert ifs["lead_bucket_coverage"]["5-7d"]["expected_runs"] == 4
+    assert ifs["lead_bucket_coverage"]["5-7d"]["present_runs"] == 4
+    assert ifs["lead_bucket_coverage"]["7-10d"]["expected_runs"] == 2
+    assert ifs["lead_bucket_coverage"]["7-10d"]["expected_run_hours_utc"] == [0, 12]
+    assert ifs["lead_bucket_coverage"]["7-10d"]["present_runs"] == 2
+    assert ifs["lead_bucket_coverage"]["7-10d"]["missing_runs"]["count"] == 0
+
+
+def test_ifs_missing_expected_long_cycle_bucket_still_blocks(tmp_path: Path) -> None:
+    database = _database(tmp_path)
+    _populate_complete_day(database, omit_lead_bucket_at=("ecmwf_ifs", 0, "7-10d"))
+    report = public_corpus_report(database, start=date(2026, 4, 2), end=date(2026, 4, 2))
+    assert report["state"] == "BLOCKED"
+    assert "ECMWF_IFS_LEAD_BUCKET_COVERAGE_GAPS" in report["block_reasons"]
+    ifs = next(item for item in report["models"] if item["provider"] == "ecmwf_ifs")
+    assert ifs["lead_bucket_coverage"]["7-10d"]["expected_runs"] == 2
+    assert ifs["lead_bucket_coverage"]["7-10d"]["present_runs"] == 1
+    assert ifs["lead_bucket_coverage"]["7-10d"]["missing_runs"]["count"] == 1
 
 
 def test_missing_lead_bucket_blocks(tmp_path: Path) -> None:

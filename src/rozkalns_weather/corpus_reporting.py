@@ -15,6 +15,8 @@ from .verification import LEAD_BUCKETS, lead_bucket
 
 DEFAULT_MODELS = ("icon_d2", "ecmwf_ifs", "ecmwf_aifs")
 DEFAULT_RUN_HOURS = (0, 6, 12, 18)
+IFS_SHORT_CYCLE_HOURS = frozenset({6, 18})
+IFS_SHORT_CYCLE_HORIZON_HOURS = 144
 MAX_EXAMPLES = 50
 CRITICAL_PROVENANCE_FIELDS = (
     "model_provider",
@@ -48,6 +50,25 @@ def _window(start: date, end: date) -> tuple[str, str]:
 def _examples(values: Iterable[str]) -> dict[str, object]:
     items = sorted(set(values))
     return {"count": len(items), "examples": items[:MAX_EXAMPLES], "truncated": len(items) > MAX_EXAMPLES}
+
+
+def _init_hour(init_time: str) -> int:
+    return datetime.fromisoformat(init_time.replace("Z", "+00:00")).hour
+
+
+def _expected_horizon_hours(provider: str, init_time: str) -> int:
+    if provider == "ecmwf_ifs" and _init_hour(init_time) in IFS_SHORT_CYCLE_HOURS:
+        return IFS_SHORT_CYCLE_HORIZON_HOURS
+    return MODEL_REGISTRY[provider].forecast_days * 24
+
+
+def _expected_inits_for_bucket(provider: str, expected_init_times: tuple[str, ...], bucket: str) -> set[str]:
+    lower = next(lower for lower, _upper, label in LEAD_BUCKETS if label == bucket)
+    return {
+        init_time
+        for init_time in expected_init_times
+        if lower < _expected_horizon_hours(provider, init_time)
+    }
 
 
 def _model_summary(
@@ -84,8 +105,8 @@ def _model_summary(
                     critical_gaps.append(f"{init_time}:{field}")
             if row["model_version"] in (None, ""):
                 model_version_missing += 1
-    expected_by_hour = Counter(datetime.fromisoformat(value.replace("Z", "+00:00")).hour for value in expected_init_times)
-    present_by_hour = Counter(datetime.fromisoformat(value.replace("Z", "+00:00")).hour for value in present if value in expected)
+    expected_by_hour = Counter(_init_hour(value) for value in expected_init_times)
+    present_by_hour = Counter(_init_hour(value) for value in present if value in expected)
     by_run_hour = {
         f"{hour:02d}": {
             "expected_runs": expected_by_hour.get(hour, 0),
@@ -109,15 +130,20 @@ def _model_summary(
         blockers.append(f"{prefix}_CRITICAL_PROVENANCE_GAPS")
     if model_version_missing:
         warnings.append(f"{prefix}_MODEL_VERSION_MISSING")
-    horizon_hours = MODEL_REGISTRY[provider].forecast_days * 24
-    expected_lead_buckets = tuple(label for lower, _upper, label in LEAD_BUCKETS if lower < horizon_hours)
+    expected_lead_buckets = tuple(
+        label
+        for _lower, _upper, label in LEAD_BUCKETS
+        if _expected_inits_for_bucket(provider, expected_init_times, label)
+    )
     lead_bucket_coverage: dict[str, object] = {}
     lead_bucket_gaps = False
     for bucket in expected_lead_buckets:
-        present_inits = set(lead_run_inits.get(bucket, set())) & expected
-        missing_inits = expected - present_inits
+        bucket_expected = _expected_inits_for_bucket(provider, expected_init_times, bucket)
+        present_inits = set(lead_run_inits.get(bucket, set())) & bucket_expected
+        missing_inits = bucket_expected - present_inits
         lead_bucket_coverage[bucket] = {
-            "expected_runs": len(expected),
+            "expected_runs": len(bucket_expected),
+            "expected_run_hours_utc": sorted({_init_hour(value) for value in bucket_expected}),
             "present_runs": len(present_inits),
             "missing_runs": _examples(missing_inits),
             "value_count": int(lead_counts.get(bucket, 0)),
@@ -136,6 +162,11 @@ def _model_summary(
         "duplicate_payloads": _examples(duplicate_payload_inits),
         "by_run_hour_utc": by_run_hour,
         "valid_window": value_window,
+        "horizon_policy": {
+            "kind": "cycle_aware" if provider == "ecmwf_ifs" else "provider_default",
+            "ifs_short_cycle_hours_utc": sorted(IFS_SHORT_CYCLE_HOURS) if provider == "ecmwf_ifs" else [],
+            "ifs_short_cycle_horizon_hours": IFS_SHORT_CYCLE_HORIZON_HOURS if provider == "ecmwf_ifs" else None,
+        },
         "expected_lead_buckets": list(expected_lead_buckets),
         "lead_bucket_coverage": lead_bucket_coverage,
         "lead_bucket_value_counts": dict(sorted(lead_counts.items())),
