@@ -1,134 +1,112 @@
 # Production public corpus bootstrap
 
-## Current source state — issue #157
+## Current source state — issue #159
 
-The production public corpus bootstrap is **source-blocked** on deterministic ICON-D2 exact-run archive capability.
+Issue #159 replaces the **common production verification window**, not the historical corpus.
 
-Canonical machine decision: `deploy/icon-d2-exact-run-transport-decision.json`.
+Canonical source decision: `deploy/exact-run-common-window.json`.
 
-Current blocker:
+The selected fixed, non-rolling common window is:
 
-```text
-NO_COMPLETE_ICON_D2_EXACT_RUN_ARCHIVE_TRANSPORT
-```
-
-This is deliberately stricter than treating an upstream transport error as a transient retry condition. The frozen corpus requires every exact model initialization for `00/06/12/18 UTC`; missing runs may not be skipped, imputed, relabelled, or replaced by another model/provider.
-
-The benchmark decision from issue #155 remains unchanged:
-
-- public DWD CDC station `05480` (`Werl`);
-- source location identity `station_05480`;
-- frozen first window `2026-04-02..2026-09-10`;
+- `2026-08-13..2026-08-26` (14 inclusive days);
+- DWD CDC truth station `05480` / `station_05480` (`Werl`);
 - deterministic models exactly `icon_d2`, `ecmwf_ifs`, `ecmwf_aifs`;
-- exact public benchmark coordinates from DWD station metadata;
-- no private home coordinates in the public corpus.
+- exact cycles `00/06/12/18 UTC`;
+- `56` expected exact runs per model;
+- exact-init/full-horizon semantics through Open-Meteo Single Runs;
+- checkpoint namespace `fixed-window-20260813-20260826-v1`.
 
-## Preserved production prefix
+The source state is `SOURCE_READY_REQUIRES_EXACT_LIVE_DATA_AUTHORITY`. Source readiness is **not** production write authority.
 
-Parent LIVE gate #148 already wrote a partial but internally consistent corpus before the upstream ICON-D2 gap was proven:
+## Why the window changed
 
-- DWD CDC truth: `30,963` observations, `12/12` ordered chunks complete;
-- ICON-D2 exact-run prefix: `279/648` runs;
-- last completed ICON-D2 init: `2026-06-10T12:00:00Z`;
-- next required ICON-D2 init: `2026-06-10T18:00:00Z`;
-- ECMWF IFS and AIFS bootstrap were not started.
+Issue #157 proved that the old `2026-04-02..2026-09-10` window could not be completed defensibly because exact historical ICON-D2 runs had aged out of the known public exact-run surfaces. The #157 machine decision remains immutable audit evidence in `deploy/icon-d2-exact-run-transport-decision.json`.
 
-That prefix is evidence, not permission to continue. It must be preserved without cleanup, rollback, checkpoint editing, or skip-ahead.
+Issue #159 deliberately selected a newer fixed window rather than weakening verification methodology. Historical Forecast, Previous Runs, rolling timeseries, missing-run acceptance, skip-ahead, imputation, model substitution and provider relabelling remain forbidden for the exact-run corpus.
 
-## Why the source gate is blocked
+## Public exact-run evidence
 
-Open-Meteo Single Runs remains the canonical public transport because it accepts an explicit `run=` and preserves one model initialization rather than constructing a stitched historical series.
+The candidate window was probed at the public DWD station coordinates from `deploy/dwd-cdc-05480-benchmark.json`.
 
-Fresh read-only evidence showed that the exact next ICON-D2 run is unavailable through that transport. The upstream service can expose unavailable runs in two different shapes:
+Primary exhaustive probe run `35614910970` checked all `168` exact init/model combinations with the complete adapter variable set and `24` start/end full-horizon boundaries. It returned:
 
-- HTTP `200` with a body containing `modelRunUnavailable(...)` even though the response declares JSON;
-- HTTP `400` JSON with `The requested model run is not available`.
+- `155/168` required-variable exact-run PASS;
+- `23/24` full-horizon boundary PASS;
+- every non-PASS result was an SSL handshake transport timeout;
+- zero API/model-unavailable or truncated-horizon verdicts.
 
-`rozkalns_weather.providers.open_meteo` normalizes both shapes to the stable source reason code:
+A targeted transport-only gap-closure run `35616166217` then rechecked only those 14 transport gaps. It returned `14/14 PASS`. API/model errors were never retried. Its evidence fingerprint is:
 
-```text
-OPEN_METEO_MODEL_RUN_UNAVAILABLE
-```
+`aa8bd30174a660ab5ae38f5202925eb2622521a5bf52485208fc499e8284bbf2`
 
-Unrelated malformed/non-JSON responses use a different reason code and are not silently interpreted as a missing model run.
+Combined evidence therefore closes `168/168` exact required-variable checks and `24/24` full-horizon boundary checks separately across ICON-D2, IFS and AIFS.
 
-## Alternate transport decision
+Open-Meteo Single Runs remains the canonical transport because `run=` identifies one model initialization and the surface exposes that run's forecast horizon. Public AWS `data_run` retention is approximately three months; on the 2026-09-21 evidence date the oldest selected init (`2026-08-13`) was 39 days old, leaving a material margin from the retention edge. Retention was not inferred across models: every model was probed separately.
 
-No complete public exact-run alternate transport is currently proven for the entire frozen window.
+## DWD CDC truth
 
-| Candidate | Decision | Reason |
-| --- | --- | --- |
-| Open-Meteo Historical Forecast API | rejected | combines early forecast hours from successive runs; not one exact init |
-| Open-Meteo Previous Runs API | rejected | lead-offset surface; not a complete exact-init full-horizon run archive |
-| Open-Meteo AWS `data_run` | rejected for frozen window | public exact-run objects are retained for about three months, insufficient for the full April–September recovery window at the time of issue #157 |
-| Open-Meteo AWS `data_spatial` | rejected for frozen window | public retention is seven days |
-| Open-Meteo rolling timeseries | rejected | long-term storage does not preserve individual run identity |
-| DWD operational ICON-D2 Open Data | unproven for frozen window | current operational run directories do not prove a complete public historical exact-run archive for the full frozen window |
-
-Evidence basis is recorded in the machine decision contract and issue #157. A future source change may replace the blocker only after it proves complete historical exact-init coverage, required variables/units, `station_05480` extraction, and transport provenance.
-
-## DWD CDC truth transport
-
-Truth remains direct DWD CDC Open Data for exact station ID `05480`; issue #157 does not weaken or replace it.
+Truth remains direct DWD CDC Open Data, station ID `05480`. Source coverage for the required variables is verified for `2026-04-02..2026-09-10`; the new common window is fully inside that truth envelope. The latest requested AIFS horizon ends at `2026-09-10T18:00:00Z`.
 
 Required mappings remain:
 
 | DWD CDC family | archive code | CSV column | canonical variable |
 | --- | --- | --- | --- |
-| `air_temperature` | `TU` | `TT_TU` | `temperature_2m` |
-| `air_temperature` | `TU` | `RF_TU` | `relative_humidity_2m` |
-| `dew_point` | `TD` | `TD` | `dew_point_2m` |
-| `pressure` | `P0` | `P` | `pressure_msl` |
-| `wind` | `FF` | `F` | `wind_speed_10m` |
-| `extreme_wind` | `FX` | `FX_911` | `wind_gust_10m` |
-| `precipitation` | `RR` | `R1` | `precipitation_1h` |
-| `cloudiness` | `N` | `V_N` | `cloud_cover` |
+| air temperature | `TU` | `TT_TU` | `temperature_2m` |
+| relative humidity | `TU` | `RF_TU` | `relative_humidity_2m` |
+| dew point | `TD` | `TD` | `dew_point_2m` |
+| pressure | `P0` | `P` | `pressure_msl` |
+| wind | `FF` | `F` | `wind_speed_10m` |
+| gust | `FX` | `FX_911` | `wind_gust_10m` |
+| precipitation | `RR` | `R1` | `precipitation_1h` |
+| cloudiness | `N` | `V_N` | `cloud_cover` |
 
-DWD missing sentinel `-999` is omitted, never converted to zero or imputed. `V_N` oktas are converted to percent only for physical values `0..8`; negative special states are omitted.
+DWD `-999` remains missing, never zero or imputed. Negative cloud special states remain omitted.
 
-## Source plan behavior
+## Preserved historical production evidence
 
-`production-bootstrap-plan` remains network/DB-free, but after issue #157 it intentionally returns:
+Nothing from the previous partial bootstrap is deleted, rewritten, relabelled or rolled back:
 
-```text
-state = BLOCKED_SOURCE_CAPABILITY
-block_reasons = [NO_COMPLETE_ICON_D2_EXACT_RUN_ARCHIVE_TRANSPORT]
-production_data_authority_granted = false
+- DWD CDC truth: `30,963` observations, old `12/12` chunks complete;
+- ICON-D2 old ordered prefix: `279/648` runs;
+- last old completed ICON-D2 init: `2026-06-10T12:00:00Z`;
+- old next required init: `2026-06-10T18:00:00Z`;
+- IFS/AIFS old bootstrap: not started.
+
+Those rows remain historical audit evidence. They do not count toward fixed-window common readiness merely because they exist. The old checkpoint and pre-#159 bootstrap fingerprints are not reusable for the new namespace.
+
+## Source plan and corpus report
+
+The only valid production bootstrap identity is the exact fixed window:
+
+```bash
+rozkalns-weather production-bootstrap-plan \
+  --source-sha <MERGED_SHA> \
+  --start 2026-08-13 \
+  --end 2026-08-26 \
+  --recovery-decision verified_backup_available
 ```
 
-The blocker is part of the plan identity, so a later source fix produces a new bootstrap fingerprint. Old #148 authorization/fingerprint must never be reused after a capability decision changes.
+The plan rejects the old window, a rolling window, and partial substitutes. A new `bootstrap_fingerprint` is derived from the exact source SHA, fixed dates, station/model/run-hour scope, transport decision and checkpoint namespace.
 
-`production-bootstrap-resume-validate` also propagates source plan blockers. Even structurally complete evidence cannot override a current source capability block.
+For production readiness, run the existing read-only corpus reporter against exactly the selected common window:
 
-## Checkpoint and integrity invariants
+```bash
+rozkalns-weather corpus-report --start 2026-08-13 --end 2026-08-26
+```
 
-Forecast backfill remains exact ordered-prefix only:
-
-- checkpoint entry is added only after a successful exact-run fetch and SQLite insert;
-- an unavailable run leaves the checkpoint unchanged;
-- later runs are not fetched after the failure;
-- skip-ahead is forbidden;
-- `missing_runs_allowed=false` remains unchanged;
-- synthetic/imputed forecasts are forbidden;
-- alternate model/provider substitution is forbidden;
-- immutable snapshot/revision/dedupe checks remain mandatory.
+The reporter remains usable for historical audit outside that window, but historical rows outside `2026-08-13..2026-08-26` are not part of the new common-readiness decision.
 
 ## Authority boundary
 
-Issue #157 is source-only. Its branch, PR, merge, CI, or application SIMPLE-DEPLOY do **not** authorize:
+Issue #159 does not authorize:
 
 - production SQLite/corpus/checkpoint writes or resume;
 - schema init/migration;
-- checkpoint editing or skip-ahead;
-- recurring ingest installation/enablement;
-- RPi5 Docker/systemd mutation;
-- WeatherNext/private-home activation;
+- deleting or rewriting old rows;
+- RPi5 Docker/systemd/timer mutation;
+- recurring ingest activation;
+- WeatherNext/private-home data;
 - Cloudflare/network/secrets/permissions;
-- delete/restore/cleanup/rollback.
+- restore/cleanup/rollback.
 
-Parent #148 remains paused. A future production resume requires both:
-
-1. a merged source capability decision that removes `NO_COMPLETE_ICON_D2_EXACT_RUN_ARCHIVE_TRANSPORT` with evidence-backed exact-run coverage; and
-2. a new exact LIVE/DATA authorization bound to the new reviewed source SHA and new bootstrap fingerprint.
-
-Recurring public ingest remains a later separate host gate only after frozen corpus integrity is PASS.
+After merge, parent #148 requires a fresh read-only production preflight bound to the merged source SHA and the new bootstrap fingerprint. Any bounded corpus write then requires a new exact LIVE/DATA authorization. Recurring ingest remains a later separate host gate after fixed-window corpus integrity is PASS.
