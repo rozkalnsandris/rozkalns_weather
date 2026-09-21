@@ -13,9 +13,9 @@ class ReferenceLocation:
     timezone: str
 
 
-# Public WMO/airport station used as the verification reference. This is not the
-# private home point. Coordinates are public station metadata and intentionally
-# kept separate from HOME_LAT/HOME_LON.
+# Legacy public WMO/airport reference retained for UI/history compatibility only.
+# It is no longer the production verification benchmark because an exact
+# historical DWD truth transport for WMO 10416 could not be verified (#151).
 DWD_10416 = ReferenceLocation(
     id="station_10416",
     label="DWD Dortmund/Wickede 10416",
@@ -24,3 +24,20 @@ DWD_10416 = ReferenceLocation(
     elevation_m=127.0,
     timezone="Europe/Berlin",
 )
+
+
+# Owner-approved production verification benchmark selected under #155.
+# These are public DWD CDC station metadata, not a private/home point.
+# DWD CDC station 01303 is Essen-Bredeney. The current geography record is
+# pinned so forecast extraction and observation truth use the same location.
+DWD_CDC_01303 = ReferenceLocation(
+    id="station_dwd_cdc_01303",
+    label="DWD CDC Essen-Bredeney 01303",
+    lat=51.4041,
+    lon=6.9677,
+    elevation_m=150.0,
+    timezone="Europe/Berlin",
+)
+
+BENCHMARK_LOCATION = DWD_CDC_01303
+BENCHMARK_TRUTH_STATION_ID = "01303"
