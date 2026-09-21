@@ -7,6 +7,7 @@ import re
 from typing import Mapping
 
 from .backfill import iter_run_times
+from .locations import BENCHMARK_LOCATION, BENCHMARK_TRUTH_STATION_ID
 from .models import utc_iso
 
 SOURCE_SHA_RE = re.compile(r"^[0-9a-f]{40}$")
@@ -17,9 +18,8 @@ MODELS = ("icon_d2", "ecmwf_ifs", "ecmwf_aifs")
 RUN_HOURS = (0, 6, 12, 18)
 RECOVERY_DECISIONS = ("verified_backup_available", "owner_accepts_proceeding_without_prewrite_backup")
 TRUTH_SOURCE_AUTHORITY = "DWD"
-TRUTH_TRANSPORT = "Bright Sky"
-TRUTH_TRANSPORT_STATUS = "unverified_historical_capability"
-TRUTH_TRANSPORT_BLOCK_REASON = "TRUTH_TRANSPORT_HISTORICAL_CAPABILITY_UNVERIFIED"
+TRUTH_TRANSPORT = "DWD CDC recent station ZIP"
+TRUTH_TRANSPORT_STATUS = "verified_frozen_window_capability"
 FORBIDDEN_KEYS = frozenset({"home_lat", "home_lon", "credentials", "credential", "raw_logs", "raw_log", "database_path", "host_path", "env", "environment"})
 
 
@@ -73,7 +73,8 @@ def build_production_bootstrap_plan(*, source_sha: str, start: date, end: date, 
         "end_date": end.isoformat(),
         "models": list(MODELS),
         "run_hours_utc": list(RUN_HOURS),
-        "truth_station_id": "10416",
+        "benchmark_location_id": BENCHMARK_LOCATION.id,
+        "truth_station_id": BENCHMARK_TRUTH_STATION_ID,
         "truth_chunk_days": TRUTH_CHUNK_DAYS,
         "truth_source_authority": TRUTH_SOURCE_AUTHORITY,
         "truth_transport": TRUTH_TRANSPORT,
@@ -83,20 +84,31 @@ def build_production_bootstrap_plan(*, source_sha: str, start: date, end: date, 
     fingerprint = hashlib.sha256(json.dumps(identity, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
     return {
         "schema_version": 1,
-        "state": "BLOCKED_BY_TRUTH_TRANSPORT_CAPABILITY",
-        "block_reasons": [TRUTH_TRANSPORT_BLOCK_REASON],
+        "state": "READY_FOR_EXPLICIT_LIVE_DATA_AUTHORIZATION",
+        "block_reasons": [],
         "bootstrap_fingerprint": fingerprint,
         "identity": identity,
         "truth_transport": {
             "source_authority": TRUTH_SOURCE_AUTHORITY,
             "transport": TRUTH_TRANSPORT,
-            "station_id": "10416",
+            "station_id": BENCHMARK_TRUTH_STATION_ID,
+            "location_id": BENCHMARK_LOCATION.id,
             "historical_capability": TRUTH_TRANSPORT_STATUS,
-            "live_backfill_allowed": False,
+            "required_products": ["TU", "TD", "P0", "FF", "FX", "RR", "N"],
+            "frozen_window_covered_by_recent_500_day_contract": True,
+            "source_capability_ready": True,
+            "production_write_authorized": False,
         },
         "inclusive_days": inclusive_days,
         "truth_chunk_count": len(_truth_chunks(start, end)),
         "forecast_run_count_per_model": len(_run_keys(start, end)),
+        "forecast_truth_colocation": {
+            "required": True,
+            "location_id": BENCHMARK_LOCATION.id,
+            "latitude": BENCHMARK_LOCATION.lat,
+            "longitude": BENCHMARK_LOCATION.lon,
+        },
+        "benchmark_location_registration_required": True,
         "schema_init_explicit_only": True,
         "implicit_migration_allowed": False,
         "delete_allowed": False,
@@ -114,8 +126,8 @@ def evaluate_resume_evidence(plan: Mapping[str, object], evidence: Mapping[str, 
     start = date.fromisoformat(str(identity["start_date"]))
     end = date.fromisoformat(str(identity["end_date"]))
     reasons: list[str] = []
-    if plan.get("state") == "BLOCKED_BY_TRUTH_TRANSPORT_CAPABILITY":
-        reasons.append(TRUTH_TRANSPORT_BLOCK_REASON)
+    if plan.get("state") != "READY_FOR_EXPLICIT_LIVE_DATA_AUTHORIZATION":
+        reasons.append("SOURCE_BOOTSTRAP_PLAN_NOT_READY")
     if evidence.get("bootstrap_fingerprint") != plan.get("bootstrap_fingerprint"):
         reasons.append("BOOTSTRAP_FINGERPRINT_MISMATCH")
     if evidence.get("recovery_decision") != identity.get("recovery_decision"):
@@ -123,6 +135,9 @@ def evaluate_resume_evidence(plan: Mapping[str, object], evidence: Mapping[str, 
     schema = evidence.get("schema")
     if not isinstance(schema, Mapping) or schema.get("state") != "ready" or schema.get("implicit_migration_performed") is not False:
         reasons.append("SCHEMA_NOT_EXPLICITLY_READY")
+    benchmark = evidence.get("benchmark_location")
+    if not isinstance(benchmark, Mapping) or benchmark.get("location_id") != BENCHMARK_LOCATION.id or benchmark.get("registered") is not True:
+        reasons.append("BENCHMARK_LOCATION_NOT_REGISTERED")
     truth = evidence.get("truth")
     expected_truth = _truth_chunks(start, end)
     if not isinstance(truth, Mapping):
@@ -133,8 +148,10 @@ def evaluate_resume_evidence(plan: Mapping[str, object], evidence: Mapping[str, 
         reason = _prefix_reason(truth.get("completed_chunks"), expected_truth, "TRUTH")
         if reason:
             reasons.append(reason)
-        if truth.get("station_id") != "10416":
+        if truth.get("station_id") != BENCHMARK_TRUTH_STATION_ID:
             reasons.append("TRUTH_STATION_MISMATCH")
+        if truth.get("location_id") != BENCHMARK_LOCATION.id:
+            reasons.append("TRUTH_LOCATION_MISMATCH")
         if truth.get("database_ahead_of_checkpoint") is True:
             reasons.append("INTERRUPTED_CHECKPOINT_RESUME_REQUIRED")
     forecasts = evidence.get("forecasts")
@@ -148,6 +165,8 @@ def evaluate_resume_evidence(plan: Mapping[str, object], evidence: Mapping[str, 
             if not isinstance(model_state, Mapping):
                 reasons.append(f"{model.upper()}_EVIDENCE_MISSING")
                 continue
+            if model_state.get("location_id") != BENCHMARK_LOCATION.id:
+                reasons.append(f"{model.upper()}_LOCATION_MISMATCH")
             reason = _prefix_reason(model_state.get("completed_runs"), expected_runs, model.upper())
             if reason:
                 reasons.append(reason)
