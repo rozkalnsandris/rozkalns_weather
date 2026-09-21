@@ -16,6 +16,10 @@ TRUTH_CHUNK_DAYS = 14
 MODELS = ("icon_d2", "ecmwf_ifs", "ecmwf_aifs")
 RUN_HOURS = (0, 6, 12, 18)
 RECOVERY_DECISIONS = ("verified_backup_available", "owner_accepts_proceeding_without_prewrite_backup")
+TRUTH_SOURCE_AUTHORITY = "DWD"
+TRUTH_TRANSPORT = "Bright Sky"
+TRUTH_TRANSPORT_STATUS = "unverified_historical_capability"
+TRUTH_TRANSPORT_BLOCK_REASON = "TRUTH_TRANSPORT_HISTORICAL_CAPABILITY_UNVERIFIED"
 FORBIDDEN_KEYS = frozenset({"home_lat", "home_lon", "credentials", "credential", "raw_logs", "raw_log", "database_path", "host_path", "env", "environment"})
 
 
@@ -71,14 +75,25 @@ def build_production_bootstrap_plan(*, source_sha: str, start: date, end: date, 
         "run_hours_utc": list(RUN_HOURS),
         "truth_station_id": "10416",
         "truth_chunk_days": TRUTH_CHUNK_DAYS,
+        "truth_source_authority": TRUTH_SOURCE_AUTHORITY,
+        "truth_transport": TRUTH_TRANSPORT,
+        "truth_transport_status": TRUTH_TRANSPORT_STATUS,
         "recovery_decision": recovery_decision,
     }
     fingerprint = hashlib.sha256(json.dumps(identity, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
     return {
         "schema_version": 1,
-        "state": "source_plan_ready",
+        "state": "BLOCKED_BY_TRUTH_TRANSPORT_CAPABILITY",
+        "block_reasons": [TRUTH_TRANSPORT_BLOCK_REASON],
         "bootstrap_fingerprint": fingerprint,
         "identity": identity,
+        "truth_transport": {
+            "source_authority": TRUTH_SOURCE_AUTHORITY,
+            "transport": TRUTH_TRANSPORT,
+            "station_id": "10416",
+            "historical_capability": TRUTH_TRANSPORT_STATUS,
+            "live_backfill_allowed": False,
+        },
         "inclusive_days": inclusive_days,
         "truth_chunk_count": len(_truth_chunks(start, end)),
         "forecast_run_count_per_model": len(_run_keys(start, end)),
@@ -99,6 +114,8 @@ def evaluate_resume_evidence(plan: Mapping[str, object], evidence: Mapping[str, 
     start = date.fromisoformat(str(identity["start_date"]))
     end = date.fromisoformat(str(identity["end_date"]))
     reasons: list[str] = []
+    if plan.get("state") == "BLOCKED_BY_TRUTH_TRANSPORT_CAPABILITY":
+        reasons.append(TRUTH_TRANSPORT_BLOCK_REASON)
     if evidence.get("bootstrap_fingerprint") != plan.get("bootstrap_fingerprint"):
         reasons.append("BOOTSTRAP_FINGERPRINT_MISMATCH")
     if evidence.get("recovery_decision") != identity.get("recovery_decision"):

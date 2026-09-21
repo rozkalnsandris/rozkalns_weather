@@ -9,6 +9,7 @@ from .production_bootstrap import (
     MODELS,
     RUN_HOURS,
     SOURCE_SHA_RE,
+    TRUTH_TRANSPORT_BLOCK_REASON,
     _run_keys,
     _truth_chunks,
     build_production_bootstrap_plan,
@@ -174,7 +175,7 @@ def validate_execution_evidence(plan: Mapping[str, object], evidence: Mapping[st
 
     partial = "PARTIAL_BOOTSTRAP_INCOMPLETE" in base_reasons
     for reason in base_reasons:
-        if reason == "PARTIAL_BOOTSTRAP_INCOMPLETE":
+        if reason in {"PARTIAL_BOOTSTRAP_INCOMPLETE", TRUTH_TRANSPORT_BLOCK_REASON}:
             continue
         if reason == "CORPUS_INTEGRITY_NOT_PROVEN" and partial:
             integrity = _as_map(evidence.get("integrity"))

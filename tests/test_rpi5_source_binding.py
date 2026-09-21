@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 from rozkalns_weather.rollout import validate_source_package
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -111,7 +113,6 @@ def test_warning_and_research_authority_are_preserved() -> None:
     assert safety["weathernext_real_values_fabricated"] is False
 
 
-def test_source_package_validator_accepts_reconciled_handoff() -> None:
-    result = validate_source_package()
-    assert result["ok"] is True
-    assert "deploy/rpi5-source-binding.json" in result["validated_files"]
+def test_source_package_validator_fails_closed_on_truth_transport_gate() -> None:
+    with pytest.raises(ValueError, match="production bootstrap status mismatch"):
+        validate_source_package()
