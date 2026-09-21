@@ -60,6 +60,17 @@ def _build(rows, truth):
     )
 
 
+def _ensure_cdc_benchmark(database: Database) -> None:
+    database.ensure_location(
+        location_id=DWD_CDC_05480.id,
+        label=DWD_CDC_05480.label,
+        lat=DWD_CDC_05480.lat,
+        lon=DWD_CDC_05480.lon,
+        elevation_m=DWD_CDC_05480.elevation_m,
+        timezone=DWD_CDC_05480.timezone,
+    )
+
+
 def test_april_month_clips_to_common_archive_start() -> None:
     assert month_bounds("2026-04") == (date(2026, 4, 2), date(2026, 4, 30))
 
@@ -140,6 +151,7 @@ def test_api_and_pwa_expose_drilldown_navigation(tmp_path) -> None:
     settings = Settings.from_env({"DATABASE_URL": f"sqlite:///{tmp_path / 'weather.db'}"})
     database = Database(settings.database_url)
     client = TestClient(create_app(settings=settings, database=database))
+    _ensure_cdc_benchmark(database)
     valid = datetime(2026, 9, 10, 6, tzinfo=timezone.utc)
     init = datetime(2026, 9, 10, 0, tzinfo=timezone.utc)
     database.insert_observations([

@@ -18,6 +18,17 @@ def _client(tmp_path, *, with_home: bool = True) -> tuple[TestClient, Database]:
     return TestClient(create_app(settings=settings, database=database)), database
 
 
+def _ensure_cdc_benchmark(database: Database) -> None:
+    database.ensure_location(
+        location_id=DWD_CDC_05480.id,
+        label=DWD_CDC_05480.label,
+        lat=DWD_CDC_05480.lat,
+        lon=DWD_CDC_05480.lon,
+        elevation_m=DWD_CDC_05480.elevation_m,
+        timezone=DWD_CDC_05480.timezone,
+    )
+
+
 def test_health_and_pwa_root(tmp_path) -> None:
     client, _ = _client(tmp_path)
     assert client.get("/health").status_code == 200
@@ -122,6 +133,7 @@ def test_first_station_snapshot_visible_without_home_and_preserves_surface_stati
 
 def test_verification_api_uses_common_samples_and_exposes_missingness(tmp_path) -> None:
     client, database = _client(tmp_path)
+    _ensure_cdc_benchmark(database)
     first = datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0) - timedelta(hours=2)
     second = first + timedelta(hours=1)
     database.insert_observations(

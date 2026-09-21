@@ -1,1117 +1,375 @@
 {
+  "schema": "api-contract-v1",
+  "invariants": {
+    "severe_weather_warning_authority": "DWD",
+    "weathernext_warning_authority": false,
+    "pwa_data_states": ["fresh", "stale", "error", "offline"],
+    "private_coordinates_allowed": false
+  },
   "endpoints": {
-    "/api/current": {
-      "properties": {
-        "location": {
-          "properties": {
-            "coordinates_exposed": {
-              "enum": [
-                false
-              ],
-              "type": "boolean"
-            },
-            "id": {
-              "type": "string"
-            },
-            "label": {
-              "type": "string"
-            },
-            "station_id": {
-              "enum": [
-                "10416"
-              ],
-              "type": "string"
-            }
-          },
-          "required": [
-            "id",
-            "label",
-            "station_id",
-            "coordinates_exposed"
-          ],
-          "type": "object"
-        },
-        "note": {
-          "type": "string"
-        },
-        "observations": {
-          "items": {
-            "properties": {
-              "observed_at_utc": {
-                "format": "date-time",
-                "type": "string"
-              },
-              "source_provider": {
-                "type": "string"
-              },
-              "station_id": {
-                "type": "string"
-              },
-              "unit": {
-                "type": "string"
-              },
-              "value": {
-                "type": "number"
-              },
-              "variable": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "observed_at_utc",
-              "variable",
-              "value",
-              "unit"
-            ],
-            "type": "object"
-          },
-          "type": "array"
-        },
-        "state": {
-          "enum": [
-            "observed",
-            "not_observed_yet"
-          ],
-          "type": "string"
-        },
-        "truth_source": {
-          "enum": [
-            "DWD WMO 10416"
-          ],
-          "type": "string"
-        }
-      },
-      "required": [
-        "location",
-        "truth_source",
-        "observations",
-        "state",
-        "note"
-      ],
-      "type": "object"
-    },
-    "/api/daily": {
-      "properties": {
-        "days": {
-          "type": "integer"
-        },
-        "days_by_provider": {
-          "items": {
-            "properties": {
-              "date": {
-                "format": "date",
-                "type": "string"
-              },
-              "init_time_quality": {
-                "type": "string"
-              },
-              "init_time_utc": {
-                "format": "date-time",
-                "nullable": true,
-                "type": "string"
-              },
-              "model_name": {
-                "type": "string"
-              },
-              "precipitation_total_mm": {
-                "type": "number"
-              },
-              "provider": {
-                "type": "string"
-              },
-              "retrieved_at_utc": {
-                "format": "date-time",
-                "type": "string"
-              },
-              "temperature_max_c": {
-                "nullable": true,
-                "type": "number"
-              },
-              "temperature_min_c": {
-                "nullable": true,
-                "type": "number"
-              }
-            },
-            "required": [
-              "provider",
-              "model_name",
-              "date",
-              "temperature_min_c",
-              "temperature_max_c",
-              "precipitation_total_mm",
-              "init_time_utc",
-              "init_time_quality",
-              "retrieved_at_utc"
-            ],
-            "type": "object"
-          },
-          "type": "array"
-        },
-        "location": {
-          "properties": {
-            "coordinates_exposed": {
-              "enum": [
-                false
-              ],
-              "type": "boolean"
-            },
-            "id": {
-              "type": "string"
-            },
-            "label": {
-              "type": "string"
-            }
-          },
-          "required": [
-            "id",
-            "label",
-            "coordinates_exposed"
-          ],
-          "type": "object"
-        },
-        "timezone": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "days",
-        "timezone",
-        "location",
-        "days_by_provider"
-      ],
-      "type": "object"
-    },
-    "/api/health/providers": {
-      "properties": {
-        "database": {
-          "properties": {
-            "detail": {
-              "nullable": true,
-              "type": "string"
-            },
-            "exists": {
-              "type": "boolean"
-            },
-            "missing_tables": {
-              "items": {
-                "type": "string"
-              },
-              "type": "array"
-            },
-            "required_tables_present": {
-              "type": "boolean"
-            },
-            "state": {
-              "enum": [
-                "ready",
-                "missing",
-                "schema_incomplete",
-                "error"
-              ],
-              "type": "string"
-            },
-            "tables": {
-              "items": {
-                "type": "string"
-              },
-              "type": "array"
-            }
-          },
-          "required": [
-            "state",
-            "exists",
-            "required_tables_present",
-            "missing_tables",
-            "tables"
-          ],
-          "type": "object"
-        },
-        "health_contract": {
-          "enum": [
-            "provider-freshness-v1"
-          ],
-          "type": "string"
-        },
-        "home": {
-          "properties": {
-            "configured": {
-              "type": "boolean"
-            },
-            "coordinates_exposed": {
-              "enum": [
-                false
-              ],
-              "type": "boolean"
-            },
-            "id": {
-              "enum": [
-                "home"
-              ],
-              "type": "string"
-            },
-            "label": {
-              "type": "string"
-            },
-            "timezone": {
-              "type": "string"
-            }
-          },
-          "required": [
-            "id",
-            "label",
-            "configured",
-            "coordinates_exposed",
-            "timezone"
-          ],
-          "type": "object"
-        },
-        "location": {
-          "properties": {
-            "configured": {
-              "type": "boolean"
-            },
-            "coordinates_exposed": {
-              "enum": [
-                false
-              ],
-              "type": "boolean"
-            },
-            "id": {
-              "enum": [
-                "home"
-              ],
-              "type": "string"
-            },
-            "label": {
-              "type": "string"
-            },
-            "timezone": {
-              "type": "string"
-            }
-          },
-          "required": [
-            "id",
-            "label",
-            "configured",
-            "coordinates_exposed",
-            "timezone"
-          ],
-          "type": "object"
-        },
-        "providers": {
-          "items": {
-            "properties": {
-              "failure_domain": {
-                "type": "string"
-              },
-              "freshness_state": {
-                "enum": [
-                  "fresh",
-                  "lagging",
-                  "degraded",
-                  "stale",
-                  "error",
-                  "unknown",
-                  "not_ingested",
-                  "not_tracked"
-                ],
-                "type": "string"
-              },
-              "id": {
-                "type": "string"
-              },
-              "ingest_state": {
-                "type": "string"
-              },
-              "last_attempt_at_utc": {
-                "format": "date-time",
-                "nullable": true,
-                "type": "string"
-              },
-              "last_init_time_utc": {
-                "format": "date-time",
-                "nullable": true,
-                "type": "string"
-              },
-              "last_observed_at_utc": {
-                "format": "date-time",
-                "nullable": true,
-                "type": "string"
-              },
-              "last_retrieved_at_utc": {
-                "format": "date-time",
-                "nullable": true,
-                "type": "string"
-              },
-              "last_success_at_utc": {
-                "format": "date-time",
-                "nullable": true,
-                "type": "string"
-              },
-              "latest_valid_time_utc": {
-                "format": "date-time",
-                "nullable": true,
-                "type": "string"
-              },
-              "model_name": {
-                "type": "string"
-              },
-              "reason_code": {
-                "type": "string"
-              },
-              "state": {
-                "type": "string"
-              },
-              "tracked": {
-                "type": "boolean"
-              }
-            },
-            "required": [
-              "id",
-              "model_name",
-              "state",
-              "tracked",
-              "ingest_state",
-              "freshness_state",
-              "failure_domain",
-              "reason_code",
-              "last_attempt_at_utc",
-              "last_success_at_utc",
-              "last_init_time_utc",
-              "last_retrieved_at_utc",
-              "latest_valid_time_utc",
-              "last_observed_at_utc"
-            ],
-            "type": "object"
-          },
-          "type": "array"
-        },
-        "runtime_mode": {
-          "type": "string"
-        },
-        "verification_reference": {
-          "properties": {
-            "coordinates_exposed": {
-              "enum": [
-                false
-              ],
-              "type": "boolean"
-            },
-            "id": {
-              "type": "string"
-            },
-            "label": {
-              "type": "string"
-            },
-            "station_id": {
-              "enum": [
-                "10416"
-              ],
-              "type": "string"
-            }
-          },
-          "required": [
-            "id",
-            "label",
-            "station_id",
-            "coordinates_exposed"
-          ],
-          "type": "object"
-        }
-      },
-      "required": [
-        "runtime_mode",
-        "health_contract",
-        "home",
-        "location",
-        "verification_reference",
-        "database",
-        "providers"
-      ],
-      "type": "object"
-    },
-    "/api/hourly": {
-      "properties": {
-        "hours": {
-          "type": "integer"
-        },
-        "location": {
-          "properties": {
-            "coordinates_exposed": {
-              "enum": [
-                false
-              ],
-              "type": "boolean"
-            },
-            "id": {
-              "type": "string"
-            },
-            "label": {
-              "type": "string"
-            }
-          },
-          "required": [
-            "id",
-            "label",
-            "coordinates_exposed"
-          ],
-          "type": "object"
-        },
-        "series": {
-          "items": {
-            "properties": {
-              "init_time_utc": {
-                "format": "date-time",
-                "nullable": true,
-                "type": "string"
-              },
-              "lead_hours": {
-                "type": "number"
-              },
-              "model_name": {
-                "type": "string"
-              },
-              "model_version": {
-                "nullable": true,
-                "type": "string"
-              },
-              "provider": {
-                "type": "string"
-              },
-              "retrieved_at_utc": {
-                "format": "date-time",
-                "type": "string"
-              },
-              "statistic": {
-                "type": "string"
-              },
-              "unit": {
-                "type": "string"
-              },
-              "valid_time_utc": {
-                "format": "date-time",
-                "type": "string"
-              },
-              "value": {
-                "type": "number"
-              },
-              "variable": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "provider",
-              "model_name",
-              "init_time_utc",
-              "valid_time_utc",
-              "lead_hours",
-              "variable",
-              "statistic",
-              "value",
-              "unit",
-              "retrieved_at_utc"
-            ],
-            "type": "object"
-          },
-          "type": "array"
-        },
-        "variable": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "hours",
-        "variable",
-        "location",
-        "series"
-      ],
-      "type": "object"
-    },
-    "/api/readiness": {
-      "properties": {
-        "database": {
-          "properties": {
-            "detail": {
-              "nullable": true,
-              "type": "string"
-            },
-            "exists": {
-              "type": "boolean"
-            },
-            "missing_tables": {
-              "items": {
-                "type": "string"
-              },
-              "type": "array"
-            },
-            "required_tables_present": {
-              "type": "boolean"
-            },
-            "state": {
-              "enum": [
-                "ready",
-                "missing",
-                "schema_incomplete",
-                "error"
-              ],
-              "type": "string"
-            },
-            "tables": {
-              "items": {
-                "type": "string"
-              },
-              "type": "array"
-            }
-          },
-          "required": [
-            "state",
-            "exists",
-            "required_tables_present",
-            "missing_tables",
-            "tables"
-          ],
-          "type": "object"
-        },
-        "database_init_mode": {
-          "enum": [
-            "auto",
-            "require-existing"
-          ],
-          "type": "string"
-        },
-        "home": {
-          "properties": {
-            "configured": {
-              "type": "boolean"
-            },
-            "coordinates_exposed": {
-              "enum": [
-                false
-              ],
-              "type": "boolean"
-            },
-            "required_for_public_runtime": {
-              "enum": [
-                false
-              ],
-              "type": "boolean"
-            }
-          },
-          "required": [
-            "configured",
-            "required_for_public_runtime",
-            "coordinates_exposed"
-          ],
-          "type": "object"
-        },
-        "privacy": {
-          "properties": {
-            "coordinates_exposed": {
-              "enum": [
-                false
-              ],
-              "type": "boolean"
-            },
-            "credentials_exposed": {
-              "enum": [
-                false
-              ],
-              "type": "boolean"
-            },
-            "database_path_exposed": {
-              "enum": [
-                false
-              ],
-              "type": "boolean"
-            }
-          },
-          "required": [
-            "coordinates_exposed",
-            "credentials_exposed",
-            "database_path_exposed"
-          ],
-          "type": "object"
-        },
-        "providers": {
-          "items": {
-            "properties": {
-              "id": {
-                "type": "string"
-              },
-              "last_success_at_utc": {
-                "format": "date-time",
-                "nullable": true,
-                "type": "string"
-              },
-              "required_for_runtime": {
-                "type": "boolean"
-              },
-              "role": {
-                "type": "string"
-              },
-              "state": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "id",
-              "role",
-              "state",
-              "required_for_runtime",
-              "last_success_at_utc"
-            ],
-            "type": "object"
-          },
-          "type": "array"
-        },
-        "ready": {
-          "type": "boolean"
-        },
-        "runtime_mode": {
-          "type": "string"
-        },
-        "schema_version": {
-          "enum": [
-            1
-          ],
-          "type": "integer"
-        },
-        "status": {
-          "enum": [
-            "ready",
-            "not_ready"
-          ],
-          "type": "string"
-        },
-        "storage": {
-          "properties": {
-            "class": {
-              "enum": [
-                "ephemeral_memory",
-                "persistent_sqlite_file"
-              ],
-              "type": "string"
-            },
-            "path_exposed": {
-              "enum": [
-                false
-              ],
-              "type": "boolean"
-            },
-            "persistent": {
-              "type": "boolean"
-            },
-            "writable": {
-              "type": "boolean"
-            }
-          },
-          "required": [
-            "class",
-            "persistent",
-            "writable",
-            "path_exposed"
-          ],
-          "type": "object"
-        },
-        "weathernext": {
-          "properties": {
-            "configured": {
-              "type": "boolean"
-            },
-            "required_for_public_runtime": {
-              "enum": [
-                false
-              ],
-              "type": "boolean"
-            },
-            "values_fabricated": {
-              "enum": [
-                false
-              ],
-              "type": "boolean"
-            }
-          },
-          "required": [
-            "configured",
-            "required_for_public_runtime",
-            "values_fabricated"
-          ],
-          "type": "object"
-        }
-      },
-      "required": [
-        "schema_version",
-        "ready",
-        "status",
-        "runtime_mode",
-        "database_init_mode",
-        "database",
-        "storage",
-        "home",
-        "weathernext",
-        "providers",
-        "privacy"
-      ],
-      "type": "object"
-    },
-    "/api/verification/summary": {
-      "properties": {
-        "common_sample_slices": {
-          "items": {
-            "type": "object"
-          },
-          "type": "array"
-        },
-        "comparison_location": {
-          "properties": {
-            "id": {
-              "type": "string"
-            },
-            "station_id": {
-              "enum": [
-                "10416"
-              ],
-              "type": "string"
-            }
-          },
-          "required": [
-            "id",
-            "station_id"
-          ],
-          "type": "object"
-        },
-        "comparison_mode": {
-          "enum": [
-            "station_run_skill"
-          ],
-          "type": "string"
-        },
-        "matching_tolerance_minutes": {
-          "enum": [
-            0
-          ],
-          "type": "integer"
-        },
-        "note": {
-          "type": "string"
-        },
-        "providers": {
-          "type": "object"
-        },
-        "sample_sufficiency_contract": {
-          "enum": [
-            "common-sample-sufficiency-v1"
-          ],
-          "type": "string"
-        },
-        "truth_quality": {
-          "type": "object"
-        },
-        "variable": {
-          "enum": [
-            "temperature_2m"
-          ],
-          "type": "string"
-        },
-        "verification_ready": {
-          "type": "boolean"
-        },
-        "window_days": {
-          "type": "integer"
-        }
-      },
-      "required": [
-        "window_days",
-        "variable",
-        "comparison_mode",
-        "sample_sufficiency_contract",
-        "comparison_location",
-        "matching_tolerance_minutes",
-        "verification_ready",
-        "truth_quality",
-        "common_sample_slices",
-        "providers",
-        "note"
-      ],
-      "type": "object"
-    },
     "/health": {
+      "type": "object",
+      "required": ["status", "runtime_mode", "database", "home_configured", "weathernext_required"],
       "properties": {
-        "database": {
-          "enum": [
-            "ready",
-            "missing",
-            "schema_incomplete",
-            "error"
-          ],
-          "type": "string"
-        },
-        "home_configured": {
-          "type": "boolean"
-        },
-        "runtime_mode": {
-          "type": "string"
-        },
-        "status": {
-          "enum": [
-            "ok"
-          ],
-          "type": "string"
-        },
-        "weathernext_required": {
-          "enum": [
-            false
-          ],
-          "type": "boolean"
-        }
-      },
-      "required": [
-        "status",
-        "runtime_mode",
-        "database",
-        "home_configured",
-        "weathernext_required"
-      ],
-      "type": "object"
+        "status": {"type": "string", "enum": ["ok"]},
+        "runtime_mode": {"type": "string"},
+        "database": {"type": "string", "enum": ["ready", "missing", "schema_incomplete", "error"]},
+        "home_configured": {"type": "boolean"},
+        "weathernext_required": {"type": "boolean", "enum": [false]}
+      }
     },
     "/ready": {
+      "type": "object",
+      "required": ["schema_version", "ready", "status", "runtime_mode", "database_init_mode", "database", "storage", "home", "weathernext", "providers", "privacy"],
       "properties": {
+        "schema_version": {"type": "integer", "enum": [1]},
+        "ready": {"type": "boolean"},
+        "status": {"type": "string", "enum": ["ready", "not_ready"]},
+        "runtime_mode": {"type": "string"},
+        "database_init_mode": {"type": "string", "enum": ["auto", "require-existing"]},
         "database": {
+          "type": "object",
+          "required": ["state", "exists", "required_tables_present", "missing_tables", "tables"],
           "properties": {
-            "detail": {
-              "nullable": true,
-              "type": "string"
-            },
-            "exists": {
-              "type": "boolean"
-            },
-            "missing_tables": {
-              "items": {
-                "type": "string"
-              },
-              "type": "array"
-            },
-            "required_tables_present": {
-              "type": "boolean"
-            },
-            "state": {
-              "enum": [
-                "ready",
-                "missing",
-                "schema_incomplete",
-                "error"
-              ],
-              "type": "string"
-            },
-            "tables": {
-              "items": {
-                "type": "string"
-              },
-              "type": "array"
-            }
-          },
-          "required": [
-            "state",
-            "exists",
-            "required_tables_present",
-            "missing_tables",
-            "tables"
-          ],
-          "type": "object"
-        },
-        "database_init_mode": {
-          "enum": [
-            "auto",
-            "require-existing"
-          ],
-          "type": "string"
-        },
-        "home": {
-          "properties": {
-            "configured": {
-              "type": "boolean"
-            },
-            "coordinates_exposed": {
-              "enum": [
-                false
-              ],
-              "type": "boolean"
-            },
-            "required_for_public_runtime": {
-              "enum": [
-                false
-              ],
-              "type": "boolean"
-            }
-          },
-          "required": [
-            "configured",
-            "required_for_public_runtime",
-            "coordinates_exposed"
-          ],
-          "type": "object"
-        },
-        "privacy": {
-          "properties": {
-            "coordinates_exposed": {
-              "enum": [
-                false
-              ],
-              "type": "boolean"
-            },
-            "credentials_exposed": {
-              "enum": [
-                false
-              ],
-              "type": "boolean"
-            },
-            "database_path_exposed": {
-              "enum": [
-                false
-              ],
-              "type": "boolean"
-            }
-          },
-          "required": [
-            "coordinates_exposed",
-            "credentials_exposed",
-            "database_path_exposed"
-          ],
-          "type": "object"
-        },
-        "providers": {
-          "items": {
-            "properties": {
-              "id": {
-                "type": "string"
-              },
-              "last_success_at_utc": {
-                "format": "date-time",
-                "nullable": true,
-                "type": "string"
-              },
-              "required_for_runtime": {
-                "type": "boolean"
-              },
-              "role": {
-                "type": "string"
-              },
-              "state": {
-                "type": "string"
-              }
-            },
-            "required": [
-              "id",
-              "role",
-              "state",
-              "required_for_runtime",
-              "last_success_at_utc"
-            ],
-            "type": "object"
-          },
-          "type": "array"
-        },
-        "ready": {
-          "type": "boolean"
-        },
-        "runtime_mode": {
-          "type": "string"
-        },
-        "schema_version": {
-          "enum": [
-            1
-          ],
-          "type": "integer"
-        },
-        "status": {
-          "enum": [
-            "ready",
-            "not_ready"
-          ],
-          "type": "string"
+            "state": {"type": "string", "enum": ["ready", "missing", "schema_incomplete", "error"]},
+            "exists": {"type": "boolean"},
+            "required_tables_present": {"type": "boolean"},
+            "missing_tables": {"type": "array", "items": {"type": "string"}},
+            "tables": {"type": "array", "items": {"type": "string"}},
+            "detail": {"type": "string", "nullable": true}
+          }
         },
         "storage": {
+          "type": "object",
+          "required": ["class", "persistent", "writable", "path_exposed"],
           "properties": {
-            "class": {
-              "enum": [
-                "ephemeral_memory",
-                "persistent_sqlite_file"
-              ],
-              "type": "string"
-            },
-            "path_exposed": {
-              "enum": [
-                false
-              ],
-              "type": "boolean"
-            },
-            "persistent": {
-              "type": "boolean"
-            },
-            "writable": {
-              "type": "boolean"
-            }
-          },
-          "required": [
-            "class",
-            "persistent",
-            "writable",
-            "path_exposed"
-          ],
-          "type": "object"
+            "class": {"type": "string", "enum": ["ephemeral_memory", "persistent_sqlite_file"]},
+            "persistent": {"type": "boolean"},
+            "writable": {"type": "boolean"},
+            "path_exposed": {"type": "boolean", "enum": [false]}
+          }
+        },
+        "home": {
+          "type": "object",
+          "required": ["configured", "required_for_public_runtime", "coordinates_exposed"],
+          "properties": {
+            "configured": {"type": "boolean"},
+            "required_for_public_runtime": {"type": "boolean", "enum": [false]},
+            "coordinates_exposed": {"type": "boolean", "enum": [false]}
+          }
         },
         "weathernext": {
+          "type": "object",
+          "required": ["configured", "required_for_public_runtime", "values_fabricated"],
           "properties": {
-            "configured": {
-              "type": "boolean"
-            },
-            "required_for_public_runtime": {
-              "enum": [
-                false
-              ],
-              "type": "boolean"
-            },
-            "values_fabricated": {
-              "enum": [
-                false
-              ],
-              "type": "boolean"
+            "configured": {"type": "boolean"},
+            "required_for_public_runtime": {"type": "boolean", "enum": [false]},
+            "values_fabricated": {"type": "boolean", "enum": [false]}
+          }
+        },
+        "providers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "role", "state", "required_for_runtime", "last_success_at_utc"],
+            "properties": {
+              "id": {"type": "string"},
+              "role": {"type": "string"},
+              "state": {"type": "string"},
+              "required_for_runtime": {"type": "boolean"},
+              "last_success_at_utc": {"type": "string", "format": "date-time", "nullable": true}
             }
-          },
-          "required": [
-            "configured",
-            "required_for_public_runtime",
-            "values_fabricated"
-          ],
-          "type": "object"
+          }
+        },
+        "privacy": {
+          "type": "object",
+          "required": ["coordinates_exposed", "credentials_exposed", "database_path_exposed"],
+          "properties": {
+            "coordinates_exposed": {"type": "boolean", "enum": [false]},
+            "credentials_exposed": {"type": "boolean", "enum": [false]},
+            "database_path_exposed": {"type": "boolean", "enum": [false]}
+          }
         }
-      },
-      "required": [
-        "schema_version",
-        "ready",
-        "status",
-        "runtime_mode",
-        "database_init_mode",
-        "database",
-        "storage",
-        "home",
-        "weathernext",
-        "providers",
-        "privacy"
-      ],
-      "type": "object"
+      }
+    },
+    "/api/readiness": {
+      "type": "object",
+      "required": ["schema_version", "ready", "status", "runtime_mode", "database_init_mode", "database", "storage", "home", "weathernext", "providers", "privacy"],
+      "properties": {
+        "schema_version": {"type": "integer", "enum": [1]},
+        "ready": {"type": "boolean"},
+        "status": {"type": "string", "enum": ["ready", "not_ready"]},
+        "runtime_mode": {"type": "string"},
+        "database_init_mode": {"type": "string", "enum": ["auto", "require-existing"]},
+        "database": {
+          "type": "object",
+          "required": ["state", "exists", "required_tables_present", "missing_tables", "tables"],
+          "properties": {
+            "state": {"type": "string", "enum": ["ready", "missing", "schema_incomplete", "error"]},
+            "exists": {"type": "boolean"},
+            "required_tables_present": {"type": "boolean"},
+            "missing_tables": {"type": "array", "items": {"type": "string"}},
+            "tables": {"type": "array", "items": {"type": "string"}},
+            "detail": {"type": "string", "nullable": true}
+          }
+        },
+        "storage": {
+          "type": "object",
+          "required": ["class", "persistent", "writable", "path_exposed"],
+          "properties": {
+            "class": {"type": "string", "enum": ["ephemeral_memory", "persistent_sqlite_file"]},
+            "persistent": {"type": "boolean"},
+            "writable": {"type": "boolean"},
+            "path_exposed": {"type": "boolean", "enum": [false]}
+          }
+        },
+        "home": {
+          "type": "object",
+          "required": ["configured", "required_for_public_runtime", "coordinates_exposed"],
+          "properties": {
+            "configured": {"type": "boolean"},
+            "required_for_public_runtime": {"type": "boolean", "enum": [false]},
+            "coordinates_exposed": {"type": "boolean", "enum": [false]}
+          }
+        },
+        "weathernext": {
+          "type": "object",
+          "required": ["configured", "required_for_public_runtime", "values_fabricated"],
+          "properties": {
+            "configured": {"type": "boolean"},
+            "required_for_public_runtime": {"type": "boolean", "enum": [false]},
+            "values_fabricated": {"type": "boolean", "enum": [false]}
+          }
+        },
+        "providers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "role", "state", "required_for_runtime", "last_success_at_utc"],
+            "properties": {
+              "id": {"type": "string"},
+              "role": {"type": "string"},
+              "state": {"type": "string"},
+              "required_for_runtime": {"type": "boolean"},
+              "last_success_at_utc": {"type": "string", "format": "date-time", "nullable": true}
+            }
+          }
+        },
+        "privacy": {
+          "type": "object",
+          "required": ["coordinates_exposed", "credentials_exposed", "database_path_exposed"],
+          "properties": {
+            "coordinates_exposed": {"type": "boolean", "enum": [false]},
+            "credentials_exposed": {"type": "boolean", "enum": [false]},
+            "database_path_exposed": {"type": "boolean", "enum": [false]}
+          }
+        }
+      }
+    },
+    "/api/health/providers": {
+      "type": "object",
+      "required": ["runtime_mode", "health_contract", "home", "location", "verification_reference", "database", "providers"],
+      "properties": {
+        "runtime_mode": {"type": "string"},
+        "health_contract": {"type": "string", "enum": ["provider-freshness-v1"]},
+        "home": {
+          "type": "object",
+          "required": ["id", "label", "configured", "coordinates_exposed", "timezone"],
+          "properties": {
+            "id": {"type": "string", "enum": ["home"]},
+            "label": {"type": "string"},
+            "configured": {"type": "boolean"},
+            "coordinates_exposed": {"type": "boolean", "enum": [false]},
+            "timezone": {"type": "string"}
+          }
+        },
+        "location": {
+          "type": "object",
+          "required": ["id", "label", "configured", "coordinates_exposed", "timezone"],
+          "properties": {
+            "id": {"type": "string", "enum": ["home"]},
+            "label": {"type": "string"},
+            "configured": {"type": "boolean"},
+            "coordinates_exposed": {"type": "boolean", "enum": [false]},
+            "timezone": {"type": "string"}
+          }
+        },
+        "verification_reference": {
+          "type": "object",
+          "required": ["id", "label", "station_id", "coordinates_exposed"],
+          "properties": {
+            "id": {"type": "string"},
+            "label": {"type": "string"},
+            "station_id": {"type": "string", "enum": ["05480"]},
+            "coordinates_exposed": {"type": "boolean", "enum": [false]}
+          }
+        },
+        "database": {
+          "type": "object",
+          "required": ["state", "exists", "required_tables_present", "missing_tables", "tables"],
+          "properties": {
+            "state": {"type": "string", "enum": ["ready", "missing", "schema_incomplete", "error"]},
+            "exists": {"type": "boolean"},
+            "required_tables_present": {"type": "boolean"},
+            "missing_tables": {"type": "array", "items": {"type": "string"}},
+            "tables": {"type": "array", "items": {"type": "string"}},
+            "detail": {"type": "string", "nullable": true}
+          }
+        },
+        "providers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "model_name", "state", "tracked", "ingest_state", "freshness_state", "failure_domain", "reason_code", "last_attempt_at_utc", "last_success_at_utc", "last_init_time_utc", "last_retrieved_at_utc", "latest_valid_time_utc", "last_observed_at_utc"],
+            "properties": {
+              "id": {"type": "string"},
+              "model_name": {"type": "string"},
+              "state": {"type": "string"},
+              "tracked": {"type": "boolean"},
+              "ingest_state": {"type": "string"},
+              "freshness_state": {"type": "string", "enum": ["fresh", "lagging", "degraded", "stale", "error", "unknown", "not_ingested", "not_tracked"]},
+              "failure_domain": {"type": "string"},
+              "reason_code": {"type": "string"},
+              "last_attempt_at_utc": {"type": "string", "format": "date-time", "nullable": true},
+              "last_success_at_utc": {"type": "string", "format": "date-time", "nullable": true},
+              "last_init_time_utc": {"type": "string", "format": "date-time", "nullable": true},
+              "last_retrieved_at_utc": {"type": "string", "format": "date-time", "nullable": true},
+              "latest_valid_time_utc": {"type": "string", "format": "date-time", "nullable": true},
+              "last_observed_at_utc": {"type": "string", "format": "date-time", "nullable": true}
+            }
+          }
+        }
+      }
+    },
+    "/api/current": {
+      "type": "object",
+      "required": ["location", "truth_source", "observations", "state", "note"],
+      "properties": {
+        "location": {
+          "type": "object",
+          "required": ["id", "label", "station_id", "coordinates_exposed"],
+          "properties": {
+            "id": {"type": "string"},
+            "label": {"type": "string"},
+            "station_id": {"type": "string", "enum": ["10416"]},
+            "coordinates_exposed": {"type": "boolean", "enum": [false]}
+          }
+        },
+        "truth_source": {"type": "string", "enum": ["DWD WMO 10416"]},
+        "observations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["observed_at_utc", "variable", "value", "unit"],
+            "properties": {
+              "observed_at_utc": {"type": "string", "format": "date-time"},
+              "variable": {"type": "string"},
+              "value": {"type": "number"},
+              "unit": {"type": "string"},
+              "source_provider": {"type": "string"},
+              "station_id": {"type": "string"}
+            }
+          }
+        },
+        "state": {"type": "string", "enum": ["observed", "not_observed_yet"]},
+        "note": {"type": "string"}
+      }
+    },
+    "/api/hourly": {
+      "type": "object",
+      "required": ["hours", "variable", "location", "series"],
+      "properties": {
+        "hours": {"type": "integer"},
+        "variable": {"type": "string"},
+        "location": {
+          "type": "object",
+          "required": ["id", "label", "coordinates_exposed"],
+          "properties": {
+            "id": {"type": "string"},
+            "label": {"type": "string"},
+            "coordinates_exposed": {"type": "boolean", "enum": [false]}
+          }
+        },
+        "series": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["provider", "model_name", "init_time_utc", "valid_time_utc", "lead_hours", "variable", "statistic", "value", "unit", "retrieved_at_utc"],
+            "properties": {
+              "provider": {"type": "string"},
+              "model_name": {"type": "string"},
+              "model_version": {"type": "string", "nullable": true},
+              "init_time_utc": {"type": "string", "format": "date-time", "nullable": true},
+              "valid_time_utc": {"type": "string", "format": "date-time"},
+              "lead_hours": {"type": "number"},
+              "variable": {"type": "string"},
+              "statistic": {"type": "string"},
+              "value": {"type": "number"},
+              "unit": {"type": "string"},
+              "retrieved_at_utc": {"type": "string", "format": "date-time"}
+            }
+          }
+        }
+      }
+    },
+    "/api/daily": {
+      "type": "object",
+      "required": ["days", "timezone", "location", "days_by_provider"],
+      "properties": {
+        "days": {"type": "integer"},
+        "timezone": {"type": "string"},
+        "location": {
+          "type": "object",
+          "required": ["id", "label", "coordinates_exposed"],
+          "properties": {
+            "id": {"type": "string"},
+            "label": {"type": "string"},
+            "coordinates_exposed": {"type": "boolean", "enum": [false]}
+          }
+        },
+        "days_by_provider": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["provider", "model_name", "date", "temperature_min_c", "temperature_max_c", "precipitation_total_mm", "init_time_utc", "init_time_quality", "retrieved_at_utc"],
+            "properties": {
+              "provider": {"type": "string"},
+              "model_name": {"type": "string"},
+              "date": {"type": "string", "format": "date"},
+              "temperature_min_c": {"type": "number", "nullable": true},
+              "temperature_max_c": {"type": "number", "nullable": true},
+              "precipitation_total_mm": {"type": "number"},
+              "init_time_utc": {"type": "string", "format": "date-time", "nullable": true},
+              "init_time_quality": {"type": "string"},
+              "retrieved_at_utc": {"type": "string", "format": "date-time"}
+            }
+          }
+        }
+      }
+    },
+    "/api/verification/summary": {
+      "type": "object",
+      "required": ["window_days", "variable", "comparison_mode", "sample_sufficiency_contract", "comparison_location", "matching_tolerance_minutes", "verification_ready", "truth_quality", "common_sample_slices", "providers", "note"],
+      "properties": {
+        "window_days": {"type": "integer"},
+        "variable": {"type": "string", "enum": ["temperature_2m"]},
+        "comparison_mode": {"type": "string", "enum": ["station_run_skill"]},
+        "sample_sufficiency_contract": {"type": "string", "enum": ["common-sample-sufficiency-v1"]},
+        "comparison_location": {
+          "type": "object",
+          "required": ["id", "station_id"],
+          "properties": {
+            "id": {"type": "string"},
+            "station_id": {"type": "string", "enum": ["05480"]}
+          }
+        },
+        "matching_tolerance_minutes": {"type": "integer", "enum": [0]},
+        "verification_ready": {"type": "boolean"},
+        "truth_quality": {"type": "object"},
+        "common_sample_slices": {"type": "array", "items": {"type": "object"}},
+        "providers": {"type": "object"},
+        "note": {"type": "string"}
+      }
     }
-  },
-  "invariants": {
-    "private_coordinates_allowed": false,
-    "pwa_data_states": [
-      "fresh",
-      "stale",
-      "error",
-      "offline"
-    ],
-    "severe_weather_warning_authority": "DWD",
-    "weathernext_warning_authority": false
-  },
-  "schema": "api-contract-v1"
+  }
 }

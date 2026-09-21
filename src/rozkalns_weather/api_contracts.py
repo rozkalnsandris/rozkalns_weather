@@ -141,7 +141,7 @@ API_CONTRACTS: dict[str, dict[str, Any]] = {
                 "properties": {
                     "id": {"type": "string"},
                     "label": {"type": "string"},
-                    "station_id": {"type": "string", "enum": ["10416"]},
+                    "station_id": {"type": "string", "enum": ["05480"]},
                     "coordinates_exposed": {"type": "boolean", "enum": [False]},
                 },
             },
@@ -292,7 +292,7 @@ API_CONTRACTS: dict[str, dict[str, Any]] = {
                 "required": ["id", "station_id"],
                 "properties": {
                     "id": {"type": "string"},
-                    "station_id": {"type": "string", "enum": ["10416"]},
+                    "station_id": {"type": "string", "enum": ["05480"]},
                 },
             },
             "matching_tolerance_minutes": {"type": "integer", "enum": [0]},
