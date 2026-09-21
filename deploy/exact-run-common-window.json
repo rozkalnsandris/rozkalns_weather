@@ -1,0 +1,121 @@
+{
+  "schema_version": 1,
+  "contract": "rozkalns-weather.exact-run-common-window.v1",
+  "repository": "rozkalnsandris/rozkalns_weather",
+  "decision_issue": 159,
+  "parent_issue": 148,
+  "status": "SELECTED_VERIFIED_FIXED_WINDOW",
+  "benchmark_location_id": "station_05480",
+  "truth_station_id": "05480",
+  "selected_window": {
+    "start_date": "2026-08-13",
+    "end_date": "2026-08-26",
+    "inclusive_days": 14,
+    "fixed_non_rolling": true,
+    "run_hours_utc": [0, 6, 12, 18],
+    "runs_per_model": 56
+  },
+  "models": {
+    "icon_d2": {
+      "model_provider": "DWD",
+      "model_name": "ICON-D2",
+      "open_meteo_model_key": "icon_d2",
+      "requested_horizon_days": 2,
+      "exact_run_availability_proven": true,
+      "full_horizon_boundary_proven": true
+    },
+    "ecmwf_ifs": {
+      "model_provider": "ECMWF",
+      "model_name": "IFS HRES",
+      "open_meteo_model_key": "ecmwf_ifs",
+      "requested_horizon_days": 10,
+      "exact_run_availability_proven": true,
+      "full_horizon_boundary_proven": true
+    },
+    "ecmwf_aifs": {
+      "model_provider": "ECMWF",
+      "model_name": "AIFS",
+      "open_meteo_model_key": "ecmwf_aifs025_single",
+      "requested_horizon_days": 15,
+      "exact_run_availability_proven": true,
+      "full_horizon_boundary_proven": true
+    }
+  },
+  "transport": {
+    "name": "Open-Meteo Single Runs API",
+    "surface": "https://single-runs-api.open-meteo.com/v1/forecast",
+    "semantics": "exact_init_full_horizon",
+    "required_variables": ["temperature_2m", "dew_point_2m", "precipitation", "pressure_msl", "cloud_cover", "wind_speed_10m", "wind_gusts_10m"],
+    "historical_forecast_substitution_allowed": false,
+    "previous_runs_substitution_allowed": false,
+    "rolling_timeseries_substitution_allowed": false
+  },
+  "public_probe_evidence": {
+    "primary_run_id": 35614910970,
+    "primary_head_sha": "25364a75d5b365412ad90a6ef494c56076da6bf4",
+    "primary_probe_fingerprint": "1143b898baee85e4a1bb18959fa0bfcb885f6f96c22813ebb5e2cd1b425e306a",
+    "primary_exact_run_required_variable_passes": 155,
+    "primary_exact_run_required_variable_expected": 168,
+    "primary_full_horizon_boundary_passes": 23,
+    "primary_full_horizon_boundary_expected": 24,
+    "primary_non_pass_class": "SSL_HANDSHAKE_TRANSPORT_TIMEOUT_ONLY",
+    "primary_api_or_model_unavailable_failures": 0,
+    "gap_closure_run_id": 35616166217,
+    "gap_closure_head_sha": "0d0828e1292ed6369aead33520dc7380add254af",
+    "gap_closure_fingerprint": "aa8bd30174a660ab5ae38f5202925eb2622521a5bf52485208fc499e8284bbf2",
+    "gap_closure_expected": 14,
+    "gap_closure_passed": 14,
+    "gap_closure_transport_retry_only": true,
+    "gap_closure_api_or_model_error_retried": false,
+    "combined_exact_run_required_variable_passes": 168,
+    "combined_exact_run_required_variable_expected": 168,
+    "combined_full_horizon_boundary_passes": 24,
+    "combined_full_horizon_boundary_expected": 24
+  },
+  "retention_evidence": {
+    "open_meteo_data_run_public_retention": "3 months",
+    "evidence_observed_date": "2026-09-21",
+    "oldest_selected_init_date": "2026-08-13",
+    "oldest_selected_init_age_days": 39,
+    "selection_has_material_margin_from_retention_edge": true,
+    "cross_model_retention_inference_used": false,
+    "each_model_exact_run_probed_separately": true
+  },
+  "truth_alignment": {
+    "source_authority": "DWD",
+    "transport": "DWD CDC Open Data",
+    "station_id": "05480",
+    "location_id": "station_05480",
+    "source_verified_truth_start": "2026-04-02",
+    "source_verified_truth_end": "2026-09-10",
+    "latest_aifs_requested_horizon_end_utc": "2026-09-10T18:00:00Z",
+    "requested_horizons_within_verified_truth": true
+  },
+  "preserved_legacy_evidence": {
+    "decision_contract": "deploy/icon-d2-exact-run-transport-decision.json",
+    "old_window_start": "2026-04-02",
+    "old_window_end": "2026-09-10",
+    "old_block_reason": "NO_COMPLETE_ICON_D2_EXACT_RUN_ARCHIVE_TRANSPORT",
+    "icon_d2_completed_prefix_runs": 279,
+    "icon_d2_last_completed_init_time_utc": "2026-06-10T12:00:00Z",
+    "existing_rows_preserved": true,
+    "existing_rows_rewritten": false,
+    "existing_rows_relabelled": false
+  },
+  "integrity": {
+    "missing_runs_allowed": false,
+    "skip_ahead_allowed": false,
+    "synthetic_or_imputed_values_allowed": false,
+    "alternate_model_substitution_allowed": false,
+    "provider_relabelling_allowed": false,
+    "immutable_snapshot_semantics_required": true,
+    "revision_detection_required": true
+  },
+  "authority": {
+    "production_data_authority_granted": false,
+    "source_merge_authorizes_production_write": false,
+    "live_resume_authorized": false,
+    "host_runtime_mutation_authorized": false,
+    "next_production_bootstrap_requires_new_exact_live_data_authority": true
+  }
+}

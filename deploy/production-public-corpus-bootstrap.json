@@ -1,7 +1,7 @@
 {
-  "schema_version": 1,
-  "contract": "rozkalns-weather.production-public-corpus-bootstrap.v1",
-  "status": "BLOCKED_BY_ICON_D2_EXACT_RUN_ARCHIVE_TRANSPORT",
+  "schema_version": 2,
+  "contract": "rozkalns-weather.production-public-corpus-bootstrap.v2",
+  "status": "SOURCE_READY_REQUIRES_EXACT_LIVE_DATA_AUTHORITY",
   "repository": "rozkalnsandris/rozkalns_weather",
   "target_alias": "rozkalns-weather-public-rpi5",
   "location": {
@@ -10,18 +10,29 @@
     "station_name": "Werl",
     "benchmark_contract": "deploy/dwd-cdc-05480-benchmark.json"
   },
-  "first_window": {"start_date": "2026-04-02", "end_date": "2026-09-10", "inclusive_days": 162, "max_inclusive_days": 180},
+  "fixed_common_window": {
+    "start_date": "2026-08-13",
+    "end_date": "2026-08-26",
+    "inclusive_days": 14,
+    "fixed_non_rolling": true,
+    "run_hours_utc": [0, 6, 12, 18],
+    "forecast_runs_per_model": 56,
+    "checkpoint_namespace": "fixed-window-20260813-20260826-v1",
+    "pre_159_fingerprint_reusable": false
+  },
   "forecast_scope": {
     "models": ["icon_d2", "ecmwf_ifs", "ecmwf_aifs"],
     "run_hours_utc": [0, 6, 12, 18],
     "location_id": "station_05480",
     "exact_pinned_station_coordinates": true,
     "nearest_station_fallback_allowed": false,
-    "exact_run_transport_decision_contract": "deploy/icon-d2-exact-run-transport-decision.json",
-    "icon_d2_historical_transport_status": "NO_COMPLETE_ICON_D2_EXACT_RUN_ARCHIVE_TRANSPORT",
-    "icon_d2_live_backfill_allowed": false,
+    "exact_run_transport_decision_contract": "deploy/exact-run-common-window.json",
+    "exact_run_transport_status": "VERIFIED_COMPLETE_FIXED_WINDOW",
+    "exact_init_required": true,
+    "full_horizon_required": true,
     "skip_unavailable_run_allowed": false,
-    "synthetic_or_imputed_run_allowed": false
+    "synthetic_or_imputed_run_allowed": false,
+    "live_backfill_allowed": false
   },
   "truth_scope": {
     "chunk_days": 14,
@@ -35,15 +46,76 @@
     "historical_transport_status": "verified_frozen_window_product_coverage",
     "coverage_verified_for_window_start": "2026-04-02",
     "coverage_verified_for_window_end": "2026-09-10",
+    "selected_common_window_start": "2026-08-13",
+    "selected_common_window_end": "2026-08-26",
     "coverage_revalidation_required_before_live_write": true,
     "benchmark_contract": "deploy/dwd-cdc-05480-benchmark.json",
-    "legacy_10416_decision_contract": "deploy/dwd-10416-historical-truth-decision.json",
     "live_backfill_allowed": false
   },
-  "schema_init": {"explicit_command_only": "rozkalns-weather init-database", "implicit_init_or_migration_from_backfill": false, "require_existing_ready_schema_before_backfill": true},
-  "checkpoint": {"schema_version": 1, "atomic_replace": true, "duplicate_entries_allowed": false, "ordered_prefix_required": true, "skip_ahead_allowed": false, "resume_requires_same_bootstrap_fingerprint": true, "database_ahead_requires_explicit_resume": true},
-  "integrity": {"missing_runs_allowed": false, "unexpected_runs_allowed": false, "revision_drift_allowed": false, "immutable_snapshots_required": true, "idempotent_same_payload_dedupe_required": true},
-  "recovery": {"required": true, "allowed_decisions": ["verified_backup_available", "owner_accepts_proceeding_without_prewrite_backup"], "automatic_restore_allowed": false, "automatic_delete_allowed": false, "automatic_cleanup_allowed": false, "live_resume_allowed_while_source_blocked": false},
-  "destructive_behavior": {"delete_allowed": false, "restore_allowed": false, "implicit_migration_allowed": false, "automatic_repair_allowed": false},
-  "authority": {"source_auto_full_authorizes_production_write": false, "source_merge_authorizes_production_write": false, "production_sqlite_or_corpus_write_requires_separate_exact_live_data_authority": true, "host_runtime_mutation_authorized": false, "weathernext_real_data_authorized": false}
+  "preserved_historical_evidence": {
+    "legacy_exact_run_decision_contract": "deploy/icon-d2-exact-run-transport-decision.json",
+    "legacy_block_reason": "NO_COMPLETE_ICON_D2_EXACT_RUN_ARCHIVE_TRANSPORT",
+    "dwd_observations": 30963,
+    "dwd_truth_completed_chunks": 12,
+    "dwd_truth_expected_chunks": 12,
+    "icon_d2_completed_runs": 279,
+    "icon_d2_old_expected_runs": 648,
+    "icon_d2_last_completed_init_time_utc": "2026-06-10T12:00:00Z",
+    "icon_d2_old_next_required_init_time_utc": "2026-06-10T18:00:00Z",
+    "ecmwf_ifs_bootstrap_started": false,
+    "ecmwf_aifs_bootstrap_started": false,
+    "existing_rows_preserved": true,
+    "existing_rows_deleted": false,
+    "existing_rows_rewritten": false,
+    "existing_rows_relabelled": false,
+    "legacy_checkpoint_reusable_for_new_window": false
+  },
+  "corpus_report": {
+    "production_readiness_start": "2026-08-13",
+    "production_readiness_end": "2026-08-26",
+    "historical_rows_outside_fixed_window_remain_auditable": true,
+    "historical_rows_outside_fixed_window_count_toward_common_readiness": false
+  },
+  "schema_init": {
+    "explicit_command_only": "rozkalns-weather init-database",
+    "implicit_init_or_migration_from_backfill": false,
+    "require_existing_ready_schema_before_backfill": true
+  },
+  "checkpoint": {
+    "schema_version": 1,
+    "namespace": "fixed-window-20260813-20260826-v1",
+    "atomic_replace": true,
+    "duplicate_entries_allowed": false,
+    "ordered_prefix_required": true,
+    "skip_ahead_allowed": false,
+    "resume_requires_same_bootstrap_fingerprint": true,
+    "database_ahead_requires_explicit_resume": true
+  },
+  "integrity": {
+    "missing_runs_allowed": false,
+    "unexpected_runs_allowed": false,
+    "revision_drift_allowed": false,
+    "immutable_snapshots_required": true,
+    "idempotent_same_payload_dedupe_required": true
+  },
+  "recovery": {
+    "required": true,
+    "allowed_decisions": ["verified_backup_available", "owner_accepts_proceeding_without_prewrite_backup"],
+    "automatic_restore_allowed": false,
+    "automatic_delete_allowed": false,
+    "automatic_cleanup_allowed": false
+  },
+  "destructive_behavior": {
+    "delete_allowed": false,
+    "restore_allowed": false,
+    "implicit_migration_allowed": false,
+    "automatic_repair_allowed": false
+  },
+  "authority": {
+    "source_auto_full_authorizes_production_write": false,
+    "source_merge_authorizes_production_write": false,
+    "production_sqlite_or_corpus_write_requires_separate_exact_live_data_authority": true,
+    "host_runtime_mutation_authorized": false,
+    "weathernext_real_data_authorized": false
+  }
 }

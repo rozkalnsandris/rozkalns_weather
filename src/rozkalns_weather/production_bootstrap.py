@@ -12,9 +12,12 @@ from .models import utc_iso
 from .providers.dwd_cdc_observations import CDC_STATION_ID, REQUIRED_VARIABLES
 
 SOURCE_SHA_RE = re.compile(r"^[0-9a-f]{40}$")
-COMMON_START = date(2026, 4, 2)
+TRUTH_VERIFIED_START = date(2026, 4, 2)
 VERIFIED_TRUTH_END = date(2026, 9, 10)
-MAX_DAYS = 180
+FIXED_WINDOW_START = date(2026, 8, 13)
+FIXED_WINDOW_END = date(2026, 8, 26)
+COMMON_START = FIXED_WINDOW_START
+MAX_DAYS = 14
 TRUTH_CHUNK_DAYS = 14
 MODELS = ("icon_d2", "ecmwf_ifs", "ecmwf_aifs")
 RUN_HOURS = (0, 6, 12, 18)
@@ -22,11 +25,13 @@ RECOVERY_DECISIONS = ("verified_backup_available", "owner_accepts_proceeding_wit
 TRUTH_SOURCE_AUTHORITY = "DWD"
 TRUTH_TRANSPORT = "DWD CDC Open Data"
 TRUTH_TRANSPORT_STATUS = "verified_frozen_window_product_coverage"
-FORECAST_TRANSPORT_BLOCK_REASON = "NO_COMPLETE_ICON_D2_EXACT_RUN_ARCHIVE_TRANSPORT"
-FORECAST_TRANSPORT_DECISION_CONTRACT = "deploy/icon-d2-exact-run-transport-decision.json"
-# Retained as a legacy reason-code identity because execution-evidence readers
-# may still encounter pre-#155 plans. It is not emitted by new plans.
-TRUTH_TRANSPORT_BLOCK_REASON = "TRUTH_TRANSPORT_HISTORICAL_CAPABILITY_UNVERIFIED"
+FORECAST_TRANSPORT_STATUS = "VERIFIED_COMPLETE_FIXED_WINDOW"
+FORECAST_TRANSPORT_DECISION_CONTRACT = "deploy/exact-run-common-window.json"
+CHECKPOINT_NAMESPACE = "fixed-window-20260813-20260826-v1"
+LEGACY_FORECAST_TRANSPORT_BLOCK_REASON = "NO_COMPLETE_ICON_D2_EXACT_RUN_ARCHIVE_TRANSPORT"
+LEGACY_FORECAST_TRANSPORT_DECISION_CONTRACT = "deploy/icon-d2-exact-run-transport-decision.json"
+# Compatibility identity retained for readers of pre-#159 plans. New plans do not emit it as a blocker.
+FORECAST_TRANSPORT_BLOCK_REASON = LEGACY_FORECAST_TRANSPORT_BLOCK_REASON
 FORBIDDEN_KEYS = frozenset({"home_lat", "home_lon", "credentials", "credential", "raw_logs", "raw_log", "database_path", "host_path", "env", "environment"})
 
 
@@ -65,14 +70,13 @@ def _contains_forbidden(value: object) -> bool:
 def build_production_bootstrap_plan(*, source_sha: str, start: date, end: date, recovery_decision: str) -> dict[str, object]:
     if not SOURCE_SHA_RE.fullmatch(source_sha):
         raise ValueError("source SHA must be an exact lowercase 40-character commit SHA")
-    if end < start:
-        raise ValueError("bootstrap end date must not be before start date")
-    if start < COMMON_START:
-        raise ValueError(f"production common benchmark starts at {COMMON_START.isoformat()}")
-    if end > VERIFIED_TRUTH_END:
+    if (start, end) != (FIXED_WINDOW_START, FIXED_WINDOW_END):
         raise ValueError(
-            f"DWD CDC benchmark coverage is source-verified only through {VERIFIED_TRUTH_END.isoformat()}; refresh source evidence before expanding the bootstrap"
+            "production bootstrap requires the exact fixed common window "
+            f"{FIXED_WINDOW_START.isoformat()}..{FIXED_WINDOW_END.isoformat()}"
         )
+    if start < TRUTH_VERIFIED_START or end > VERIFIED_TRUTH_END:
+        raise ValueError("fixed common window is outside source-verified DWD CDC truth coverage")
     inclusive_days = (end - start).days + 1
     if inclusive_days > MAX_DAYS:
         raise ValueError(f"production bootstrap exceeds {MAX_DAYS} inclusive days")
@@ -82,6 +86,7 @@ def build_production_bootstrap_plan(*, source_sha: str, start: date, end: date, 
         "source_sha": source_sha,
         "start_date": start.isoformat(),
         "end_date": end.isoformat(),
+        "window_kind": "fixed_non_rolling",
         "models": list(MODELS),
         "run_hours_utc": list(RUN_HOURS),
         "benchmark_location_id": BENCHMARK_LOCATION.id,
@@ -91,14 +96,26 @@ def build_production_bootstrap_plan(*, source_sha: str, start: date, end: date, 
         "truth_source_authority": TRUTH_SOURCE_AUTHORITY,
         "truth_transport": TRUTH_TRANSPORT,
         "truth_transport_status": TRUTH_TRANSPORT_STATUS,
-        "icon_d2_exact_run_transport_status": FORECAST_TRANSPORT_BLOCK_REASON,
+        "exact_run_transport_status": FORECAST_TRANSPORT_STATUS,
+        "exact_run_transport_decision_contract": FORECAST_TRANSPORT_DECISION_CONTRACT,
+        "checkpoint_namespace": CHECKPOINT_NAMESPACE,
+        "pre_159_fingerprint_reusable": False,
         "recovery_decision": recovery_decision,
     }
     fingerprint = hashlib.sha256(json.dumps(identity, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    transport = {
+        "transport": "Open-Meteo Single Runs API",
+        "status": FORECAST_TRANSPORT_STATUS,
+        "decision_contract": FORECAST_TRANSPORT_DECISION_CONTRACT,
+        "exact_init_required": True,
+        "full_horizon_required": True,
+        "skip_ahead_allowed": False,
+        "live_backfill_allowed": False,
+    }
     return {
-        "schema_version": 1,
-        "state": "BLOCKED_SOURCE_CAPABILITY",
-        "block_reasons": [FORECAST_TRANSPORT_BLOCK_REASON],
+        "schema_version": 2,
+        "state": "SOURCE_READY_REQUIRES_EXACT_LIVE_DATA_AUTHORITY",
+        "block_reasons": [],
         "bootstrap_fingerprint": fingerprint,
         "identity": identity,
         "truth_transport": {
@@ -108,8 +125,10 @@ def build_production_bootstrap_plan(*, source_sha: str, start: date, end: date, 
             "location_id": BENCHMARK_LOCATION.id,
             "station_name": "Werl",
             "required_variables": list(REQUIRED_VARIABLES),
-            "verified_window_start": COMMON_START.isoformat(),
+            "verified_window_start": TRUTH_VERIFIED_START.isoformat(),
             "verified_window_end": VERIFIED_TRUTH_END.isoformat(),
+            "selected_common_window_start": FIXED_WINDOW_START.isoformat(),
+            "selected_common_window_end": FIXED_WINDOW_END.isoformat(),
             "historical_capability": TRUTH_TRANSPORT_STATUS,
             "coverage_revalidation_required_before_live": True,
             "live_backfill_allowed": False,
@@ -120,21 +139,18 @@ def build_production_bootstrap_plan(*, source_sha: str, start: date, end: date, 
             "exact_public_station_coordinates": True,
             "nearest_station_fallback_allowed": False,
         },
-        "forecast_transport": {
-            "icon_d2": {
-                "transport": "Open-Meteo Single Runs API",
-                "status": FORECAST_TRANSPORT_BLOCK_REASON,
-                "decision_contract": FORECAST_TRANSPORT_DECISION_CONTRACT,
-                "exact_init_required": True,
-                "skip_ahead_allowed": False,
-                "live_backfill_allowed": False,
-            },
-            "ecmwf_ifs": {"transport": "Open-Meteo Single Runs API", "exact_init_required": True},
-            "ecmwf_aifs": {"transport": "Open-Meteo Single Runs API", "exact_init_required": True},
+        "forecast_transport": {model: dict(transport) for model in MODELS},
+        "historical_evidence": {
+            "legacy_transport_decision_contract": LEGACY_FORECAST_TRANSPORT_DECISION_CONTRACT,
+            "legacy_block_reason": LEGACY_FORECAST_TRANSPORT_BLOCK_REASON,
+            "existing_rows_preserved": True,
+            "existing_rows_rewritten": False,
+            "legacy_checkpoint_reusable_for_fixed_window": False,
         },
         "inclusive_days": inclusive_days,
         "truth_chunk_count": len(_truth_chunks(start, end)),
         "forecast_run_count_per_model": len(_run_keys(start, end)),
+        "checkpoint_namespace": CHECKPOINT_NAMESPACE,
         "schema_init_explicit_only": True,
         "implicit_migration_allowed": False,
         "delete_allowed": False,
@@ -214,9 +230,10 @@ def evaluate_resume_evidence(plan: Mapping[str, object], evidence: Mapping[str, 
         reasons.append("PARTIAL_BOOTSTRAP_INCOMPLETE")
     reasons = list(dict.fromkeys(reasons))
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "state": "PASS" if not reasons else "BLOCKED",
         "block_reasons": reasons,
+        "checkpoint_namespace": CHECKPOINT_NAMESPACE,
         "production_data_authority_granted": False,
         "automatic_retry_allowed": False,
         "automatic_restore_allowed": False,

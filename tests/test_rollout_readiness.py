@@ -20,22 +20,28 @@ from rozkalns_weather.rollout import (
 )
 
 
-def test_source_package_fails_closed_while_truth_transport_is_blocked() -> None:
-    with pytest.raises(ValueError, match="production bootstrap status mismatch"):
-        validate_source_package()
+def test_source_package_accepts_fixed_window_bootstrap_without_granting_live() -> None:
+    result = validate_source_package()
+    assert result["ok"] is True
+    assert result["target_alias"] == "rozkalns-weather-public-rpi5"
+    assert result["privacy"]["credentials_exposed"] is False
 
 
-def test_rollout_plan_fails_closed_while_truth_transport_is_blocked() -> None:
-    with pytest.raises(ValueError, match="production bootstrap status mismatch"):
-        build_rollout_plan(
-            source_sha="a" * 40,
-            start=date(2026, 4, 2),
-            end=date(2026, 4, 5),
-            models="ecmwf_aifs,icon_d2,ecmwf_ifs",
-            run_hours_utc="18,0,12,6",
-            recovery_decision="verified_backup_available",
-            completed_stages=BOOTSTRAP_STAGE_ORDER[:2],
-        )
+def test_rollout_plan_is_source_ready_without_granting_live_or_data_authority() -> None:
+    plan = build_rollout_plan(
+        source_sha="a" * 40,
+        start=date(2026, 8, 13),
+        end=date(2026, 8, 26),
+        models="ecmwf_aifs,icon_d2,ecmwf_ifs",
+        run_hours_utc="18,0,12,6",
+        recovery_decision="verified_backup_available",
+        completed_stages=BOOTSTRAP_STAGE_ORDER[:2],
+    )
+    assert plan["state"] == "source_preflight_ready"
+    assert plan["bootstrap"]["start_date"] == "2026-08-13"
+    assert plan["bootstrap"]["end_date"] == "2026-08-26"
+    assert plan["live_authority_granted"] is False
+    assert plan["production_data_authority_granted"] is False
 
 
 def test_bootstrap_rejects_unbounded_or_unsupported_inputs() -> None:
@@ -122,7 +128,7 @@ def test_post_rollout_evidence_contract_passes_and_rejects_private_fields() -> N
         validate_post_rollout_evidence(bad)
 
 
-def test_rollout_preflight_cli_fails_closed_while_truth_transport_is_blocked(monkeypatch, capsys) -> None:
+def test_rollout_preflight_cli_is_source_ready_but_does_not_grant_live(monkeypatch, capsys) -> None:
     monkeypatch.setattr(
         "sys.argv",
         [
@@ -131,9 +137,9 @@ def test_rollout_preflight_cli_fails_closed_while_truth_transport_is_blocked(mon
             "--source-sha",
             "c" * 40,
             "--start",
-            "2026-04-02",
+            "2026-08-13",
             "--end",
-            "2026-04-03",
+            "2026-08-26",
             "--models",
             "icon_d2,ecmwf_ifs,ecmwf_aifs",
             "--run-hours",
@@ -142,12 +148,10 @@ def test_rollout_preflight_cli_fails_closed_while_truth_transport_is_blocked(mon
             "owner_accepts_proceeding_without_prewrite_backup",
         ],
     )
-    with pytest.raises(SystemExit) as exc_info:
-        cli_main()
-    assert exc_info.value.code == 2
+    cli_main()
     payload = json.loads(capsys.readouterr().out)
-    assert payload["state"] == "invalid"
-    assert payload["error"] == "production bootstrap status mismatch"
+    assert payload["state"] == "source_preflight_ready"
+    assert payload["live_authority_granted"] is False
     assert payload["production_data_authority_granted"] is False
     assert payload["privacy"]["credentials_exposed"] is False
 
