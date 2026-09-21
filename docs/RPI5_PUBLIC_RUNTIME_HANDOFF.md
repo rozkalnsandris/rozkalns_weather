@@ -1,149 +1,154 @@
 # RPi5 public-only runtime handoff — SIMPLE-DEPLOY v1
 
-Current ordinary application-release handoff uses shared SIMPLE-DEPLOY v1. Weather consumer config is `.simple-deploy.json`, pinned shared revision is `ops-workflows@e05ed760791a127c7c9628696806ef39c9fe329c`, and generic trusted host source is `RPi5_main@ff20fcf64ba62c95e5f15eeb481c3c66bb5c9708`. Target `rozkalns-weather-public-rpi5` remains inactive until one separate exact LIVE cutover installs/enables the generic deployer and binds the fixed target.
+This handoff describes the **current** public-only Weather runtime boundary after the completed UI-FIRST milestone.
 
-The generic deployer, not Weather GitHub prose, owns fixed host authority: it resolves the discovery pointer, freezes one immutable digest, pulls/updates only the allowlisted `weather` service, verifies `/health` and `/ready`, and records an exact receipt. `weather_data` is retained and `DATABASE_INIT_MODE=require-existing` prevents application replacement from becoming a schema/data operation.
+## Current ordinary deployment model
 
-The old Weather-specific broker/operator/`ops-workflows#46` queue/JIT/Composite flow is **legacy/superseded for ordinary application releases**. Its source files are retained only as audit/regression evidence and do not gate SIMPLE-DEPLOY.
+Weather is a SIMPLE-DEPLOY consumer/canary. Shared GitHub-side build/publish/promotion policy is owned by `rozkalnsandris/ops-workflows`; trusted generic host reconciliation is owned by `rozkalnsandris/RPi5_main`.
 
-## Runtime mode and safety
+Weather consumer source:
 
-The first public runtime uses:
+- `.simple-deploy.json`;
+- `.github/workflows/simple-deploy.yml`;
+- `deploy/docker-compose.public.yml`;
+- health/readiness and persistence contracts in this repository.
+
+Accepted shared workflow revision: `ops-workflows@e05ed760791a127c7c9628696806ef39c9fe329c`.
+
+The one-time generic-deployer / Weather target cutover is **completed**. Ordinary already-classified Weather application releases now follow the standing path without a fresh per-release LIVE approval:
+
+```text
+guarded merge
+-> shared SIMPLE-DEPLOY publishes/promotes exact source
+-> generic RPi5 reconciler resolves one immutable digest
+-> fixed Weather application service replacement
+-> /health + /ready verification
+-> deployed receipt
+```
+
+Historical Weather-specific broker/operator/`ops-workflows#46` queue/JIT/Composite paths are **legacy/superseded for ordinary application releases**. Their source remains audit/regression evidence only.
+
+## Runtime mode and benchmark
+
+Current public runtime uses:
 
 - `WEATHER_RUNTIME_MODE=public-only`;
 - `DATABASE_INIT_MODE=require-existing`;
-- DWD/Bright Sky/Open-Meteo public providers;
-- DWD WMO `10416` as measured benchmark truth;
-- no required `HOME_LAT` / `HOME_LON`;
-- no required Google Cloud or WeatherNext credentials.
+- persistent Docker volume `weather_data`;
+- DWD/Bright Sky/Open-Meteo public-provider transports as reviewed by current source contracts;
+- canonical measured benchmark `station_05480` / DWD CDC station `05480` (Werl);
+- fixed common deterministic benchmark window `2026-08-13..2026-08-26`;
+- recurring public ingest enabled separately from application deployment;
+- no required private `HOME_LAT` / `HOME_LON`;
+- no required private Google Cloud / WeatherNext credentials for public-only readiness.
 
-WeatherNext 3 remains first-class `primary_research`, but `access_pending` is non-blocking for this runtime class and no WeatherNext values are fabricated. DWD is the severe-weather warning authority.
+`station_10416` is legacy/MOSMIX reference compatibility only. Historical 10416 truth/bootstrap evidence remains preserved but is not the current measured benchmark.
 
-## Fixed package surface
+WeatherNext 3 remains first-class research scope, but `access_pending` is non-blocking for public-only runtime. WeatherNext values must never be fabricated. DWD remains the official severe-weather warning authority.
 
-Canonical source contracts include:
+## Persistent data boundary
 
-- `Dockerfile`;
-- `deploy/docker-compose.public.yml`;
-- `deploy/runtime-descriptor.json`;
-- `deploy/rollout-readiness.json`;
+`weather_data` is retained across ordinary application releases. Application replacement must not silently:
+
+- initialize or migrate production schema;
+- backfill historical corpus;
+- delete/restore/repair SQLite data;
+- enable/disable systemd ingest scheduling;
+- modify private-provider credentials or home configuration.
+
+Production schema/public corpus initialization and recurring-ingest activation were completed under their own reviewed exact gates. They remain different mutation classes from ordinary app release.
+
+## Current benchmark/corpus semantics
+
+Current measured truth and deterministic model comparison use the same public benchmark identity: `station_05480`.
+
+Canonical current fixed common window:
+
+```text
+2026-08-13..2026-08-26
+models: icon_d2, ecmwf_ifs, ecmwf_aifs
+run hours: 00/06/12/18 UTC
+truth: DWD CDC 05480
+```
+
+IFS long-horizon coverage is cycle-aware: 00/12 cycles extend farther than 06/18 cycles. Integrity expectations must preserve that distinction rather than treating valid shorter cycles as missing data.
+
+The older `2026-04-02..2026-09-10` bootstrap attempt and its 10416 assumptions are historical rollout evidence only.
+
+## Recurring public ingest
+
+Recurring public ingest is an explicit host capability, independent from ordinary SIMPLE-DEPLOY application replacement.
+
+The reviewed schedule contract uses the Weather public ingest service/timer and enable-last semantics. Current production activation has been completed and verified. Future systemd/timer mutation remains a host-control operation requiring the authority defined by current `RPi5_main` rules; application source merge does not imply it.
+
+Provider failures are isolated. One provider's upstream/transport error must remain visible without erasing healthy provider state or making public readiness depend on fabricated provenance.
+
+## Health/readiness contract
+
+Production acceptance uses privacy-safe endpoints including:
+
+- `/health` — application/local DB liveness summary;
+- `/ready` and `/api/readiness` — schema/storage/provider/privacy readiness;
+- `/api/health/providers` — provider ingest/freshness/failure-domain provenance;
+- `/api/current` — current DWD benchmark observations;
+- `/api/warnings` — DWD official warnings;
+- `/api/radar` — observed/nowcast safety context.
+
+Public-only Warnings/Radar may use the public benchmark reference when private home is not configured. Exact coordinates are not exposed through GitHub-safe evidence.
+
+## Ordinary release safety boundary
+
+Standing SIMPLE-DEPLOY authority is narrow: fixed consumer, fixed image contract, fixed application replacement and health/readiness verification.
+
+It does **not** authorize:
+
+- production SQLite/corpus/checkpoint writes or migration;
+- destructive recovery/restore/delete;
+- Docker/systemd/root/path/argv improvisation outside the reviewed generic deployer contract;
+- `.env`, credentials, IAM, BigQuery private access or Analytics Hub link changes;
+- private-home activation;
+- Cloudflare/network/DNS mutation;
+- filesystem ownership/permission changes.
+
+Those remain separate exact owner gates where applicable.
+
+## WeatherNext private continuation
+
+The public runtime is no longer blocked by WeatherNext.
+
+Before private first access:
+
+1. #168 must migrate the first-access source canary from legacy `station_10416` to canonical `station_05480`;
+2. #122 remains the later explicit private read-only BigQuery gate;
+3. first production WeatherNext snapshot write remains a separate data mutation gate.
+
+No private query should be executed against the stale first-access location contract before #168 completes.
+
+## Historical first-rollout evidence
+
+The following are retained as historical/audit compatibility only and are not current ordinary-release prerequisites:
+
 - `deploy/rpi5-source-binding.json`;
 - `deploy/first-public-rollout-preflight.json`;
-- `deploy/production-public-corpus-bootstrap.json`;
-- `deploy/public-ingest-schedule.json`.
+- historical Weather operator/JIT/Composite contracts;
+- old `ops-workflows#46` queue receipts;
+- point-in-time pre-LIVE host state from earlier handoffs.
 
-The application service does not implicitly initialize schema, backfill history, restore/delete corpus or enable the recurring timer.
+Historical mutable SHA/queue/operator assertions must never be reused as current runtime proof.
 
-## Source preflight versus runtime proof
+## Current source of truth
 
-`rozkalns-weather rollout-preflight` validates the reviewed source checkout without network calls or runtime mutation. It validates fixed package identities, an exact 40-character source SHA form, bounded dates, WMO `10416`, exact `icon_d2/ecmwf_ifs/ecmwf_aifs`, exact UTC run hours `0,6,12,18`, ordered checkpoints and one explicit recovery decision.
+For a new work cycle:
 
-It deliberately cannot prove:
+1. read `AGENTS.md` and current repo contracts;
+2. read controller issue #9;
+3. refresh current `main` / exact-head CI;
+4. obtain minimum-sufficient fresh RPi5 read-only evidence only when runtime state matters.
 
-- current GitHub `main` membership;
-- current exact-SHA CI;
-- current queue state;
-- current operator installation;
-- current runtime baseline;
-- current deployment/readiness.
-
-Those are fresh JIT inputs.
-
-## Persistent corpus and rollout ordering
-
-The persistent storage class is Docker named volume `weather_data`, mounted at `/app/data`; canonical in-container DB URL is `sqlite:///data/weather.db`.
-
-The fixed first-public sequence is:
-
-1. `volume_ensure`;
-2. `explicit_schema_init`;
-3. `readiness_check`;
-4. `public_smoke_read_only`;
-5. `bounded_dwd_truth_backfill`;
-6. `bounded_forecast_backfill`;
-7. `corpus_integrity_check`;
-8. `enable_recurring_public_ingest` last.
-
-Resume accepts only an exact completed prefix. Hidden retry, implicit stage advancement, automatic restore/delete/cleanup and destructive SQLite rollback remain forbidden.
-
-## Recovery semantics
-
-Before production corpus writes, one explicit recovery decision must be bound:
-
-- `verified_backup_available`; or
-- `owner_accepts_proceeding_without_prewrite_backup`.
-
-Backup creation/restore/delete are separate mutation classes. Application rollback does not imply SQLite rollback.
-
-## Legacy source/control-plane reconciliation — superseded for ordinary application releases
-
-Issue `#140` supersedes the stale v7 handoff after the Weather-v9 operator/control-plane recovery completed.
-
-Point-in-time source anchors at reconciliation:
-
-- Weather `main=9e903b0e1d129856c4b1533b48487b7f5c36737d`;
-- `RPi5_main/main=84e129909831bd8111c4f4c1f6618b7fff2a803b`;
-- `ops-workflows#46` blocked on Weather source-handoff reconciliation.
-
-These anchors are **not** runtime proof. `deploy/rpi5-source-binding.json` therefore records source/control-plane lineage and proof requirements, but does not contain a current host observation or stale v7 next-owner gate.
-
-`deploy/rollout-readiness.json` likewise does not encode mutable current-host assertions such as `operator_host_installed=false`. The v1 source-package validator still has compatibility sentinel fields in `deploy/rpi5-source-binding.json`; they are explicitly marked non-authoritative and are not current host observations or capability decisions.
-
-## Legacy first-public JIT gate — superseded for ordinary application releases
-
-`deploy/first-public-rollout-preflight.json` plus `rozkalns-weather rollout-live-preflight-validate` require fresh:
-
-- exact current Weather SHA + exact-SHA CI;
-- exact current `RPi5_main` SHA + exact-SHA CI;
-- matching `ops-workflows#46` `OPEN_READY` queue;
-- trusted host/target identity;
-- operator installation proof;
-- sanitized runtime baseline with exact token match;
-- reviewed contract identities;
-- bounded bootstrap inputs;
-- explicit recovery decision;
-- exact mutation/read-only budgets;
-- owner/TTL/raw-body/replay authorization evidence.
-
-The validator returns only `PASS` or explicit `BLOCKED` reasons and does not create/consume LIVE authority or mutate runtime.
-
-A retained `next_owner_live_gate` node in the v1 preflight JSON exists only for schema compatibility with the current source-package validator. It is marked unavailable, historical and superseded; it is **not** the current gate.
-
-## Legacy post-merge control-plane sequence — superseded for ordinary application releases
-
-After Issue `#140` merges:
-
-1. resolve the final merged Weather SHA;
-2. reconcile `ops-workflows#46` to that exact SHA under its own rules;
-3. refresh Weather/RPi5 exact-SHA CI;
-4. collect fresh sanitized operator-installation proof and runtime baseline;
-5. run the JIT preflight;
-6. only after JIT `PASS`, request a new bounded Composite STRICT LIVE authorization.
-
-Queue READY remains eligibility-only. Source merge, queue READY and JIT PASS do not themselves authorize mutation.
-
-## LIVE mutation boundary
-
-Production schema initialization, DWD truth/forecast corpus backfill, Docker/systemd changes, timer enablement, backup/restore, private home configuration, WeatherNext/Google Cloud credentials and Cloudflare/network changes require separate explicit owner authority.
-
-After the first mutation starts, unexpected state follows fail-closed semantics: collect minimum sufficient read-only evidence and STOP; no undeclared retry, rollback, cleanup or alternate mutation path.
-
-## Post-rollout evidence
-
-Successful rollout evidence must prove, without private data:
-
-- deployed exact authorized Weather SHA;
-- HTTP 200 for `/health`, `/ready` and `/api/health/providers`;
-- ready schema and persistent SQLite storage;
-- retained `weather_data`;
-- required provider states;
-- corpus integrity;
-- WeatherNext optional/non-fabricated status.
-
-The evidence validator rejects coordinates, credentials, raw logs, DB paths, host-private paths and environment fields.
+Do not infer current deployment/runtime state from historical handoff SHA values.
 
 ## Warning and privacy invariants
 
 DWD remains authoritative for severe-weather warnings in Germany. WeatherNext remains research output only.
 
-Exact home address/coordinates, credentials, `.env`, private host paths and raw runtime logs must not be committed to GitHub.
+Exact home address/coordinates, credentials, `.env`, private host paths and raw private runtime logs must not be committed to GitHub.
