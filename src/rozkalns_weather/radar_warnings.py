@@ -42,10 +42,10 @@ def fetch_dwd_alerts(*,lat:float,lon:float,fetcher:JsonFetcher=fetch_json,now:da
     return {"authority":"DWD","transport":"Bright Sky","official":True,"kind":"official_warning","state":"alerts_present" if alerts else "no_active_alerts","retrieved_at_utc":utc_iso(now),"source_attribution":"DWD warning data via Bright Sky","alerts":alerts,"coordinates_exposed":False}
 
 
-def fetch_radar_point(*,lat:float,lon:float,fetcher:JsonFetcher=fetch_json,now:datetime|None=None)->dict[str,Any]:
+def fetch_radar_point(*,lat:float,lon:float,center_location_id:str="home",fetcher:JsonFetcher=fetch_json,now:datetime|None=None)->dict[str,Any]:
     now=(now or datetime.now(timezone.utc)).astimezone(timezone.utc); payload=fetcher(BRIGHTSKY_RADAR_URL,{"lat":lat,"lon":lon}); raw_frames=payload.get("radar",[]); frames=[]
     if isinstance(raw_frames,list):
         for raw in raw_frames:
             if not isinstance(raw,dict):continue
             timestamp=raw.get("timestamp") or raw.get("time"); frames.append({**raw,"kind":radar_frame_kind(str(timestamp) if timestamp else None,now=now)})
-    return {"source":"DWD radar via Bright Sky","transport":"Bright Sky","not_model_forecast":True,"state":"frames_present" if frames else "no_radar_frames","retrieved_at_utc":utc_iso(now),"source_attribution":"DWD radar data via Bright Sky","map_contract":{"center_location_id":"home","coordinates_exposed":False,"allowed_kinds":["radar_observed","radar_nowcast"],"model_forecast_is_separate":True},"frames":frames,"geometry":payload.get("geometry")}
+    return {"source":"DWD radar via Bright Sky","transport":"Bright Sky","not_model_forecast":True,"state":"frames_present" if frames else "no_radar_frames","retrieved_at_utc":utc_iso(now),"source_attribution":"DWD radar data via Bright Sky","map_contract":{"center_location_id":center_location_id,"coordinates_exposed":False,"allowed_kinds":["radar_observed","radar_nowcast"],"model_forecast_is_separate":True},"frames":frames,"geometry":payload.get("geometry")}
