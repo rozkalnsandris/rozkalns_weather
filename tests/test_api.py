@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 from rozkalns_weather.app import create_app
 from rozkalns_weather.config import Settings
 from rozkalns_weather.db import Database
-from rozkalns_weather.locations import DWD_10416
+from rozkalns_weather.locations import DWD_10416, DWD_CDC_05480
 from rozkalns_weather.models import ForecastRun, ForecastValue, Observation
 
 
@@ -100,7 +100,7 @@ def test_first_station_snapshot_visible_without_home_and_preserves_surface_stati
     response = client.get("/api/hourly?location_id=station_10416&hours=6").json()
     assert response["location"]["id"] == "station_10416"
     series = response["series"]
-    assert len(series) == 6  # 0p1 temperature remains stored, not duplicated into the station chart.
+    assert len(series) == 6
     assert {r["statistic"] for r in series} == set(STATS)
     assert {round(r["value"], 2) for r in series} == {20.0}
     assert all(r["model_version"] == "3.0.0" and r["lead_hours"] == 1 for r in series)
@@ -108,7 +108,7 @@ def test_first_station_snapshot_visible_without_home_and_preserves_surface_stati
     assert client.get("/api/hourly").json()["series"] == []
     daily = client.get("/api/daily?location_id=station_10416").json()["days_by_provider"]
     assert len(daily) == 1
-    assert daily[0]["precipitation_total_mm"] == 1.0  # mean only; never mean + p50.
+    assert daily[0]["precipitation_total_mm"] == 1.0
     assert round(daily[0]["temperature_min_c"], 2) == 20.0
     assert client.get("/api/hourly?location_id=unknown").status_code == 422
     assert client.get("/api/daily?location_id=unknown").status_code == 422
@@ -128,8 +128,8 @@ def test_verification_api_uses_common_samples_and_exposes_missingness(tmp_path) 
         [
             Observation(
                 source_provider="DWD",
-                station_id="10416",
-                location_id=DWD_10416.id,
+                station_id="05480",
+                location_id=DWD_CDC_05480.id,
                 observed_at_utc=valid,
                 variable="temperature_2m",
                 value=value,
@@ -149,25 +149,11 @@ def test_verification_api_uses_common_samples_and_exposes_missingness(tmp_path) 
             retrieved_at_utc=first - timedelta(hours=5),
             source_surface="fixture",
             values=(
-                ForecastValue(
-                    valid_time_utc=first,
-                    lead_hours=6,
-                    variable="temperature_2m",
-                    statistic="deterministic",
-                    value=11.0,
-                    unit="degC",
-                ),
-                ForecastValue(
-                    valid_time_utc=second,
-                    lead_hours=7,
-                    variable="temperature_2m",
-                    statistic="deterministic",
-                    value=12.0,
-                    unit="degC",
-                ),
+                ForecastValue(valid_time_utc=first, lead_hours=6, variable="temperature_2m", statistic="deterministic", value=11.0, unit="degC"),
+                ForecastValue(valid_time_utc=second, lead_hours=7, variable="temperature_2m", statistic="deterministic", value=12.0, unit="degC"),
             ),
         ),
-        location_id=DWD_10416.id,
+        location_id=DWD_CDC_05480.id,
     )
     database.insert_forecast_run(
         ForecastRun(
@@ -179,23 +165,17 @@ def test_verification_api_uses_common_samples_and_exposes_missingness(tmp_path) 
             retrieved_at_utc=first - timedelta(hours=5),
             source_surface="fixture",
             values=(
-                ForecastValue(
-                    valid_time_utc=first,
-                    lead_hours=6,
-                    variable="temperature_2m",
-                    statistic="deterministic",
-                    value=10.5,
-                    unit="degC",
-                ),
+                ForecastValue(valid_time_utc=first, lead_hours=6, variable="temperature_2m", statistic="deterministic", value=10.5, unit="degC"),
             ),
         ),
-        location_id=DWD_10416.id,
+        location_id=DWD_CDC_05480.id,
     )
 
     response = client.get("/api/verification/summary?days=30")
     assert response.status_code == 200
     payload = response.json()
     assert payload["sample_sufficiency_contract"] == "common-sample-sufficiency-v1"
+    assert payload["comparison_location"] == {"id": "station_05480", "station_id": "05480"}
     assert len(payload["common_sample_slices"]) == 2
     rows = {row["provider"]: row for row in payload["common_sample_slices"]}
     assert rows["icon_d2"]["n"] == 1

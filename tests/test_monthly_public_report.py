@@ -40,7 +40,7 @@ def forecast_row(
         "model_provider": model_provider,
         "model_name": model_name,
         "model_version": model_version,
-        "location_id": "station_10416",
+        "location_id": "station_05480",
         "init_time_utc": init_time,
         "retrieved_at_utc": retrieved_at,
         "upstream_available_at_utc": None,
@@ -69,8 +69,8 @@ def observation(
 ) -> dict[str, object]:
     return {
         "source_provider": "DWD",
-        "station_id": "10416",
-        "location_id": "station_10416",
+        "station_id": "05480",
+        "location_id": "station_05480",
         "observed_at_utc": observed_at,
         "variable": variable,
         "value": value,

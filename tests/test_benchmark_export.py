@@ -40,7 +40,7 @@ def forecast_row(
         "model_provider": model_provider,
         "model_name": model_name,
         "model_version": model_version,
-        "location_id": "station_10416",
+        "location_id": "station_05480",
         "init_time_utc": INIT,
         "retrieved_at_utc": RETRIEVED,
         "upstream_available_at_utc": None,
@@ -63,8 +63,8 @@ def forecast_row(
 def observation_row(variable: str, value: float, unit: str) -> dict[str, object]:
     return {
         "source_provider": "DWD",
-        "station_id": "10416",
-        "location_id": "station_10416",
+        "station_id": "05480",
+        "location_id": "station_05480",
         "observed_at_utc": VALID,
         "variable": variable,
         "value": value,
@@ -137,7 +137,11 @@ def test_bundle_is_byte_stable_and_contains_reproducible_metrics() -> None:
 
     metrics = parse_json_file(files_a, "metrics.json")
     deterministic = metrics["deterministic_common_sample"]
-    temp = next(item for item in deterministic if item["variable"] == "temperature_2m" and item["lead_bucket"] == "0-6h")
+    temp = next(
+        item
+        for item in deterministic
+        if item["variable"] == "temperature_2m" and item["lead_bucket"] == "0-6h"
+    )
     assert temp["n_common"] == 1
     by_provider = {item["provider"]: item for item in temp["metrics"]}
     assert by_provider["icon_d2"]["mae"] == 1.0

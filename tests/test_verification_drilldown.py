@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 from rozkalns_weather.app import create_app
 from rozkalns_weather.config import Settings
 from rozkalns_weather.db import Database
-from rozkalns_weather.locations import DWD_10416
+from rozkalns_weather.locations import DWD_CDC_05480
 from rozkalns_weather.models import ForecastRun, ForecastValue, Observation
 from rozkalns_weather.verification_drilldown import build_verification_drilldown, month_bounds
 
@@ -28,6 +28,7 @@ def _forecast(
         "provider": provider,
         "model_name": provider,
         "model_version": version,
+        "location_id": DWD_CDC_05480.id,
         "init_time_utc": init,
         "retrieved_at_utc": init,
         "revision": revision,
@@ -42,8 +43,8 @@ def _forecast(
 def _truth(valid: str, variable: str = "temperature_2m", value: float = 10.0) -> dict[str, object]:
     return {
         "source_provider": "DWD",
-        "station_id": "10416",
-        "location_id": DWD_10416.id,
+        "station_id": "05480",
+        "location_id": DWD_CDC_05480.id,
         "observed_at_utc": valid,
         "variable": variable,
         "value": value,
@@ -144,8 +145,8 @@ def test_api_and_pwa_expose_drilldown_navigation(tmp_path) -> None:
     database.insert_observations([
         Observation(
             source_provider="DWD",
-            station_id="10416",
-            location_id=DWD_10416.id,
+            station_id="05480",
+            location_id=DWD_CDC_05480.id,
             observed_at_utc=valid,
             variable="temperature_2m",
             value=10.0,
@@ -178,7 +179,7 @@ def test_api_and_pwa_expose_drilldown_navigation(tmp_path) -> None:
                     ),
                 ),
             ),
-            location_id=DWD_10416.id,
+            location_id=DWD_CDC_05480.id,
         )
     response = client.get("/api/verification/drilldown?month=2026-09")
     assert response.status_code == 200

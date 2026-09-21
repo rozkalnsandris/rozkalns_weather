@@ -23,8 +23,8 @@ def _iso(value: datetime) -> str:
 def _observation(valid: datetime, value: float = 10.0) -> dict[str, object]:
     return {
         "source_provider": "DWD",
-        "station_id": "10416",
-        "location_id": "station_10416",
+        "station_id": "05480",
+        "location_id": "station_05480",
         "observed_at_utc": _iso(valid),
         "variable": "temperature_2m",
         "value": value,
@@ -45,7 +45,7 @@ def _forecast(
         "model_provider": provider,
         "model_name": provider,
         "model_version": version,
-        "location_id": "station_10416",
+        "location_id": "station_05480",
         "init_time_utc": _iso(init),
         "retrieved_at_utc": _iso(init + timedelta(hours=1)),
         "init_time_quality": "native",
