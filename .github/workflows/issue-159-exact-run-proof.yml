@@ -10,7 +10,7 @@ jobs:
   exact-run-public-proof:
     if: github.head_ref == 'auto-full/159-fixed-exact-run-window'
     runs-on: ubuntu-24.04
-    timeout-minutes: 12
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -28,4 +28,4 @@ jobs:
           --start 2026-08-13
           --end 2026-08-26
           --truth-end 2026-09-10
-          --delay-seconds 1.0
+          --delay-seconds 0.15
