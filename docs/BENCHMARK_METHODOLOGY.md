@@ -32,6 +32,8 @@ Every immutable forecast run preserves provider/model identity, model version wh
 
 Open-Meteo comparison models use Single Runs with explicit `run=` initialization. Issue #159 independently proved exact-run availability for every selected init/model combination and full-horizon boundaries; it did not substitute Historical Forecast, Previous Runs or rolling timeseries.
 
+IFS lead-bucket integrity is cycle-aware. The common benchmark still requires all `00/06/12/18 UTC` init cycles, but their expected lead coverage follows the upstream cycle horizon: the long `00/12 UTC` runs use the requested 10-day comparison surface, while `06/18 UTC` are capped at T+144h. Therefore `5-7d` coverage remains required from all four cycles, while `7-10d` is expected only from `00/12`. This matches the ECMWF Open Data forecast-step contract and does not truncate long runs or synthesize short-run values.
+
 Missing runs may not be skipped or fabricated. Alternate models/providers may not be substituted or relabelled. Revision drift remains an integrity condition rather than an invitation to overwrite older snapshots.
 
 ## Observation truth
