@@ -4,7 +4,10 @@ from datetime import date
 import json
 from pathlib import Path
 
-from rozkalns_weather.production_bootstrap import build_production_bootstrap_plan
+from rozkalns_weather.production_bootstrap import (
+    FORECAST_TRANSPORT_BLOCK_REASON,
+    build_production_bootstrap_plan,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -62,7 +65,7 @@ def test_official_evidence_does_not_claim_an_unproven_station_mapping() -> None:
 def test_legacy_decision_remains_audit_evidence_while_new_descriptor_pins_cdc_benchmark() -> None:
     descriptor = _load(BOOTSTRAP_PATH)
     truth = descriptor["truth_scope"]
-    assert descriptor["status"] == "SOURCE_READY_REQUIRES_EXACT_LIVE_DATA_AUTHORITY"
+    assert descriptor["status"] == "BLOCKED_BY_ICON_D2_EXACT_RUN_ARCHIVE_TRANSPORT"
     assert descriptor["location"]["location_id"] == "station_05480"
     assert descriptor["location"]["truth_station_id"] == "05480"
     assert truth["source_authority"] == "DWD"
@@ -73,20 +76,23 @@ def test_legacy_decision_remains_audit_evidence_while_new_descriptor_pins_cdc_be
     assert truth["legacy_10416_decision_contract"] == "deploy/dwd-10416-historical-truth-decision.json"
     assert truth["nearest_station_fallback_allowed"] is False
     assert truth["live_backfill_allowed"] is False
+    forecast = descriptor["forecast_scope"]
+    assert forecast["icon_d2_historical_transport_status"] == FORECAST_TRANSPORT_BLOCK_REASON
+    assert forecast["skip_unavailable_run_allowed"] is False
     authority = descriptor["authority"]
     assert authority["source_auto_full_authorizes_production_write"] is False
     assert authority["source_merge_authorizes_production_write"] is False
 
 
-def test_new_runtime_plan_is_source_ready_but_still_has_no_live_data_authority() -> None:
+def test_new_runtime_plan_preserves_cdc_truth_but_blocks_unproven_icon_d2_transport() -> None:
     plan = build_production_bootstrap_plan(
         source_sha="a" * 40,
         start=date(2026, 4, 2),
         end=date(2026, 4, 3),
         recovery_decision="verified_backup_available",
     )
-    assert plan["state"] == "SOURCE_READY_REQUIRES_LIVE_DATA_AUTHORITY"
-    assert plan["block_reasons"] == []
+    assert plan["state"] == "BLOCKED_SOURCE_CAPABILITY"
+    assert plan["block_reasons"] == [FORECAST_TRANSPORT_BLOCK_REASON]
     assert plan["identity"]["truth_station_id"] == "05480"
     assert plan["identity"]["benchmark_location_id"] == "station_05480"
     assert plan["production_data_authority_granted"] is False

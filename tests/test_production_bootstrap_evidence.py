@@ -5,7 +5,10 @@ import json
 
 import pytest
 
-from rozkalns_weather.production_bootstrap import build_production_bootstrap_plan
+from rozkalns_weather.production_bootstrap import (
+    FORECAST_TRANSPORT_BLOCK_REASON,
+    build_production_bootstrap_plan,
+)
 from rozkalns_weather.production_bootstrap_evidence import (
     DATABASE_IDENTITY,
     EVIDENCE_CONTRACT,
@@ -96,10 +99,10 @@ def _complete_evidence() -> dict[str, object]:
     }
 
 
-def test_complete_execution_evidence_passes_without_granting_authority() -> None:
+def test_complete_execution_evidence_remains_blocked_by_source_capability() -> None:
     result = validate_execution_evidence(_plan(), _complete_evidence())
-    assert result["state"] == "PASS"
-    assert result["block_reasons"] == []
+    assert result["state"] == "BLOCKED"
+    assert result["block_reasons"] == [FORECAST_TRANSPORT_BLOCK_REASON]
     assert result["progress"]["complete"] is True
     assert result["bindings"]["truth_station_id"] == "05480"
     assert result["bindings"]["benchmark_location_id"] == "station_05480"
@@ -107,15 +110,15 @@ def test_complete_execution_evidence_passes_without_granting_authority() -> None
     assert result["authority"]["automatic_retry_allowed"] is False
 
 
-def test_clean_ordered_prefix_is_in_progress_not_blocked() -> None:
+def test_clean_ordered_prefix_is_blocked_without_becoming_skip_eligible() -> None:
     evidence = _complete_evidence()
     completed = evidence["forecasts"]["icon_d2"]["completed_runs"][:-4]
     evidence["forecasts"]["icon_d2"]["completed_runs"] = completed
     evidence["forecasts"]["icon_d2"]["present_run_count"] = len(completed)
     evidence["integrity"] = {"ok": None}
     result = validate_execution_evidence(_plan(), evidence)
-    assert result["state"] == "IN_PROGRESS"
-    assert result["block_reasons"] == []
+    assert result["state"] == "BLOCKED"
+    assert result["block_reasons"] == [FORECAST_TRANSPORT_BLOCK_REASON]
     assert result["progress"]["complete"] is False
 
 
@@ -127,6 +130,7 @@ def test_wrong_source_and_stale_recovery_decision_block() -> None:
     assert result["state"] == "BLOCKED"
     assert "SOURCE_SHA_MISMATCH" in result["block_reasons"]
     assert "RECOVERY_DECISION_MISMATCH" in result["block_reasons"]
+    assert FORECAST_TRANSPORT_BLOCK_REASON in result["block_reasons"]
 
 
 def test_station_location_and_variable_bindings_block_drift() -> None:
