@@ -2,10 +2,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
+import json
 from typing import Any
 
+import httpx
+
 from ..models import ForecastRun, ForecastValue, parse_time
-from .base import JsonFetcher, fetch_json
+from .base import JsonFetcher
 from .provider_contracts import (
     enforce_contract,
     inspect_open_meteo_metadata,
@@ -14,6 +17,9 @@ from .provider_contracts import (
 
 SINGLE_RUNS_URL = "https://single-runs-api.open-meteo.com/v1/forecast"
 META_URL = "https://api.open-meteo.com/data/{domain}/static/meta.json"
+OPEN_METEO_MODEL_RUN_UNAVAILABLE = "OPEN_METEO_MODEL_RUN_UNAVAILABLE"
+OPEN_METEO_NON_JSON_RESPONSE = "OPEN_METEO_NON_JSON_RESPONSE"
+OPEN_METEO_HTTP_ERROR = "OPEN_METEO_HTTP_ERROR"
 HOURLY_VARIABLES = (
     "temperature_2m",
     "dew_point_2m",
@@ -32,6 +38,99 @@ VARIABLE_MAP = {
     "wind_speed_10m": ("wind_speed_10m", "m/s", None),
     "wind_gusts_10m": ("wind_gust_10m", "m/s", None),
 }
+
+
+class OpenMeteoTransportError(RuntimeError):
+    """Stable transport classification for Open-Meteo failures."""
+
+    def __init__(
+        self,
+        reason_code: str,
+        *,
+        status_code: int | None = None,
+        content_type: str | None = None,
+        detail: str | None = None,
+    ) -> None:
+        self.reason_code = reason_code
+        self.status_code = status_code
+        self.content_type = content_type
+        self.detail = detail
+        message = reason_code if not detail else f"{reason_code}: {detail}"
+        super().__init__(message)
+
+    def to_metadata(self) -> dict[str, object]:
+        return {
+            "reason_code": self.reason_code,
+            "status_code": self.status_code,
+            "content_type": self.content_type,
+            "detail": self.detail,
+        }
+
+
+def _model_run_unavailable(text: str) -> bool:
+    normalized = text.casefold()
+    return "modelrununavailable" in normalized or "requested model run is not available" in normalized
+
+
+def decode_open_meteo_json_response(
+    *,
+    status_code: int,
+    content_type: str | None,
+    body: bytes | str,
+) -> dict[str, Any]:
+    text = body.decode("utf-8", errors="replace") if isinstance(body, bytes) else body
+    text = text.strip()
+    try:
+        payload = json.loads(text)
+    except json.JSONDecodeError as exc:
+        if _model_run_unavailable(text):
+            raise OpenMeteoTransportError(
+                OPEN_METEO_MODEL_RUN_UNAVAILABLE,
+                status_code=status_code,
+                content_type=content_type,
+                detail="requested exact model run is unavailable",
+            ) from exc
+        raise OpenMeteoTransportError(
+            OPEN_METEO_NON_JSON_RESPONSE,
+            status_code=status_code,
+            content_type=content_type,
+            detail="Open-Meteo response is not valid JSON",
+        ) from exc
+
+    if not isinstance(payload, dict):
+        raise OpenMeteoTransportError(
+            OPEN_METEO_NON_JSON_RESPONSE,
+            status_code=status_code,
+            content_type=content_type,
+            detail="Open-Meteo returned non-object JSON",
+        )
+
+    reason = str(payload.get("reason") or "")
+    if _model_run_unavailable(reason):
+        raise OpenMeteoTransportError(
+            OPEN_METEO_MODEL_RUN_UNAVAILABLE,
+            status_code=status_code,
+            content_type=content_type,
+            detail="requested exact model run is unavailable",
+        )
+    if status_code >= 400 or payload.get("error") is True:
+        raise OpenMeteoTransportError(
+            OPEN_METEO_HTTP_ERROR,
+            status_code=status_code,
+            content_type=content_type,
+            detail=reason or "Open-Meteo returned an error response",
+        )
+    return payload
+
+
+def fetch_open_meteo_json(url: str, params: dict[str, Any], *, timeout_seconds: float = 30.0) -> dict[str, Any]:
+    with httpx.Client(timeout=timeout_seconds, follow_redirects=True) as client:
+        response = client.get(url, params=params)
+    return decode_open_meteo_json_response(
+        status_code=response.status_code,
+        content_type=response.headers.get("content-type"),
+        body=response.content,
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -167,9 +266,9 @@ def _params(model: OpenMeteoModel, *, lat: float, lon: float, init_time: datetim
 
 
 class OpenMeteoSingleRunAdapter:
-    def __init__(self, model: OpenMeteoModel, *, fetcher: JsonFetcher = fetch_json) -> None:
+    def __init__(self, model: OpenMeteoModel, *, fetcher: JsonFetcher | None = None) -> None:
         self.model = model
-        self.fetcher = fetcher
+        self.fetcher = fetcher or fetch_open_meteo_json
 
     def latest_metadata(self, *, now: datetime | None = None) -> ModelRunMetadata:
         now = (now or datetime.now(timezone.utc)).astimezone(timezone.utc)
