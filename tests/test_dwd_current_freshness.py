@@ -99,7 +99,7 @@ def test_current_and_health_share_canonical_05480_current_feed_time(tmp_path) ->
 
     assert current_payload["location"]["id"] == "station_05480"
     assert current_payload["location"]["station_id"] == "05480"
-    assert current_payload["truth_source"] == "DWD CDC 10-minute 05480"
+    assert current_payload["truth_source"] == "DWD CDC 05480"
     assert len(current_payload["observations"]) == 1
     assert current_payload["observations"][0]["source_provider"] == CURRENT_SOURCE_PROVIDER
     assert current_payload["observations"][0]["location_id"] == "station_05480"
