@@ -3,102 +3,150 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="theme-color" content="#111827">
+  <meta name="theme-color" content="#061424">
   <title>Rozkalns Weather</title>
   <link rel="manifest" href="/static/manifest.webmanifest">
   <link rel="stylesheet" href="/static/app.css">
 </head>
 <body>
-  <header class="hero">
-    <div>
-      <div class="eyebrow">private WeatherNext benchmark</div>
-      <h1>WeatherNext 3 <span>vs DWD & ECMWF</span></h1>
-    </div>
-    <div id="statusBadge" class="badge">loading</div>
-  </header>
+  <main class="app-shell">
+    <section id="overview" class="view active" aria-label="Weather overview">
+      <section class="weather-hero" aria-labelledby="heroLocation">
+        <div class="hero-topline">
+          <div class="hero-place">
+            <span class="location-pin" aria-hidden="true">●</span>
+            <div>
+              <h1 id="heroLocation">DWD CDC 05480</h1>
+              <div id="heroUpdated" class="hero-updated">Updating weather evidence…</div>
+            </div>
+          </div>
+          <button id="refreshOverview" class="icon-button" type="button" aria-label="Refresh weather">↻</button>
+        </div>
 
-  <nav class="tabs" aria-label="Views">
-    <button data-view="overview" class="active">Overview</button>
-    <button data-view="models">Models</button>
-    <button data-view="accuracy">Accuracy</button>
-    <button data-view="safety">Warnings/Radar</button>
-  </nav>
+        <div class="hero-weather">
+          <div id="heroIcon" class="hero-weather-icon" aria-hidden="true">◌</div>
+          <div class="hero-reading">
+            <div id="heroTemperature" class="hero-temperature">—°</div>
+            <div id="heroCondition" class="hero-condition">Loading observations…</div>
+            <div id="heroFeels" class="hero-secondary">Latest DWD observation</div>
+            <div id="heroHighLow" class="hero-high-low">H —° · L —°</div>
+          </div>
+        </div>
 
-  <div id="networkState" class="surface-state state-loading global-state" role="status" aria-live="polite" aria-atomic="true">LOADING · checking live API evidence</div>
+        <div id="currentState" class="surface-state state-loading hero-state" role="status" aria-live="polite" aria-atomic="true">LOADING · DWD station truth</div>
+        <div class="hero-source-row">
+          <span>DWD CDC 05480 reference observation</span>
+          <span id="heroSource">Werl · official DWD observation source</span>
+        </div>
+      </section>
 
-  <main>
-    <div class="panel">
-      <label for="forecastLocation">Prognožu vieta</label>
-      <select id="forecastLocation">
-        <option value="home">Home · privāta prognoze</option>
-        <option value="station_05480">DWD CDC 05480 · canonical public benchmark</option>
-        <option value="station_10416">DWD 10416 · legacy MOSMIX reference</option>
-      </select>
-      <div id="forecastLocationNote" class="muted">Home prognoze nav station mērījums.</div>
-    </div>
-    <section id="overview" class="view active">
-      <div class="panel research">
-        <div class="panel-title">WeatherNext 3 · primary research model</div>
-        <div id="wnState" class="big-state">—</div>
-        <div class="muted">Hourly synoptic + interim runs are tracked. DWD remains the warning authority.</div>
-      </div>
-      <div class="panel">
-        <div class="panel-title">DWD CDC 05480 reference observation</div>
-        <div id="currentState" class="surface-state state-loading" role="status" aria-live="polite" aria-atomic="true">LOADING · DWD station truth</div>
-        <div id="currentTruth" class="provider-grid">Nav observation datu.</div>
-        <div class="muted">Šis ir DWD CDC 05480 station truth, nevis mērījums privātajā home punktā.</div>
-      </div>
-      <div class="panel">
-        <div class="panel-title"><span class="forecast-location-label">Home</span> · 48 h temperatūra + WeatherNext p10–p90</div>
-        <div id="overviewTempState" class="surface-state state-loading" role="status" aria-live="polite" aria-atomic="true">LOADING · forecast provenance</div>
-        <div id="overviewChart" class="chart empty">Nav ielādētu forecast snapshotu.</div>
-      </div>
-      <div class="panel">
-        <div class="panel-title"><span class="forecast-location-label">Home</span> · 48 h nokrišņi</div>
-        <div id="overviewPrecipState" class="surface-state state-loading" role="status" aria-live="polite" aria-atomic="true">LOADING · forecast provenance</div>
-        <div id="overviewPrecip" class="chart empty">Nav ielādētu precipitation snapshotu.</div>
-      </div>
-      <div class="panel">
-        <div class="panel-title"><span class="forecast-location-label">Home</span> · Daily forecast by provider</div>
-        <div id="dailyState" class="surface-state state-loading" role="status" aria-live="polite" aria-atomic="true">LOADING · daily provider state</div>
-        <div id="dailyGrid" class="provider-grid">Nav datu.</div>
-      </div>
-      <div class="panel">
-        <div class="panel-title">Provider freshness</div>
-        <div id="providerState" class="surface-state state-loading" role="status" aria-live="polite" aria-atomic="true">LOADING · provider health</div>
-        <div id="providerGrid" class="provider-grid"></div>
-      </div>
+      <section class="consumer-panel" aria-labelledby="nextHoursTitle">
+        <div class="section-heading">
+          <div><h2 id="nextHoursTitle">Next Hours</h2><span id="hourlyProvider" class="source-label">Provider pending</span></div>
+          <span class="section-chevron" aria-hidden="true">›</span>
+        </div>
+        <div id="hourlyStrip" class="hourly-strip" aria-live="polite"><div class="empty-card">Loading forecast…</div></div>
+        <div id="overviewTempState" class="surface-state state-loading compact-state" role="status" aria-live="polite" aria-atomic="true">LOADING · temperature forecast provenance</div>
+        <div id="overviewPrecipState" class="surface-state state-loading compact-state" role="status" aria-live="polite" aria-atomic="true">LOADING · precipitation forecast provenance</div>
+        <div id="consumerHourlyChart" class="consumer-chart" aria-label="Next-hours temperature and precipitation chart"></div>
+      </section>
+
+      <section class="consumer-panel" aria-labelledby="nextDaysTitle">
+        <div class="section-heading">
+          <div><h2 id="nextDaysTitle">Next Days</h2><span id="dailyProvider" class="source-label">Provider pending</span></div>
+          <span class="section-chevron" aria-hidden="true">›</span>
+        </div>
+        <div id="dailyState" class="surface-state state-loading compact-state" role="status" aria-live="polite" aria-atomic="true">LOADING · daily provider state</div>
+        <div id="dailyGrid" class="daily-list">Loading daily forecast…</div>
+      </section>
+
+      <section class="consumer-panel" aria-labelledby="detailsTitle">
+        <div class="section-heading"><h2 id="detailsTitle">Details</h2></div>
+        <div class="details-grid">
+          <div class="detail-tile"><span class="detail-icon">◒</span><div><small>Humidity</small><strong id="detailHumidity">—</strong></div></div>
+          <div class="detail-tile"><span class="detail-icon">≋</span><div><small>Wind</small><strong id="detailWind">—</strong></div></div>
+          <div class="detail-tile"><span class="detail-icon">◴</span><div><small>Pressure</small><strong id="detailPressure">—</strong></div></div>
+          <div class="detail-tile"><span class="detail-icon">♢</span><div><small>Rain (last 1 h)</small><strong id="detailRain">—</strong></div></div>
+          <div class="detail-tile"><span class="detail-icon">☁</span><div><small>Cloud cover</small><strong id="detailCloud">—</strong></div></div>
+          <div class="detail-tile"><span class="detail-icon">↝</span><div><small>Wind gust</small><strong id="detailGust">—</strong></div></div>
+        </div>
+      </section>
+
+      <section class="consumer-panel model-snapshot-panel" aria-labelledby="modelSnapshotTitle">
+        <div class="section-heading">
+          <div><h2 id="modelSnapshotTitle">Model Snapshot</h2><span class="source-label">Next available temperature · provider values stay separate</span></div>
+          <button class="text-button" type="button" data-open-view="models">See more</button>
+        </div>
+        <div id="modelSnapshot" class="model-snapshot-grid" aria-live="polite">
+          <div class="model-card primary"><small>WeatherNext 3</small><strong>—</strong><span id="wnState">pending</span></div>
+          <div class="model-card"><small>ICON-D2</small><strong>—</strong><span>pending</span></div>
+          <div class="model-card"><small>ECMWF IFS</small><strong>—</strong><span>pending</span></div>
+          <div class="model-card"><small>AIFS</small><strong>—</strong><span>pending</span></div>
+        </div>
+        <div id="modelSpread" class="model-spread">Model spread —</div>
+      </section>
+
+      <section class="warning-summary" data-warning-authority="DWD" aria-labelledby="warningSummaryTitle">
+        <span class="warning-shield" aria-hidden="true">✓</span>
+        <div class="warning-summary-copy">
+          <strong id="warningSummaryTitle">DWD Warnings</strong>
+          <span id="overviewWarningState">Official warning status not loaded</span>
+        </div>
+        <button id="overviewWarningsButton" class="warning-open" type="button" aria-label="Open DWD warnings">›</button>
+      </section>
     </section>
 
-    <section id="models" class="view">
-      <div class="panel">
+    <section id="models" class="view" aria-label="Models">
+      <header class="subpage-header"><div><span class="eyebrow">Research</span><h1>Models</h1></div></header>
+      <div class="panel research">
         <div class="panel-title">Provider classes · provenance first</div>
-        <div id="providerClasses" class="provider-grid">Ielādē provider metadata…</div>
-        <div class="muted">Deterministic un ensemble transporti tiek rādīti atsevišķi. WeatherNext 2 ir tikai legacy AI context un nekad neaizvieto WeatherNext 3.</div>
+        <div id="providerClasses" class="provider-grid">Provider metadata follows current health evidence.</div>
+        <div class="muted">Deterministic and ensemble transports remain separate. Genuine provider values are never replaced by a fabricated blended value.</div>
       </div>
       <div class="panel">
-        <div class="panel-title"><span class="forecast-location-label">Home</span> modeļu salīdzinājums · temperatūra</div>
+        <div class="panel-title"><span class="forecast-location-label">DWD CDC 05480</span> · model temperature comparison</div>
         <div class="legend"><span>WeatherNext 3</span><span>ICON-D2</span><span>IFS HRES</span><span>AIFS</span></div>
         <div id="modelsTempState" class="surface-state state-loading" role="status" aria-live="polite" aria-atomic="true">LOADING · model freshness</div>
-        <div id="modelsChart" class="chart empty">Prognožu līnijas parādīsies pēc ingest.</div>
+        <div id="modelsChart" class="chart empty">Forecast lines appear when data is available.</div>
       </div>
       <div class="panel">
-        <div class="panel-title"><span class="forecast-location-label">Home</span> modeļu salīdzinājums · nokrišņi</div>
+        <div class="panel-title"><span class="forecast-location-label">DWD CDC 05480</span> · model precipitation comparison</div>
         <div id="modelsPrecipState" class="surface-state state-loading" role="status" aria-live="polite" aria-atomic="true">LOADING · model freshness</div>
-        <div id="modelsPrecip" class="chart empty">Nokrišņu stabiņi parādīsies pēc ingest.</div>
+        <div id="modelsPrecip" class="chart empty">Precipitation bars appear when data is available.</div>
       </div>
       <div class="panel research">
         <div class="panel-title">WeatherNext p10–p90 uncertainty</div>
-        <div id="uncertainty">Intervala dati parādīsies pēc WeatherNext ingest.</div>
+        <div id="uncertainty">WeatherNext uncertainty appears only after genuine data ingest.</div>
       </div>
     </section>
 
-    <section id="accuracy" class="view">
+    <section id="safety" class="view" aria-label="Radar and warnings">
+      <header class="subpage-header"><div><span class="eyebrow">Official safety data</span><h1>Radar & Warnings</h1></div></header>
+      <div class="panel warning" data-warning-authority="DWD">
+        <div class="panel-title">DWD official warnings</div>
+        <p>DWD warning slānis ir autoritatīvs un atdalīts no modeļiem.</p>
+        <p class="muted">public-only režīmā warnings izmanto publisko DWD CDC Werl 05480 reference punktu; precīzas privātās koordinātas API/UI netiek izpaustas.</p>
+        <p class="muted">Public-only režīmā bez privāta home punkta centrs ir publiskais DWD CDC Werl 05480 reference punkts.</p>
+        <div id="warningsState" class="surface-state state-loading" role="status" aria-live="polite" aria-atomic="true">LOADING · warning data has not been requested</div>
+        <button id="loadWarnings" type="button">Load current DWD warnings</button>
+        <pre id="warningsOutput"></pre>
+      </div>
+      <div class="panel">
+        <div class="panel-title">DWD radar</div>
+        <p class="muted">Radar observed/nowcast nav model forecast. Coordinates remain private.</p>
+        <div id="radarState" class="surface-state state-loading" role="status" aria-live="polite" aria-atomic="true">LOADING · radar data has not been requested</div>
+        <button id="loadRadar" type="button">Load radar metadata</button>
+        <pre id="radarOutput"></pre>
+      </div>
+    </section>
+
+    <section id="accuracy" class="view" aria-label="Accuracy">
+      <header class="subpage-header"><div><span class="eyebrow">Verification</span><h1>Accuracy</h1></div></header>
       <div class="panel">
         <div class="panel-title">DWD CDC 05480 station benchmark · deterministic</div>
         <div class="switches"><button data-days="30" class="active">30d</button><button data-days="90">90d</button></div>
-        <div class="muted">Tikai location-matched station forecasts pret DWD CDC 05480 truth. Lead bucket un sample size paliek redzami; mazi sample netiek pasniegti kā droši secinājumi.</div>
-        <div id="accuracyTable" class="table-wrap">Vēl nav pietiekamu forecast + observation pāru.</div>
+        <div class="muted">Only location-matched station forecasts are compared against DWD CDC 05480 truth. Lead bucket and sample size remain visible.</div>
+        <div id="accuracyTable" class="table-wrap">Accuracy loads when this view is opened.</div>
         <div id="leadBucketTable" class="table-wrap"></div>
       </div>
       <div class="panel">
@@ -108,35 +156,48 @@
           <input id="drilldownMonth" type="month" min="2026-04">
           <button id="loadDrilldown" type="button">Load drilldown</button>
         </div>
-        <div class="muted">Strict common station valid-times only. Each row keeps model version, UTC init cycle, lead bucket, variable, n, missingness and sample sufficiency visible.</div>
+        <div class="muted">Strict common station valid-times only. UTC init cycle, lead bucket, variable, n, missingness and sample sufficiency remain visible.</div>
         <div id="drilldownDeterministic" class="table-wrap">Choose a month to inspect deterministic common-sample slices.</div>
         <div id="drilldownEnsemble" class="table-wrap">Genuine member-only ensemble drilldown appears separately when available.</div>
       </div>
       <div class="panel">
         <div class="panel-title">Ensemble calibration · precipitation event</div>
-        <div id="calibrationTable" class="table-wrap">Genuine member-derived probability dati vēl nav pieejami.</div>
-        <div class="muted">Brier/reliability ir derīgi tikai genuine probability/member input. Deterministic precipitation amount netiek pārveidots par probability.</div>
+        <div id="calibrationTable" class="table-wrap">Genuine member-derived probability data is not available yet.</div>
+        <div class="muted">Deterministic precipitation amount is never converted into fabricated probability.</div>
       </div>
     </section>
 
-    <section id="safety" class="view">
-      <div class="panel warning" data-warning-authority="DWD">
-        <div class="panel-title">DWD official warnings</div>
-        <p>DWD warning slānis ir autoritatīvs un atdalīts no modeļiem.</p>
-        <p class="muted">Ja privātais home punkts nav konfigurēts, public-only režīmā warnings izmanto publisko DWD CDC Werl 05480 reference punktu. Precīzas koordinātas API/UI netiek izpaustas.</p>
-        <div id="warningsState" class="surface-state state-loading" role="status" aria-live="polite" aria-atomic="true">LOADING · warning data has not been requested</div>
-        <button id="loadWarnings">Ielādēt warnings</button>
-        <pre id="warningsOutput"></pre>
+    <section id="status" class="view" aria-label="Status">
+      <header class="subpage-header status-header"><div><span class="eyebrow">System</span><h1>Status & Sources</h1></div><div id="statusBadge" class="badge">loading</div></header>
+      <div class="panel">
+        <label for="forecastLocation">Forecast location</label>
+        <select id="forecastLocation">
+          <option value="home">Home · privāta prognoze</option>
+          <option value="station_05480">DWD CDC 05480 · canonical public benchmark</option>
+          <option value="station_10416">DWD 10416 · legacy MOSMIX reference</option>
+        </select>
+        <div id="forecastLocationNote" class="muted">Canonical public benchmark selection.</div>
+      </div>
+      <div id="networkState" class="surface-state state-loading global-state" role="status" aria-live="polite" aria-atomic="true">LOADING · checking live API evidence</div>
+      <div class="panel">
+        <div class="panel-title">Provider freshness</div>
+        <div id="providerState" class="surface-state state-loading" role="status" aria-live="polite" aria-atomic="true">LOADING · provider health</div>
+        <div id="providerGrid" class="provider-grid"></div>
       </div>
       <div class="panel">
-        <div class="panel-title">DWD radar</div>
-        <p class="muted">Radar observed/nowcast nav model forecast. Public-only režīmā bez privāta home punkta centrs ir publiskais DWD CDC Werl 05480 reference punkts; koordinātas netiek izpaustas.</p>
-        <div id="radarState" class="surface-state state-loading" role="status" aria-live="polite" aria-atomic="true">LOADING · radar data has not been requested</div>
-        <button id="loadRadar">Ielādēt radar metadata</button>
-        <pre id="radarOutput"></pre>
+        <div class="panel-title">Reference semantics</div>
+        <div class="muted">DWD CDC 05480 is the canonical measured benchmark. DWD 10416 remains legacy MOSMIX reference only. measured skill uses DWD CDC 05480 reference truth.</div>
       </div>
     </section>
   </main>
+
+  <nav class="tabs bottom-nav" aria-label="Primary views">
+    <button data-view="overview" class="active"><span aria-hidden="true">⌂</span><small>Overview</small></button>
+    <button data-view="models"><span aria-hidden="true">▥</span><small>Models</small></button>
+    <button data-view="safety"><span aria-hidden="true">◉</span><small>Radar</small></button>
+    <button data-view="accuracy"><span aria-hidden="true">◎</span><small>Accuracy</small></button>
+    <button data-view="status"><span aria-hidden="true">⚙</span><small>Status</small></button>
+  </nav>
 
   <footer>WeatherNext 3 benchmark · measured skill uses DWD CDC 05480 reference truth</footer>
   <script src="/static/app.js" defer></script>
