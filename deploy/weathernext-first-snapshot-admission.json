@@ -11,7 +11,7 @@
     "supported_model_versions": [
       "3.0.0"
     ],
-    "location_id": "station_10416",
+    "location_id": "station_05480",
     "warning_authority": false
   },
   "admission": {
@@ -48,7 +48,7 @@
     "includes": [
       "provider",
       "model_version",
-      "station_10416",
+      "station_05480",
       "selected_init_time_utc",
       "schema_fingerprint",
       "sorted_semantic_run_hashes"
