@@ -14,6 +14,7 @@ from .locations import BENCHMARK_LOCATION, DWD_10416
 from .models import ForecastRun, Observation
 from .providers.base import bytes_fetcher, json_fetcher
 from .providers.dwd_cdc_observations import DwdCdcObservationAdapter
+from .providers.dwd_current_observations import CURRENT_MODEL_NAME, DwdCurrentObservationAdapter
 from .providers.dwd_mosmix import DwdMosmixAdapter
 from .providers.open_meteo import ECMWF_AIFS, ECMWF_IFS, ICON_D2, OpenMeteoSingleRunAdapter
 from .providers.weathernext import WeatherNextBigQueryAdapter
@@ -138,7 +139,15 @@ class IngestOrchestrator:
         self.database.set_provider_status(provider, state="error", now=now, detail=detail)
         return ProviderOutcome(provider, "error", attempts, detail=detail)
 
-    def _record_observations(self, provider: str, action: Callable[[], list[Observation]], now: datetime, *, location_id: str) -> ProviderOutcome:
+    def _record_observations(
+        self,
+        provider: str,
+        action: Callable[[], list[Observation]],
+        now: datetime,
+        *,
+        location_id: str,
+        model_name: str = "DWD CDC Observations",
+    ) -> ProviderOutcome:
         try:
             observations, attempts = retry_read_only(action, attempts=self.retry_attempts, sleeper=self.sleeper)
         except Exception as exc:
@@ -165,7 +174,7 @@ class IngestOrchestrator:
             provider,
             state="ok",
             now=now,
-            model_name="DWD CDC Observations",
+            model_name=model_name,
             init_time=latest_observed,
             detail=detail,
         )
@@ -194,11 +203,26 @@ class IngestOrchestrator:
             # MOSMIX keeps its proven legacy WMO 10416 identity. No 05480 MOSMIX
             # mapping is inferred by this issue.
             results["dwd_mosmix_l"] = self._record_forecast_locations("dwd_mosmix_l", [(DWD_10416.id, lambda: DwdMosmixAdapter(fetcher=bytes_fetcher(self.timeout_seconds)).fetch(retrieved_at=now))], now)
-            results["dwd_observations"] = self._record_observations(
-                "dwd_observations",
+
+            # Keep the hourly CDC station-05480 stream as reproducible verification
+            # truth. Its observations retain source_provider=DWD and are never used
+            # as a silent current-now fallback.
+            results["dwd_hourly_truth"] = self._record_observations(
+                "dwd_hourly_truth",
                 lambda: DwdCdcObservationAdapter(fetcher=bytes_fetcher(self.timeout_seconds)).fetch(now=now),
                 now,
                 location_id=BENCHMARK_LOCATION.id,
+                model_name="DWD CDC Hourly Verification",
+            )
+
+            # Overview/current uses the exact same station identity but a distinct
+            # near-real-time source class. Health source time comes from this action.
+            results["dwd_observations"] = self._record_observations(
+                "dwd_observations",
+                lambda: DwdCurrentObservationAdapter(fetcher=bytes_fetcher(self.timeout_seconds)).fetch(now=now),
+                now,
+                location_id=BENCHMARK_LOCATION.id,
+                model_name=CURRENT_MODEL_NAME,
             )
             for model in (ICON_D2, ECMWF_IFS, ECMWF_AIFS):
                 results[model.provider_id] = self._collect_open_meteo_model(model, now)

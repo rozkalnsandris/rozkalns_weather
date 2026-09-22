@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from typing import Mapping
 
 from .models import parse_time
+from .providers.dwd_current_observations import CURRENT_MODEL_NAME
 
 
 @dataclass(frozen=True, slots=True)
@@ -87,13 +88,15 @@ def classify_public_provider_health(
     latest_valid = evidence.get("latest_valid_time_utc")
 
     if provider == "dwd_observations":
-        # Public DWD observation ingest is pinned to BENCHMARK_LOCATION by the
-        # orchestrator. Its canonical observed-at timestamp is persisted in the
-        # provider status' existing last_init_time_utc slot so health never falls
-        # back to legacy station_10416 observation evidence returned by a generic
-        # database query. Expose that value only with observation semantics here.
+        # Only a status written by the dedicated exact-05480 10-minute current
+        # adapter may satisfy measured-current provenance. A pre-cutover hourly
+        # status or generic DWD observation evidence is deliberately ignored.
         last_init = None
-        last_observed = saved.get("last_init_time_utc")
+        last_observed = (
+            saved.get("last_init_time_utc")
+            if saved.get("model_name") == CURRENT_MODEL_NAME
+            else None
+        )
         source_time = last_observed
     else:
         last_init = evidence.get("last_init_time_utc") or saved.get("last_init_time_utc")

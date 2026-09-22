@@ -11,6 +11,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from .config import Settings
+from .current_store import latest_current_observations
 from .db import Database
 from .leaderboard import SkillSample, common_sample_leaderboard
 from .locations import BENCHMARK_LOCATION, DWD_10416
@@ -279,7 +280,7 @@ def create_app(settings: Settings | None = None, database: Database | None = Non
     @app.get("/api/current")
     def current() -> dict[str, object]:
         require_database_ready()
-        observations = database.latest_observations(location_id=BENCHMARK_LOCATION.id)
+        observations = latest_current_observations(database, location_id=BENCHMARK_LOCATION.id)
         return {
             "location": {
                 "id": BENCHMARK_LOCATION.id,

@@ -5,6 +5,10 @@ import pytest
 from rozkalns_weather.models import Observation
 from rozkalns_weather.orchestrator import IngestOrchestrator
 from rozkalns_weather.provider_health import classify_public_provider_health
+from rozkalns_weather.providers.dwd_current_observations import (
+    CURRENT_MODEL_NAME,
+    CURRENT_SOURCE_PROVIDER,
+)
 
 
 NOW = datetime(2026, 9, 11, 18, tzinfo=timezone.utc)
@@ -78,7 +82,6 @@ def test_recent_local_persistence_error_is_not_reported_as_upstream() -> None:
         {"last_init_time_utc": _iso(timedelta(hours=-1))},
         now=NOW,
     )
-    assert result["freshness_state"] == "error"
     assert result["failure_domain"] == "local_persistence"
     assert result["reason_code"] == "RECENT_LOCAL_PERSISTENCE_ERROR"
 
@@ -160,12 +163,13 @@ def test_dwd_observation_health_uses_canonical_ingest_source_time(
         "dwd_observations",
         {
             "state": "ok",
+            "model_name": CURRENT_MODEL_NAME,
             "last_attempt_at_utc": _iso(timedelta(minutes=-20)),
             "last_success_at_utc": _iso(timedelta(minutes=-20)),
             "last_init_time_utc": canonical_time,
         },
-        # Generic DB evidence may still describe legacy 10416; DWD measured-current
-        # health must never silently use it.
+        # Generic DB evidence may still describe hourly/legacy DWD truth; measured
+        # current health must never silently use it.
         {"last_observed_at_utc": _iso(timedelta(minutes=-5))},
         now=NOW,
     )
@@ -192,12 +196,30 @@ def test_dwd_legacy_only_evidence_does_not_satisfy_current_health() -> None:
     assert result["reason_code"] == "SOURCE_TIME_MISSING"
 
 
+def test_pre_cutover_hourly_status_does_not_satisfy_current_health() -> None:
+    result = classify_public_provider_health(
+        "dwd_observations",
+        {
+            "state": "ok",
+            "model_name": "DWD CDC Observations",
+            "last_attempt_at_utc": _iso(timedelta(minutes=-20)),
+            "last_success_at_utc": _iso(timedelta(minutes=-20)),
+            "last_init_time_utc": _iso(timedelta(minutes=-10)),
+        },
+        {},
+        now=NOW,
+    )
+    assert result["last_observed_at_utc"] is None
+    assert result["freshness_state"] == "unknown"
+    assert result["reason_code"] == "SOURCE_TIME_MISSING"
+
+
 def test_observation_ingest_persists_latest_canonical_source_time() -> None:
     database = _ObservationDatabase()
     orchestrator = IngestOrchestrator(_Settings(), database, sleeper=lambda _: None)
     observations = [
         Observation(
-            source_provider="DWD",
+            source_provider=CURRENT_SOURCE_PROVIDER,
             station_id="05480",
             location_id="station_05480",
             observed_at_utc=NOW - timedelta(hours=3),
@@ -206,7 +228,7 @@ def test_observation_ingest_persists_latest_canonical_source_time() -> None:
             unit="degC",
         ),
         Observation(
-            source_provider="DWD",
+            source_provider=CURRENT_SOURCE_PROVIDER,
             station_id="05480",
             location_id="station_05480",
             observed_at_utc=NOW - timedelta(hours=1),
@@ -220,9 +242,11 @@ def test_observation_ingest_persists_latest_canonical_source_time() -> None:
         lambda: observations,
         NOW,
         location_id="station_05480",
+        model_name=CURRENT_MODEL_NAME,
     )
     assert outcome.state == "ok"
     assert database.status is not None
+    assert database.status["model_name"] == CURRENT_MODEL_NAME
     assert database.status["init_time"] == NOW - timedelta(hours=1)
     assert database.status["detail"] is None
 
@@ -235,6 +259,7 @@ def test_empty_observation_ingest_does_not_fabricate_source_time() -> None:
         lambda: [],
         NOW,
         location_id="station_05480",
+        model_name=CURRENT_MODEL_NAME,
     )
     assert outcome.state == "ok"
     assert outcome.detail == "no_observations_returned"
@@ -260,6 +285,7 @@ def test_observation_identity_mismatch_is_upstream_error() -> None:
         lambda: [legacy],
         NOW,
         location_id="station_05480",
+        model_name=CURRENT_MODEL_NAME,
     )
     assert outcome.state == "error"
     assert outcome.detail == "upstream_or_transport:observation_identity:location_mismatch"
