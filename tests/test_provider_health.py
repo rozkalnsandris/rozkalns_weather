@@ -2,6 +2,7 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
+from rozkalns_weather.models import Observation
 from rozkalns_weather.orchestrator import IngestOrchestrator
 from rozkalns_weather.provider_health import classify_public_provider_health
 
@@ -21,6 +22,19 @@ class _Settings:
 class _FailingWriteDatabase:
     def insert_forecast_run(self, run, *, location_id: str) -> int:
         raise RuntimeError("local write failed")
+
+
+class _ObservationDatabase:
+    def __init__(self) -> None:
+        self.inserted: list[Observation] = []
+        self.status: dict[str, object] | None = None
+
+    def insert_observations(self, observations: list[Observation]) -> int:
+        self.inserted.extend(observations)
+        return len(observations)
+
+    def set_provider_status(self, provider: str, **kwargs) -> None:
+        self.status = {"provider": provider, **kwargs}
 
 
 def test_fresh_provider_is_fresh() -> None:
@@ -128,15 +142,128 @@ def test_stale_attempt_is_local_scheduler_or_ingest() -> None:
     assert result["reason_code"] == "INGEST_ATTEMPT_STALE"
 
 
-def test_observation_source_age_is_used() -> None:
+@pytest.mark.parametrize(
+    ("source_age", "freshness_state", "reason_code"),
+    [
+        (timedelta(hours=-1), "fresh", "FRESH"),
+        (timedelta(hours=-3), "lagging", "SOURCE_DATA_LAGGING"),
+        (timedelta(hours=-5), "stale", "SOURCE_DATA_STALE"),
+    ],
+)
+def test_dwd_observation_health_uses_canonical_ingest_source_time(
+    source_age: timedelta,
+    freshness_state: str,
+    reason_code: str,
+) -> None:
+    canonical_time = _iso(source_age)
     result = classify_public_provider_health(
         "dwd_observations",
-        {"state": "ok", "last_attempt_at_utc": _iso(timedelta(minutes=-20)), "last_success_at_utc": _iso(timedelta(minutes=-20))},
-        {"last_observed_at_utc": _iso(timedelta(hours=-3))},
+        {
+            "state": "ok",
+            "last_attempt_at_utc": _iso(timedelta(minutes=-20)),
+            "last_success_at_utc": _iso(timedelta(minutes=-20)),
+            "last_init_time_utc": canonical_time,
+        },
+        # Generic DB evidence may still describe legacy 10416; DWD measured-current
+        # health must never silently use it.
+        {"last_observed_at_utc": _iso(timedelta(minutes=-5))},
         now=NOW,
     )
-    assert result["freshness_state"] == "lagging"
-    assert result["failure_domain"] == "upstream_data"
+    assert result["last_observed_at_utc"] == canonical_time
+    assert result["last_init_time_utc"] is None
+    assert result["freshness_state"] == freshness_state
+    assert result["reason_code"] == reason_code
+
+
+def test_dwd_legacy_only_evidence_does_not_satisfy_current_health() -> None:
+    result = classify_public_provider_health(
+        "dwd_observations",
+        {
+            "state": "ok",
+            "last_attempt_at_utc": _iso(timedelta(minutes=-20)),
+            "last_success_at_utc": _iso(timedelta(minutes=-20)),
+        },
+        {"last_observed_at_utc": _iso(timedelta(minutes=-5))},
+        now=NOW,
+    )
+    assert result["last_observed_at_utc"] is None
+    assert result["freshness_state"] == "unknown"
+    assert result["failure_domain"] == "provenance"
+    assert result["reason_code"] == "SOURCE_TIME_MISSING"
+
+
+def test_observation_ingest_persists_latest_canonical_source_time() -> None:
+    database = _ObservationDatabase()
+    orchestrator = IngestOrchestrator(_Settings(), database, sleeper=lambda _: None)
+    observations = [
+        Observation(
+            source_provider="DWD",
+            station_id="05480",
+            location_id="station_05480",
+            observed_at_utc=NOW - timedelta(hours=3),
+            variable="temperature_2m",
+            value=10.0,
+            unit="degC",
+        ),
+        Observation(
+            source_provider="DWD",
+            station_id="05480",
+            location_id="station_05480",
+            observed_at_utc=NOW - timedelta(hours=1),
+            variable="temperature_2m",
+            value=11.0,
+            unit="degC",
+        ),
+    ]
+    outcome = orchestrator._record_observations(
+        "dwd_observations",
+        lambda: observations,
+        NOW,
+        location_id="station_05480",
+    )
+    assert outcome.state == "ok"
+    assert database.status is not None
+    assert database.status["init_time"] == NOW - timedelta(hours=1)
+    assert database.status["detail"] is None
+
+
+def test_empty_observation_ingest_does_not_fabricate_source_time() -> None:
+    database = _ObservationDatabase()
+    orchestrator = IngestOrchestrator(_Settings(), database, sleeper=lambda _: None)
+    outcome = orchestrator._record_observations(
+        "dwd_observations",
+        lambda: [],
+        NOW,
+        location_id="station_05480",
+    )
+    assert outcome.state == "ok"
+    assert outcome.detail == "no_observations_returned"
+    assert database.status is not None
+    assert database.status["init_time"] is None
+    assert database.status["detail"] == "no_observations_returned"
+
+
+def test_observation_identity_mismatch_is_upstream_error() -> None:
+    database = _ObservationDatabase()
+    orchestrator = IngestOrchestrator(_Settings(), database, sleeper=lambda _: None)
+    legacy = Observation(
+        source_provider="DWD",
+        station_id="10416",
+        location_id="station_10416",
+        observed_at_utc=NOW - timedelta(minutes=10),
+        variable="temperature_2m",
+        value=10.0,
+        unit="degC",
+    )
+    outcome = orchestrator._record_observations(
+        "dwd_observations",
+        lambda: [legacy],
+        NOW,
+        location_id="station_05480",
+    )
+    assert outcome.state == "error"
+    assert outcome.detail == "upstream_or_transport:observation_identity:location_mismatch"
+    assert database.inserted == []
 
 
 def test_partial_provider_is_degraded_without_hiding_other_providers() -> None:
