@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 from rozkalns_weather.app import create_app
 from rozkalns_weather.config import Settings
 from rozkalns_weather.db import Database
-from rozkalns_weather.locations import DWD_10416, DWD_CDC_05480
+from rozkalns_weather.locations import BENCHMARK_LOCATION, DWD_CDC_05480
 from rozkalns_weather.models import ForecastRun, ForecastValue, Observation
 
 
@@ -88,6 +88,7 @@ def test_hourly_returns_latest_provider_snapshot(tmp_path) -> None:
 def test_first_station_snapshot_visible_without_home_and_preserves_surface_statistics(tmp_path):
     from rozkalns_weather.providers.weathernext import STATS, rows_to_run
     client, database = _client(tmp_path, with_home=False)
+    _ensure_cdc_benchmark(database)
     init = datetime(2026, 9, 8, 6, tzinfo=timezone.utc)
     times = {"forecast_time": init + timedelta(hours=1), "forecast_hour": 1}
     station = rows_to_run([times | {f"station_head_temperature_2m_{s}": 293.15 for s in STATS}],
@@ -106,10 +107,10 @@ def test_first_station_snapshot_visible_without_home_and_preserves_surface_stati
     }
     combined = prepare_first_snapshot_run(first_access_evidence=evidence, runs=(station, surface),
         admission_time_utc=init + timedelta(hours=9), maximum_candidate_age_hours=1)
-    first_id = database.insert_forecast_run(combined, location_id=DWD_10416.id)
-    assert database.insert_forecast_run(combined, location_id=DWD_10416.id) == first_id
-    response = client.get("/api/hourly?location_id=station_10416&hours=6").json()
-    assert response["location"]["id"] == "station_10416"
+    first_id = database.insert_forecast_run(combined, location_id=BENCHMARK_LOCATION.id)
+    assert database.insert_forecast_run(combined, location_id=BENCHMARK_LOCATION.id) == first_id
+    response = client.get(f"/api/hourly?location_id={BENCHMARK_LOCATION.id}&hours=6").json()
+    assert response["location"]["id"] == "station_05480"
     series = response["series"]
     assert len(series) == 6
     assert {r["statistic"] for r in series} == set(STATS)
@@ -117,7 +118,7 @@ def test_first_station_snapshot_visible_without_home_and_preserves_surface_stati
     assert all(r["model_version"] == "3.0.0" and r["lead_hours"] == 1 for r in series)
     assert all(r["init_time_utc"] and r["retrieved_at_utc"] and r["valid_time_utc"] for r in series)
     assert client.get("/api/hourly").json()["series"] == []
-    daily = client.get("/api/daily?location_id=station_10416").json()["days_by_provider"]
+    daily = client.get(f"/api/daily?location_id={BENCHMARK_LOCATION.id}").json()["days_by_provider"]
     assert len(daily) == 1
     assert daily[0]["precipitation_total_mm"] == 1.0
     assert round(daily[0]["temperature_min_c"], 2) == 20.0
