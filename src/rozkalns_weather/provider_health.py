@@ -83,11 +83,22 @@ def classify_public_provider_health(
 
     last_attempt = saved.get("last_attempt_at_utc")
     last_success = saved.get("last_success_at_utc")
-    last_init = evidence.get("last_init_time_utc") or saved.get("last_init_time_utc")
     last_retrieved = evidence.get("last_retrieved_at_utc")
     latest_valid = evidence.get("latest_valid_time_utc")
-    last_observed = evidence.get("last_observed_at_utc")
-    source_time = last_observed if provider == "dwd_observations" else last_init
+
+    if provider == "dwd_observations":
+        # Public DWD observation ingest is pinned to BENCHMARK_LOCATION by the
+        # orchestrator. Its canonical observed-at timestamp is persisted in the
+        # provider status' existing last_init_time_utc slot so health never falls
+        # back to legacy station_10416 observation evidence returned by a generic
+        # database query. Expose that value only with observation semantics here.
+        last_init = None
+        last_observed = saved.get("last_init_time_utc")
+        source_time = last_observed
+    else:
+        last_init = evidence.get("last_init_time_utc") or saved.get("last_init_time_utc")
+        last_observed = evidence.get("last_observed_at_utc")
+        source_time = last_init
 
     attempt_age = _age_hours(last_attempt, now=now)
     success_age = _age_hours(last_success, now=now)
