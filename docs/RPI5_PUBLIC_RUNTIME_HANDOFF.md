@@ -1,6 +1,6 @@
 # RPi5 public-only runtime handoff — SIMPLE-DEPLOY v1
 
-This handoff describes the **current** public-only Weather runtime boundary after the completed UI-FIRST milestone.
+This handoff describes the **current** public-only Weather runtime boundary after final public acceptance through #176/#177.
 
 ## Current ordinary deployment model
 
@@ -27,6 +27,24 @@ guarded merge
 ```
 
 Historical Weather-specific broker/operator/`ops-workflows#46` queue/JIT/Composite paths are **legacy/superseded for ordinary application releases**. Their source remains audit/regression evidence only.
+
+## Public acceptance and current-now semantics
+
+Final public acceptance is **COMPLETE** through #176/#177.
+
+Current accepted public behavior includes:
+
+- reviewed Weather release identity deployed and healthy;
+- `/health=200` and `/ready=200` at acceptance time;
+- canonical public identity `station_05480` / DWD station `05480`;
+- `/api/current` sourced from the exact-station DWD 05480 10-minute `DWD_CURRENT` feed;
+- provider health for `dwd_observations` bound to the same current-feed source-time identity;
+- hourly DWD 05480 observations retained as verification/history truth, not substituted for current-now;
+- populated station-scoped hourly and daily forecast surfaces;
+- WeatherNext shown as unavailable/pending when private access is absent, never fabricated;
+- DWD warnings kept as a distinct official-warning surface.
+
+The current-now split must remain explicit: the 10-minute `DWD_CURRENT` feed serves present conditions, while hourly DWD 05480 truth serves verification/history. Legacy `station_10416` cannot satisfy current-now health.
 
 ## Runtime mode and benchmark
 
@@ -90,7 +108,7 @@ Production acceptance uses privacy-safe endpoints including:
 - `/health` — application/local DB liveness summary;
 - `/ready` and `/api/readiness` — schema/storage/provider/privacy readiness;
 - `/api/health/providers` — provider ingest/freshness/failure-domain provenance;
-- `/api/current` — current DWD benchmark observations;
+- `/api/current` — exact-station DWD 05480 current-now observations;
 - `/api/warnings` — DWD official warnings;
 - `/api/radar` — observed/nowcast safety context.
 
@@ -116,13 +134,12 @@ Those remain separate exact owner gates where applicable.
 
 The public runtime is no longer blocked by WeatherNext.
 
-Before private first access:
-
-1. #168 must migrate the first-access source canary from legacy `station_10416` to canonical `station_05480`;
-2. #122 remains the later explicit private read-only BigQuery gate;
-3. first production WeatherNext snapshot write remains a separate data mutation gate.
-
-No private query should be executed against the stale first-access location contract before #168 completes.
+- #168 is **completed**: the first-access canary/source contract is aligned to canonical `station_05480`; legacy `station_10416` is not the private first-access target.
+- #122 is the next private WeatherNext gate, but it is **not authorized to execute** merely because public acceptance and #168 are complete.
+- Before any private Google/BigQuery request, refresh current Weather `main`/CI, trusted RPi5 source/execution binding, runtime-only Google project/dataset binding, schema fingerprint, and one bounded `station_05480` query plan with an explicit bytes cap.
+- Private first access remains read-only: no private-home scope, no production SQLite/schema/corpus/checkpoint write, no credential/IAM mutation, and no real WeatherNext value may be fabricated.
+- Executing that private read requires a fresh exact owner authorization for the `read_only_private_bigquery` class/target.
+- Persisting the first real WeatherNext snapshot remains a separate later production-data mutation gate.
 
 ## Historical first-rollout evidence
 
