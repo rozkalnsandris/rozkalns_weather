@@ -288,7 +288,7 @@ def create_app(settings: Settings | None = None, database: Database | None = Non
                 "station_id": CDC_STATION_ID,
                 "coordinates_exposed": False,
             },
-            "truth_source": f"DWD CDC 10-minute {CDC_STATION_ID}",
+            "truth_source": f"DWD CDC {CDC_STATION_ID}",
             "observations": observations,
             "state": "observed" if observations else "not_observed_yet",
             "note": "Station truth is not presented as a measurement at the private home point.",
