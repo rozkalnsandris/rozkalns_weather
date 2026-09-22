@@ -47,7 +47,7 @@
     "maximum_bytes_billed_required": true,
     "maximum_allowed_bytes_billed_per_query": 1073741824,
     "max_canary_forecast_hours": 24,
-    "initial_location_id": "station_10416",
+    "initial_location_id": "station_05480",
     "private_home_scope_initially_allowed": false
   },
   "dissemination": {

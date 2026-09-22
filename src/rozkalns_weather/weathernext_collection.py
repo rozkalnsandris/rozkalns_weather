@@ -9,7 +9,7 @@ from math import isfinite
 from statistics import mean
 from typing import Any, Iterable, Mapping, Sequence
 
-from .locations import DWD_10416
+from .locations import BENCHMARK_LOCATION
 from .models import ForecastRun, ensure_utc
 from .providers.weathernext import (
     STATS,
@@ -116,7 +116,7 @@ class VerificationSample:
     model_version: str
     forecast: float
     observed: float
-    location_id: str = DWD_10416.id
+    location_id: str = BENCHMARK_LOCATION.id
     provider: str = "weathernext3"
 
     def __post_init__(self) -> None:
@@ -238,7 +238,7 @@ def validate_snapshot_admission(
         "state": "snapshot_admissible",
         "provider": "weathernext3",
         "model_version": model_version,
-        "location_id": DWD_10416.id,
+        "location_id": BENCHMARK_LOCATION.id,
         "selected_init_time_utc": selected_init,
         "schema_fingerprint": schema_fingerprint,
         "admission_fingerprint": fingerprint,
@@ -436,7 +436,7 @@ def first_month_verification_eligibility(
     grouped: dict[tuple[str, str], list[VerificationSample]] = {}
     excluded = 0
     for sample in samples:
-        if sample.provider != "weathernext3" or sample.location_id != DWD_10416.id:
+        if sample.provider != "weathernext3" or sample.location_id != BENCHMARK_LOCATION.id:
             excluded += 1
             continue
         if sample.valid_time_utc not in common:
@@ -467,8 +467,8 @@ def first_month_verification_eligibility(
         "schema_version": 1,
         "state": "first_month_ready" if meaningful_count else "sample_insufficient",
         "provider": "weathernext3",
-        "location_id": DWD_10416.id,
-        "truth_source": "DWD WMO 10416",
+        "location_id": BENCHMARK_LOCATION.id,
+        "truth_source": BENCHMARK_LOCATION.label,
         "minimum_samples_per_slice": minimum_samples,
         "common_valid_time_count": len(common),
         "excluded_sample_count": excluded,
@@ -539,10 +539,10 @@ def validate_first_month_evidence(evidence: Mapping[str, Any]) -> dict[str, obje
         raise ValueError(f"private/restricted evidence field forbidden: {private}")
     if evidence.get("provider") != "weathernext3":
         raise ValueError("first-month evidence provider must be weathernext3")
-    if evidence.get("location_id") != DWD_10416.id:
-        raise ValueError("first-month evidence must use station_10416")
-    if evidence.get("truth_source") != "DWD WMO 10416":
-        raise ValueError("first-month evidence must use DWD WMO 10416 truth")
+    if evidence.get("location_id") != BENCHMARK_LOCATION.id:
+        raise ValueError("first-month evidence must use the canonical measured benchmark")
+    if evidence.get("truth_source") != BENCHMARK_LOCATION.label:
+        raise ValueError("first-month evidence must use the canonical DWD CDC truth source")
     if evidence.get("raw_realtime_payload_included") is not False:
         raise ValueError("raw real-time WeatherNext payload must not be included")
     if evidence.get("weather_warning_authority") is not False:
@@ -551,8 +551,8 @@ def validate_first_month_evidence(evidence: Mapping[str, Any]) -> dict[str, obje
         "schema_version": 1,
         "state": str(evidence.get("state") or "sample_insufficient"),
         "provider": "weathernext3",
-        "location_id": DWD_10416.id,
-        "truth_source": "DWD WMO 10416",
+        "location_id": BENCHMARK_LOCATION.id,
+        "truth_source": BENCHMARK_LOCATION.label,
         "model_versions": list(evidence.get("model_versions") or []),
         "run_classes": list(evidence.get("run_classes") or []),
         "lead_bucket_summaries": list(evidence.get("lead_bucket_summaries") or []),
@@ -581,8 +581,8 @@ def build_first_month_evidence(
         "schema_version": 1,
         "state": state,
         "provider": "weathernext3",
-        "location_id": DWD_10416.id,
-        "truth_source": "DWD WMO 10416",
+        "location_id": BENCHMARK_LOCATION.id,
+        "truth_source": BENCHMARK_LOCATION.label,
         "model_versions": sorted(set(model_versions)),
         "run_classes": sorted(set(run_classes)),
         "lead_bucket_summaries": [dict(item) for item in lead_bucket_summaries],

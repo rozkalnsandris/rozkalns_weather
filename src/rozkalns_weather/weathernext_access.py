@@ -9,7 +9,7 @@ from math import isfinite
 from typing import Any, Callable, Iterable, Mapping
 
 from .config import Settings
-from .locations import DWD_10416
+from .locations import BENCHMARK_LOCATION
 from .models import ForecastRun, ensure_utc
 from .providers.weathernext import (
     EXPECTED_SCHEMA,
@@ -162,7 +162,7 @@ def build_canary_plan(*, now: datetime, hours_limit: int = DEFAULT_CANARY_HOURS,
     return {
         "schema_version": 1, "state": "ready_for_canary", "provider": "weathernext3",
         "model_name": "WeatherNext 3", "model_version_contract": "3.0.0",
-        "location_id": DWD_10416.id, "selected_init_time_utc": _utc_iso(init_time),
+        "location_id": BENCHMARK_LOCATION.id, "selected_init_time_utc": _utc_iso(init_time),
         "run_class": run_class(init_time), "forecast_horizon_hours": horizon,
         "hours_limit": hours_limit, "maximum_bytes_billed_per_query": maximum_bytes_billed,
         "dry_run_required": True,
@@ -257,7 +257,7 @@ def read_first_access_canary(*, client: Any, project: str, dataset: str,
     if schema["state"] != "linked_dataset_ready":
         raise ValueError("required WeatherNext schema mismatch")
     query_args = dict(client=client, project=project, dataset=dataset,
-                      lat=DWD_10416.lat, lon=DWD_10416.lon, init_time=init_time,
+                      lat=BENCHMARK_LOCATION.lat, lon=BENCHMARK_LOCATION.lon, init_time=init_time,
                       hours_limit=6, maximum_bytes_billed=maximum_bytes_billed,
                       job_config_factory=factory)
     dry = dry_run_canary_queries(**query_args)
@@ -410,7 +410,7 @@ def validate_first_access_evidence(evidence: Mapping[str, Any]) -> dict[str, obj
         raise ValueError("complete provenance evidence is required")
     return {
         "schema_version": 1, "state": "canary_ready_for_snapshot", "provider": "weathernext3",
-        "location_id": DWD_10416.id, "selected_init_time_utc": evidence.get("selected_init_time_utc"),
+        "location_id": BENCHMARK_LOCATION.id, "selected_init_time_utc": evidence.get("selected_init_time_utc"),
         "schema_fingerprint": schema.get("observed_required_fingerprint"), "dry_run_within_cap": True,
         "product_surfaces_complete": True, "provenance_complete": True,
         "production_write_performed": False, "private_fields_exposed": False,
@@ -421,7 +421,7 @@ def build_first_snapshot_write_envelope(evidence: Mapping[str, Any]) -> dict[str
     validated = validate_first_access_evidence(evidence)
     return {
         "schema_version": 1, "state": "first_snapshot_write_eligible", "provider": "weathernext3",
-        "location_id": DWD_10416.id, "selected_init_time_utc": validated.get("selected_init_time_utc"),
+        "location_id": BENCHMARK_LOCATION.id, "selected_init_time_utc": validated.get("selected_init_time_utc"),
         "mutation_class": "production_sqlite_forecast_snapshot_write",
         "requires_exact_private_live_data_authority": True,
         "canary_evidence_validated": True, "write_performed": False,
@@ -459,7 +459,7 @@ def preflight_access(*, settings: Settings, now: datetime, hours_limit: int, max
         client = adapter._client_or_create()
         dry = dry_run_canary_queries(client=client, project=settings.google_cloud_project,
                                      dataset=settings.weathernext_bigquery_dataset,
-                                     lat=DWD_10416.lat, lon=DWD_10416.lon, init_time=init_time,
+                                     lat=BENCHMARK_LOCATION.lat, lon=BENCHMARK_LOCATION.lon, init_time=init_time,
                                      hours_limit=hours_limit, maximum_bytes_billed=maximum_bytes_billed,
                                      job_config_factory=job_config_factory)
     except WeatherNextCostLimit:

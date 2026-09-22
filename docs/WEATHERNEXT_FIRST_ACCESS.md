@@ -8,7 +8,7 @@ Canonical machine contract: `deploy/weathernext-first-access.json`.
 
 The first WeatherNext 3 activation must prove, in order, that the linked BigQuery dataset is accessible, the expected WeatherNext 3 schema is still present, the selected canary query is bounded and within an explicit bytes cap, both required product surfaces return real provider rows, and provenance is complete before any SQLite write is eligible.
 
-The initial canary is intentionally station-only at logical location `station_10416`. Private `HOME_LAT` / `HOME_LON` are not needed for the first benchmark snapshot and never enter GitHub evidence.
+The initial canary is intentionally station-only at the canonical measured benchmark `station_05480` / DWD CDC Werl 05480. Private `HOME_LAT` / `HOME_LON` are not needed for the first benchmark snapshot and never enter GitHub evidence. Legacy `station_10416` remains compatibility-only and is not a first-access query target.
 
 ## Source-only planning
 
@@ -158,7 +158,7 @@ schema_observed_fingerprint=<fresh sanitized evidence>
 selected_init_utc=<one exact init>
 forecast_hours_limit=<1..24>
 maximum_bytes_billed_per_query=<explicit cap>
-query_scope=station_10416
+query_scope=station_05480
 home_scope=disabled_for_first_canary
 dry_run_required=true
 canary_required_surfaces=0p05_station,0p1_surface
@@ -179,9 +179,10 @@ WeatherNext 3 remains experimental/research forecast output. DWD remains the off
 ## Issue #125 guarded station entrypoint
 
 `read_first_access_canary` in `weathernext_access.py` is the private read-only
-entrypoint for a later #122 authorization. It fixes `station_10416`, one explicit
-init, and six forecast hours. The caller supplies private project/dataset/client
-in memory through a separately reviewed trusted binding; never through GitHub.
+entrypoint for a later #122 authorization. It fixes the canonical benchmark
+`station_05480`, one explicit init, and six forecast hours. The caller supplies
+private project/dataset/client in memory through a separately reviewed trusted
+binding; never through GitHub.
 
 It caps the metadata query, validates the required schema fingerprint, dry-runs
 both exact SQL statements, rejects unknown/negative estimates, then queries both
@@ -198,7 +199,7 @@ prepares one immutable provider/init/retrieval snapshot, retaining complete nati
 product values in `raw_product_surfaces` metadata. Display values prefer 0.05°
 station temperature/dew point; this is product selection, not model weighting.
 Only a later exact data gate may call `Database.insert_forecast_run` with the
-explicit `location_id="station_10416"`; ordinary unbounded ingest/diagnose/fallback
+explicit `location_id="station_05480"`; ordinary unbounded ingest/diagnose/fallback
 paths are not first-access entrypoints. Production schema must already be ready.
 
 SDK retry controls were checked against the official Python BigQuery

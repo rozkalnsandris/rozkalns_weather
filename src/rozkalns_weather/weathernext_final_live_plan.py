@@ -6,6 +6,8 @@ import json
 from pathlib import Path
 import re
 
+from .locations import BENCHMARK_LOCATION
+
 RPI5_SOURCE_SHA = "8182bb24545fd676843a9177e69177502c34214c"
 NEXT_OWNER_COMMAND = (
     "AUTHORIZE RPi5_main WEATHERNEXT-PRIVATE-EXECUTION-BRIDGE "
@@ -36,7 +38,7 @@ def build_final_live_plan() -> dict:
                      "materializer_pr": 544, "refresh_before_owner_gate": True,
                      "changed_sha_requires_new_source_review": True},
         },
-        "target": {"host_alias": "rpi5", "location_id": "station_10416",
+        "target": {"host_alias": "rpi5", "location_id": BENCHMARK_LOCATION.id,
                    "home_scope_enabled": False},
         "canary": {
             "HOURS": 6, "maximum_initial_hours": 6, "selected_init_count": 1,

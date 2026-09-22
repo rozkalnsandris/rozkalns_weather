@@ -6,6 +6,7 @@ import hashlib
 import json
 from typing import Any, Iterable, Mapping, Sequence
 
+from .locations import BENCHMARK_LOCATION
 from .models import ForecastRun, ForecastValue, utc_iso
 from .providers.weathernext import STATS
 from .weathernext_collection import validate_snapshot_admission
@@ -181,7 +182,7 @@ def _snapshot_fingerprint(
         "contract": "weathernext3-first-snapshot-admission.v1",
         "provider": "weathernext3",
         "model_version": model_version,
-        "location_id": "station_10416",
+        "location_id": BENCHMARK_LOCATION.id,
         "selected_init_time_utc": selected_init_time_utc,
         "schema_fingerprint": schema_fingerprint,
         "run_hashes": run_hashes,
@@ -270,7 +271,7 @@ def validate_first_snapshot_admission(
         "state": "snapshot_write_plan_ready",
         "provider": "weathernext3",
         "model_version": model_version,
-        "location_id": str(base.get("location_id") or "station_10416"),
+        "location_id": str(base.get("location_id") or BENCHMARK_LOCATION.id),
         "selected_init_time_utc": selected_init,
         "schema_fingerprint": candidate_schema_fingerprint,
         "snapshot_admission_fingerprint": fingerprint,

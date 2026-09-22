@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 from rozkalns_weather.weathernext_access import expected_required_schema_fingerprint
+from rozkalns_weather.locations import BENCHMARK_LOCATION
 from rozkalns_weather.models import ForecastRun, ForecastValue
 from rozkalns_weather.providers.weathernext import STATS
 from rozkalns_weather.weathernext_snapshot_admission import (
@@ -134,6 +135,8 @@ def test_descriptor_freezes_first_snapshot_admission_contract() -> None:
         "weathernext3-first-access.v1",
         "weathernext3-sustained-collection.v1",
     ]
+    assert payload["provider"]["location_id"] == BENCHMARK_LOCATION.id == "station_05480"
+    assert BENCHMARK_LOCATION.id in payload["identity"]["includes"]
     assert payload["freshness"]["maximum_candidate_age_hours_must_be_explicit"] is True
     assert payload["authority"]["production_sqlite_write_authorized"] is False
 
@@ -141,6 +144,7 @@ def test_descriptor_freezes_first_snapshot_admission_contract() -> None:
 def test_happy_path_emits_privacy_safe_write_plan_without_values() -> None:
     result = _admit()
     assert result["state"] == "snapshot_write_plan_ready"
+    assert result["location_id"] == BENCHMARK_LOCATION.id
     assert result["schema_fingerprint"] == SCHEMA_FINGERPRINT
     assert result["product_surfaces"] == ["0p05", "0p1"]
     assert result["canary_evidence_validated"] is True

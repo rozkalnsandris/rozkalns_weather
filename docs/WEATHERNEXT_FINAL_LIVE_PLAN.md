@@ -59,15 +59,17 @@ its scope does not authorize private Google binding or WeatherNext access.
   distinct dry-run surfaces; unknown/negative/over-cap estimates rejected; capped
   schema; disabled SDK retries; no SQLite use; exceptions stop the sequence;
   incomplete statistics, invalid lead provenance and out-of-window responses rejected.
-- Existing access/admission tests now require the actual expected schema fingerprint
+- Existing access/admission tests require the actual expected schema fingerprint
   and numeric dry-run evidence, rather than trusting `within_cap=true` alone.
 - `test_api.py`: two native surfaces prepared as one immutable snapshot, idempotent
   disposable fixture insertion, complete native provenance retained, station-only
   hourly statistics visible without home config, no cross-location fallback, daily
   precipitation counted once using mean, and invalid location rejected.
-- API defaults remain `home`; `location_id=station_10416` explicitly selects the
-  benchmark forecast. PWA defaults to station when home is not configured, labels
-  the selected point, separates cached locations and exposes p10–p90 uncertainty.
+- The first-access and new WeatherNext verification contracts use canonical
+  `station_05480` / DWD CDC Werl 05480. `station_10416` remains a legacy/MOSMIX
+  compatibility location and is not silently rebound or rewritten.
+- PWA defaults to the canonical public benchmark when home is not configured,
+  labels the selected point, separates cached locations and exposes p10–p90 uncertainty.
 - Provider pending/failure remains isolated; WeatherNext is `primary_research`.
   DWD alone is the severe-weather warning authority. Station measured verification
   remains distinct from private-home forecast comparison.
@@ -85,7 +87,7 @@ exact merged Weather/RPi5 SHA, CI, artifact digest/size/platform, trusted host a
 and replay/expiry evidence. Only then can a final LIVE authorization be concrete.
 
 Runtime materialization and private auth/project/link setup precede #122. First
-access has one init, `station_10416`, `HOURS=6`, both product surfaces and an explicit
+access has one init, `station_05480`, `HOURS=6`, both product surfaces and an explicit
 cap no greater than `1073741824` bytes/query; choose the smallest defensible real
 cap from fresh matching dry-run evidence. Home scope and SQLite writes are disabled.
 The first production snapshot write remains a later separate exact authorization.
