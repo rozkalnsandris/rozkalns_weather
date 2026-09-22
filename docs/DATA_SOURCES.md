@@ -12,28 +12,54 @@ WeatherNext, ICON, ECMWF un Combined forecast nedrīkst aizstāt DWD warnings.
 
 ### 2. Ground truth / observations
 
-Galvenais tuvākais station-based references punkts:
+Canonical public measured benchmark ir exact DWD CDC station:
 
-- `WMO 10416 DORTMUND`;
-- DWD MOSMIX single-station endpoint eksistē kā `MOSMIX_L_LATEST_10416.kmz`;
+- `05480 Werl` / repository identity `station_05480`;
+- Overview/current un verification history izmanto vienu station identity, bet **atšķirīgas DWD produktu klases** ar atšķirīgu freshness/reproducibility lomu;
+- legacy `WMO 10416 DORTMUND` paliek MOSMIX/reference compatibility lomā un nedrīkst apmierināt measured-current health;
 - precīzs home point modeļiem tiek glabāts lokāli, nevis repository.
 
 Observation ingestion jāglabā:
 
 - station ID/name;
-- station coordinates/elevation;
+- canonical location identity;
+- source/provider product identity;
 - timestamp;
 - measurement value;
 - QC/source flags, ja pieejami;
-- distance no home point.
+- retrieval timestamp un reproducējamu source URL.
 
 DWD stacija ir labs praktiskais truth references punkts, bet tā nav identiska mājas mikroklimatam. Vēlāk iespējams pievienot lokālu mājas sensoru kā atsevišķu truth stream.
+
+## DWD 05480 current-now vs verification truth
+
+### Current / Overview
+
+Current-now virsma izmanto DWD CDC **10-minute `now/`** exact-station `05480` produktus. Tie ir near-real-time, preliminary produkti: DWD norāda, ka `now/` dati tiek atjaunināti biežāk par 1 h un kvalitātes kontrole vēl nav pabeigta.
+
+Pašreizējais current adapteris lasa tikai semantiski saderīgus laukus:
+
+- `air_temperature`: `TT_10` → `temperature_2m`, `RF_10` → `relative_humidity_2m`, `TD_10` → `dew_point_2m`;
+- `wind`: `FF_10` → `wind_speed_10m`;
+- `extreme_wind`: `FX_10` → `wind_gust_10m`.
+
+Current storage source identity ir `DWD_CURRENT`, bet meteoroloģiskā source authority paliek `DWD`. Tas izolē current-now rindas no vēsturiskā/hourly verification corpus.
+
+`pressure_msl`, `precipitation_1h` un `cloud_cover` netiek aizpildīti no šīs 10-minute plūsmas, kamēr nav authoritative, semantiski saderīga source contract. Konkrēti, DWD `PP_10` ir station-height pressure, nevis sea-level pressure, un 10-minute precipitation amount nav 1-hour accumulation. Trūkstošie current lauki paliek unavailable; tos nedrīkst aizņemties no vecā hourly mērījuma un parādīt kā vienu jauktu “current” timestamp.
+
+Air-temperature latest timestamp ir current payload anchor. Citu 10-minute produktu lauki tiek iekļauti tikai tad, ja tiem ir tieši tas pats timestamp; citādi tie tiek izlaisti. `/api/current` lasa tikai vienu jaunāko `DWD_CURRENT` timestamp, un `dwd_observations` health source-time nāk no tās pašas current ingest darbības.
+
+### Hourly verification / history
+
+Esošais DWD CDC hourly `05480` adapters paliek nemainīta reproducējama verification/historical truth plūsma ar `source_provider=DWD`. Tā turpina izmantot hourly climate productus un to native provenance.
+
+Hourly truth nedrīkst būt silent fallback Overview/current virsmai. Tā var būt jaunāka vai vecāka par current-now plūsmu, neietekmējot current health identity.
 
 ## DWD MOSMIX-L
 
 DWD publicē gatavu local forecast konkrētām stacijām.
 
-Mūsu sākuma station ID: **10416**.
+Legacy MOSMIX station ID: **10416**.
 
 Tiešais katalogs:
 
@@ -47,7 +73,8 @@ Loma:
 
 - station-oriented hourly/local forecast;
 - DWD references līnija blakus model-grid forecasts;
-- vienkāršs robusts baseline.
+- vienkāršs robusts baseline;
+- legacy forecast reference, nevis measured-current truth.
 
 ## DWD ICON-D2
 
@@ -70,7 +97,7 @@ Loma:
 - convective/lightning-supporting variables, ja vēlāk vajag;
 - comparison pret WeatherNext 3.
 
-Point request jāveic uz precīzu `HOME_LAT`, `HOME_LON`, nevis Unna/Dortmund centru.
+Point request jāveic uz precīzu `HOME_LAT`, `HOME_LON`, nevis pilsētas centru.
 
 ## DWD radar
 
@@ -203,8 +230,9 @@ Katram provider response saglabā:
 - `source_init_time_utc`, ja ir;
 - `valid_time_utc`;
 - `published_at_utc`, ja avots dod;
+- observation plūsmām — source `observed_at_utc`;
 - provider status/error;
-- adapter version.
+- adapter version/product identity.
 
 UI rāda provider freshness un nedrīkst klusām prezentēt stale data kā current.
 
@@ -216,7 +244,7 @@ Canonical datu slānī:
 - precipitation amount: mm ar explicit accumulation window;
 - precipitation probability: 0–1 vai 0–100%, konsekventi storage schema;
 - wind: m/s canonical, display var būt km/h;
-- pressure: hPa;
+- pressure: hPa ar explicit pressure semantics;
 - time: UTC storage, `Europe/Berlin` display.
 
 Jāglabā arī native unit/value metadata, ja tas vajadzīgs auditam.
@@ -224,6 +252,9 @@ Jāglabā arī native unit/value metadata, ja tas vajadzīgs auditam.
 ## Source references
 
 - DWD Open Data: https://opendata.dwd.de/
+- DWD CDC 10-minute air temperature: https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/10_minutes/air_temperature/
+- DWD CDC 10-minute wind: https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/10_minutes/wind/
+- DWD CDC 10-minute extreme wind: https://opendata.dwd.de/climate_environment/CDC/observations_germany/climate/10_minutes/extreme_wind/
 - DWD MOSMIX 10416: https://opendata.dwd.de/weather/local_forecasts/mos/MOSMIX_L/single_stations/10416/kml/
 - Bright Sky: https://brightsky.dev/
 - Open-Meteo DWD: https://open-meteo.com/en/docs/dwd-api
