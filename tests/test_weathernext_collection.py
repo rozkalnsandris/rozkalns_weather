@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 from rozkalns_weather.weathernext_access import expected_required_schema_fingerprint
+from rozkalns_weather.locations import BENCHMARK_LOCATION
 from rozkalns_weather.models import ForecastRun, ForecastValue
 from rozkalns_weather.providers.weathernext import STATS
 from rozkalns_weather.weathernext_collection import (
@@ -96,6 +97,8 @@ def test_descriptor_freezes_source_only_sustained_collection_contract() -> None:
     payload = json.loads(Path("deploy/weathernext-sustained-collection.json").read_text())
     assert payload["contract"] == "weathernext3-sustained-collection.v1"
     assert payload["depends_on"] == "weathernext3-first-access.v1"
+    assert payload["first_month_verification"]["location_id"] == BENCHMARK_LOCATION.id == "station_05480"
+    assert payload["first_month_verification"]["truth_source"] == BENCHMARK_LOCATION.label
     assert payload["cadence"]["scheduler_activation_authorized"] is False
     assert payload["snapshot_admission"]["write_authorized_by_source_auto_full"] is False
     assert payload["authority"]["source_auto_full_authorizes_real_bigquery_reads"] is False
@@ -119,6 +122,7 @@ def test_snapshot_admission_requires_validated_two_surface_canary_and_never_writ
         runs=[_run(resolution="0p05"), _run(resolution="0p1")],
     )
     assert result["state"] == "snapshot_admissible"
+    assert result["location_id"] == BENCHMARK_LOCATION.id
     assert result["product_surfaces_complete"] is True
     assert result["requires_exact_private_live_data_authority"] is True
     assert result["production_write_performed"] is False
@@ -255,8 +259,8 @@ def test_first_month_eligibility_requires_station_common_times_and_minimum_sampl
         common_valid_times=[start + timedelta(hours=index) for index in range(30)],
     )
     assert result["state"] == "first_month_ready"
-    assert result["location_id"] == "station_10416"
-    assert result["truth_source"] == "DWD WMO 10416"
+    assert result["location_id"] == BENCHMARK_LOCATION.id == "station_05480"
+    assert result["truth_source"] == BENCHMARK_LOCATION.label == "DWD CDC Werl 05480"
     assert result["home_accuracy_included"] is False
     assert result["excluded_sample_count"] == 1
     assert result["slices"][0]["n"] == 30
@@ -294,6 +298,8 @@ def test_first_month_evidence_is_sanitized_and_publication_fail_closed() -> None
         quantile_summaries=[{"variable": "temperature_2m", "n": 30, "p10_p90_coverage": 0.8}],
         notable_miss_summaries=[{"lead_bucket": "12-24h", "absolute_error": 4.0}],
     )
+    assert evidence["location_id"] == BENCHMARK_LOCATION.id
+    assert evidence["truth_source"] == BENCHMARK_LOCATION.label
     assert evidence["publication_allowed"] is False
     assert evidence["terms_recheck_required_before_publication"] is True
     assert evidence["weather_warning_authority"] is False
