@@ -145,14 +145,31 @@ class IngestOrchestrator:
             detail = _failure_detail("upstream_or_transport", "observation_fetch", exc)
             self.database.set_provider_status(provider, state="error", now=now, detail=detail)
             return ProviderOutcome(provider, "error", self.retry_attempts, detail=detail)
+
+        mismatched = [item.location_id for item in observations if item.location_id != location_id]
+        if mismatched:
+            detail = "upstream_or_transport:observation_identity:location_mismatch"
+            self.database.set_provider_status(provider, state="error", now=now, detail=detail)
+            return ProviderOutcome(provider, "error", attempts, detail=detail)
+
+        latest_observed = max((item.observed_at_utc for item in observations), default=None)
         try:
             self.database.insert_observations(observations)
         except Exception as exc:
             detail = _failure_detail("local_persistence", "observation_write", exc)
             self.database.set_provider_status(provider, state="error", now=now, detail=detail)
             return ProviderOutcome(provider, "error", attempts, detail=detail)
-        self.database.set_provider_status(provider, state="ok", now=now, model_name="DWD CDC Observations")
-        return ProviderOutcome(provider, "ok", attempts, locations=(location_id,))
+
+        detail = None if observations else "no_observations_returned"
+        self.database.set_provider_status(
+            provider,
+            state="ok",
+            now=now,
+            model_name="DWD CDC Observations",
+            init_time=latest_observed,
+            detail=detail,
+        )
+        return ProviderOutcome(provider, "ok", attempts, detail=detail, locations=(location_id,))
 
     def _collect_open_meteo_model(self, model, now: datetime) -> ProviderOutcome:
         adapter = OpenMeteoSingleRunAdapter(model, fetcher=json_fetcher(self.timeout_seconds))

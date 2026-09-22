@@ -79,7 +79,9 @@ Production runtime is `public-only`:
 - provider failures remain isolated and visible through health/freshness state;
 - DWD Warnings/Radar remain distinct from experimental model output.
 
-One isolated ECMWF IFS upstream/transport failure and DWD observation `SOURCE_TIME_MISSING` freshness provenance were observed in the #167 audit. They are follow-up signals, not current architecture blockers; source time must never be fabricated.
+The DWD measured-current freshness contract is pinned to canonical `station_05480` ingest provenance. A successful fetch/write cycle is only ingest success: freshness is classified from the latest canonical observed-at timestamp as `FRESH`, `SOURCE_DATA_LAGGING`, `SOURCE_DATA_STALE`, or `SOURCE_TIME_MISSING`. Empty/no-new results never fabricate a source timestamp, and legacy `station_10416` evidence must not satisfy current DWD measured-current health.
+
+One isolated ECMWF IFS upstream/transport failure was observed in the #167 audit. Provider failures remain follow-up signals rather than architecture blockers and source time must never be fabricated.
 
 ## WeatherNext 3 current continuation
 
