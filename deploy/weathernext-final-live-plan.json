@@ -180,7 +180,7 @@
   "target": {
     "home_scope_enabled": false,
     "host_alias": "rpi5",
-    "location_id": "station_10416"
+    "location_id": "station_05480"
   },
   "verification": [
     "fresh exact Weather merged SHA and all required CI/reviews",
