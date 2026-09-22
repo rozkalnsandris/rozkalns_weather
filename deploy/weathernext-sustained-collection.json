@@ -76,8 +76,8 @@
     "privacy_safe_only": true
   },
   "first_month_verification": {
-    "location_id": "station_10416",
-    "truth_source": "DWD WMO 10416",
+    "location_id": "station_05480",
+    "truth_source": "DWD CDC Werl 05480",
     "minimum_meaningful_samples_per_model_version_lead_bucket": 30,
     "common_valid_times_required": true,
     "model_version_boundaries_required": true,
