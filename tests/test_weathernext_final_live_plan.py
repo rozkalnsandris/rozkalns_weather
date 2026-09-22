@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 
+from rozkalns_weather.locations import BENCHMARK_LOCATION
 from rozkalns_weather.weathernext_final_live_plan import (
     BLOCKED, RPI5_SOURCE_SHA, bind_source_receipt, build_final_live_plan, validate_final_live_plan,
 )
@@ -14,6 +15,7 @@ def test_checked_in_plan_matches_closed_schema_and_does_not_authorize_live():
     result = validate_final_live_plan(plan)
     assert result["next_state"] == BLOCKED
     assert result["live_authorized"] is False
+    assert plan["target"]["location_id"] == BENCHMARK_LOCATION.id == "station_05480"
     classes = {item["class"]: item for item in plan["ordered_stages"]}
     assert classes["weathernext_private_runtime_materialization"]["source_readiness"] == "SOURCE_READY"
     assert classes["private_execution_bridge"]["source_readiness"] == "EXTERNAL_SOURCE_CAPABILITY_MISSING"
