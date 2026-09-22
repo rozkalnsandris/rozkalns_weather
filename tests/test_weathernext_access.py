@@ -6,6 +6,7 @@ from types import SimpleNamespace
 import pytest
 
 from rozkalns_weather.config import Settings
+from rozkalns_weather.locations import BENCHMARK_LOCATION
 from rozkalns_weather.models import ForecastRun, ForecastValue
 from rozkalns_weather.providers.weathernext import EXPECTED_SCHEMA, STATS, rows_to_run
 from rozkalns_weather.weathernext_access import (
@@ -73,7 +74,7 @@ def test_first_access_descriptor_is_source_only() -> None:
     payload = json.loads(Path("deploy/weathernext-first-access.json").read_text())
     assert payload["contract"] == "weathernext3-first-access.v1"
     assert payload["query_guardrails"]["dry_run_required_before_canary"] is True
-    assert payload["query_guardrails"]["initial_location_id"] == "station_10416"
+    assert payload["query_guardrails"]["initial_location_id"] == BENCHMARK_LOCATION.id == "station_05480"
     assert payload["authority"]["source_auto_full_authorizes_real_bigquery_query"] is False
     assert payload["authority"]["source_auto_full_authorizes_first_snapshot_write"] is False
 
@@ -108,7 +109,7 @@ def test_canary_plan_is_one_init_bounded_and_station_only() -> None:
         hours_limit=6,
         maximum_bytes_billed=500_000_000,
     )
-    assert plan["location_id"] == "station_10416"
+    assert plan["location_id"] == BENCHMARK_LOCATION.id == "station_05480"
     assert plan["hours_limit"] == 6
     assert plan["selected_init_time_utc"] == "2026-09-08T07:00:00Z"
     assert plan["dry_run_required"] is True
@@ -183,6 +184,7 @@ def test_preflight_is_sanitized_and_does_not_need_sqlite() -> None:
         job_config_factory=_config,
     )
     assert payload["state"] == "ready_for_canary"
+    assert payload["plan"]["location_id"] == BENCHMARK_LOCATION.id
     assert payload["coordinates_exposed"] is False
     assert payload["credentials_exposed"] is False
     assert payload["production_write_performed"] is False
@@ -300,8 +302,10 @@ def test_first_snapshot_write_envelope_requires_sanitized_complete_canary() -> N
     }
     validated = validate_first_access_evidence(evidence)
     assert validated["state"] == "canary_ready_for_snapshot"
+    assert validated["location_id"] == BENCHMARK_LOCATION.id
     envelope = build_first_snapshot_write_envelope(evidence)
     assert envelope["state"] == "first_snapshot_write_eligible"
+    assert envelope["location_id"] == BENCHMARK_LOCATION.id
     assert envelope["requires_exact_private_live_data_authority"] is True
     assert envelope["write_performed"] is False
     evidence["google_cloud_project"] = "private-project"
