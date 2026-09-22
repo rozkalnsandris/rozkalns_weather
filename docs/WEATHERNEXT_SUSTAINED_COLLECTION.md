@@ -26,7 +26,7 @@ Transitions are evidence-driven. Missing/pending WeatherNext data is never repre
 
 ## Canary -> immutable snapshot admission
 
-`validate_snapshot_admission(...)` accepts only the already-sanitized first-access evidence from Issue #22 plus WeatherNext runs whose provenance validator passes.
+`validate_snapshot_admission(...)` accepts only the already-sanitized first-access evidence plus WeatherNext runs whose provenance validator passes.
 
 Admission requires:
 
@@ -99,7 +99,7 @@ Health evidence must not expose Google project/dataset identity, credentials, ho
 
 ## First-month measured verification
 
-Measured first-month eligibility is only for logical location `station_10416` with truth `DWD WMO 10416`.
+Measured first-month eligibility uses the same canonical benchmark as first access: logical location `station_05480` with truth `DWD CDC Werl 05480`. Legacy `station_10416` remains compatibility-only and must not become a new WeatherNext verification truth target.
 
 The eligibility helper:
 
@@ -172,7 +172,7 @@ supported_model_version=3.0.0
 run_classes=interim_48h,synoptic_360h
 collection_cadence=hourly planner
 maximum_bytes_billed_per_query=<explicit cap>
-query_scope=<station_10416 and any separately authorized private-home scope>
+query_scope=<station_05480 and any separately authorized private-home scope>
 dedupe_identity=provider+model_version+init+location+surface
 missing_run_latency_grace_minutes=90
 recovery_max_age_hours=168
@@ -195,12 +195,12 @@ weather_sha=<reviewed merged exact SHA>
 weather_exact_sha_ci=<fresh required-check evidence>
 production_sqlite_target=<exact trusted runtime DB identity>
 validated_snapshot_admission=<sanitized fingerprint/evidence>
-location_scope=station_10416[,home only if separately authorized]
+location_scope=station_05480[,home only if separately authorized]
 model_version=3.0.0
 schema_fingerprint=<current accepted fingerprint>
 run_classes=interim_48h,synoptic_360h
 immutable_revision_and_idempotency=true
-truth_scope=DWD_WMO_10416_for_measured_accuracy
+truth_scope=DWD_CDC_05480_for_measured_accuracy
 first_month_min_samples_per_version_lead_bucket=30
 verification=<corpus integrity + revision/dedupe + first-month eligibility + privacy-safe evidence>
 failure=<STOP; no undeclared delete/restore/cleanup>
