@@ -1,0 +1,207 @@
+{
+  "schema_version": 1,
+  "provenance": {
+    "synthetic_only": true,
+    "production_corpus": false,
+    "real_weathernext_values": false,
+    "observation_truth_contract": "DWD observation truth, synthetic values only"
+  },
+  "point_and_interval": {
+    "provider": "weathernext3",
+    "model_versions": [
+      "3.0.0-synthetic",
+      "3.1.0-synthetic"
+    ],
+    "statistic": "mean",
+    "expected_n": 4,
+    "pairs": [
+      {
+        "model_version": "3.0.0-synthetic",
+        "lead_hours": 3,
+        "forecast": 10.0,
+        "observed": 9.0,
+        "p10": 8.0,
+        "p90": 11.0
+      },
+      {
+        "model_version": "3.0.0-synthetic",
+        "lead_hours": 9,
+        "forecast": 8.0,
+        "observed": 10.0,
+        "p10": 7.0,
+        "p90": 9.0
+      },
+      {
+        "model_version": "3.1.0-synthetic",
+        "lead_hours": 18,
+        "forecast": 12.0,
+        "observed": 12.0,
+        "p10": 10.0,
+        "p90": 14.0
+      }
+    ],
+    "expected": {
+      "n": 3,
+      "mae": 1.0,
+      "rmse": 1.2909944487358056,
+      "bias": -0.3333333333333333,
+      "p10_p90_coverage": 0.6666666666666666,
+      "coverage_n": 3,
+      "sample_sufficiency_state": "insufficient_sample",
+      "missingness": {
+        "state": "assessed",
+        "expected_n": 4,
+        "available_n": 3,
+        "missing_n": 1,
+        "missing_fraction": 0.25
+      }
+    }
+  },
+  "lead_buckets": [
+    {"lead_hours": 3, "expected": "0-6h"},
+    {"lead_hours": 6, "expected": "6-12h"},
+    {"lead_hours": 12, "expected": "12-24h"},
+    {"lead_hours": 24, "expected": "24-48h"},
+    {"lead_hours": 360, "expected": "10-15d"},
+    {"lead_hours": 361, "expected": "out-of-range"}
+  ],
+  "ensemble_temperature": {
+    "provider": "synthetic_ensemble",
+    "model_version": "ensemble-v1",
+    "cases": [
+      {
+        "members": [0.0, 1.0, 2.0],
+        "observed": 1.0,
+        "expected_crps": 0.2222222222222222,
+        "expected_wis": 0.5764705882352941
+      },
+      {
+        "members": [1.0, 3.0, 5.0],
+        "observed": 4.0,
+        "expected_crps": 0.7777777777777778,
+        "expected_wis": 1.741176470588235
+      }
+    ],
+    "expected_mean_crps": 0.5
+  },
+  "explicit_precip_probability": {
+    "provider": "synthetic_explicit_probability",
+    "expected_n": 5,
+    "pairs": [
+      {"probability": 0.8, "observed_event": 1.0},
+      {"probability": 0.2, "observed_event": 0.0},
+      {"probability": 0.6, "observed_event": 0.0},
+      {"probability": 0.4, "observed_event": 1.0}
+    ],
+    "expected_brier": 0.2,
+    "expected_missingness": {
+      "state": "assessed",
+      "expected_n": 5,
+      "available_n": 4,
+      "missing_n": 1,
+      "missing_fraction": 0.2
+    },
+    "reliability_bins": 5,
+    "expected_reliability": [
+      {"bin_lower": 0.0, "bin_upper": 0.2, "n": 0, "mean_probability": 0.1, "observed_frequency": 0.0},
+      {"bin_lower": 0.2, "bin_upper": 0.4, "n": 1, "mean_probability": 0.2, "observed_frequency": 0.0},
+      {"bin_lower": 0.4, "bin_upper": 0.6, "n": 1, "mean_probability": 0.4, "observed_frequency": 1.0},
+      {"bin_lower": 0.6, "bin_upper": 0.8, "n": 1, "mean_probability": 0.6, "observed_frequency": 0.0},
+      {"bin_lower": 0.8, "bin_upper": 1.0, "n": 1, "mean_probability": 0.8, "observed_frequency": 1.0}
+    ]
+  },
+  "ensemble_precipitation": {
+    "threshold_mm": 0.1,
+    "member_sets": [
+      [0.0, 0.2, 0.3, 0.0],
+      [0.0, 0.0, 0.0, 0.0]
+    ],
+    "observations_mm": [0.2, 0.0],
+    "expected_event_probabilities": [0.5, 0.0],
+    "expected_brier": 0.125
+  },
+  "weather_next_summary_semantics": [
+    {
+      "statistic": "mean",
+      "value": 10.0,
+      "expected_family": "summary_mean",
+      "metric": "mae",
+      "eligible": true,
+      "reason": "point_forecast"
+    },
+    {
+      "statistic": "p10",
+      "value": 8.0,
+      "expected_family": "summary_quantile",
+      "metric": "crps",
+      "eligible": false,
+      "reason": "probabilistic_metric_requires_ensemble_members"
+    },
+    {
+      "statistic": "p50",
+      "value": 10.0,
+      "expected_family": "summary_quantile",
+      "metric": "brier",
+      "eligible": false,
+      "reason": "brier_requires_explicit_probability_or_ensemble_member_fraction"
+    }
+  ],
+  "precipitation_semantics": {
+    "explicit_probability": {
+      "variable": "precipitation_probability_1h",
+      "value": 60.0,
+      "unit": "%",
+      "window_minutes": 60,
+      "statistic": "probability",
+      "metric": "brier",
+      "eligible": true,
+      "reason": "explicit_event_probability"
+    },
+    "deterministic_amount": {
+      "variable": "precipitation_1h",
+      "value": 1.2,
+      "unit": "mm",
+      "window_minutes": 60,
+      "statistic": "deterministic",
+      "metric": "brier",
+      "eligible": false,
+      "reason": "brier_requires_explicit_probability_or_ensemble_member_fraction"
+    },
+    "genuine_member_amount": {
+      "variable": "precipitation_1h",
+      "value": 1.2,
+      "unit": "mm",
+      "window_minutes": 60,
+      "statistic": "member_0",
+      "metric": "brier",
+      "eligible": true,
+      "reason": "ensemble_member_fraction"
+    },
+    "rejected_probability_source": "deterministic_amount"
+  },
+  "unit_drift": {
+    "variable": "temperature_2m",
+    "value": 10.0,
+    "bad_unit": "K",
+    "window_minutes": null,
+    "statistic": "deterministic",
+    "expected_error": "invalid_unit:temperature_2m:K"
+  },
+  "common_sample": {
+    "samples": [
+      {"sample_id": "s1", "provider": "dwd_icon_d2", "model_version": "2026a", "lead_hours": 18, "forecast": 10.0, "observed": 11.0},
+      {"sample_id": "s1", "provider": "weathernext3", "model_version": "3.0.0-synthetic", "lead_hours": 18, "forecast": 12.0, "observed": 11.0},
+      {"sample_id": "s2", "provider": "dwd_icon_d2", "model_version": "2026a", "lead_hours": 18, "forecast": 14.0, "observed": 13.0},
+      {"sample_id": "s2", "provider": "weathernext3", "model_version": "3.0.0-synthetic", "lead_hours": 18, "forecast": 13.0, "observed": 13.0},
+      {"sample_id": "s3", "provider": "dwd_icon_d2", "model_version": "2026a", "lead_hours": 18, "forecast": 9.0, "observed": 10.0},
+      {"sample_id": "s4", "provider": "dwd_icon_d2", "model_version": "2026a", "lead_hours": 18, "forecast": 8.0, "observed": 9.0},
+      {"sample_id": "s4", "provider": "weathernext3", "model_version": "3.1.0-synthetic", "lead_hours": 18, "forecast": 10.0, "observed": 9.0}
+    ],
+    "expected_rows": [
+      {"provider": "dwd_icon_d2", "peer_version": "3.0.0-synthetic", "matched_sample_ids": ["s1", "s2"], "excluded_sample_ids": ["s3", "s4"], "n": 2, "mae": 1.0, "rmse": 1.0, "bias": 0.0, "available_n": 4, "missing_n": 0},
+      {"provider": "weathernext3", "peer_version": "3.0.0-synthetic", "matched_sample_ids": ["s1", "s2"], "excluded_sample_ids": ["s3", "s4"], "n": 2, "mae": 0.5, "rmse": 0.7071067811865476, "bias": 0.5, "available_n": 3, "missing_n": 1},
+      {"provider": "dwd_icon_d2", "peer_version": "3.1.0-synthetic", "matched_sample_ids": ["s4"], "excluded_sample_ids": ["s1", "s2", "s3"], "n": 1, "mae": 1.0, "rmse": 1.0, "bias": -1.0, "available_n": 4, "missing_n": 0},
+      {"provider": "weathernext3", "peer_version": "3.1.0-synthetic", "matched_sample_ids": ["s4"], "excluded_sample_ids": ["s1", "s2", "s3"], "n": 1, "mae": 1.0, "rmse": 1.0, "bias": 1.0, "available_n": 3, "missing_n": 1}
+    ]
+  }
+}
