@@ -6,6 +6,11 @@ from math import sqrt
 from statistics import mean
 from typing import Iterable
 
+from .precip_events import (
+    DEFAULT_PRECIP_EVENT,
+    PRECIP_EVENT_REGISTRY_VERSION,
+    event_definition as precip_event_definition,
+)
 from .semantics import PRECIP_EVENT_VERSION
 
 
@@ -29,21 +34,23 @@ class ProbabilityPair:
     model_version: str | None = None
     probability_source: str = "explicit_event_probability"
     event_version: str = PRECIP_EVENT_VERSION
+    event_definition_id: str = DEFAULT_PRECIP_EVENT.event_id
+    event_registry_version: str = PRECIP_EVENT_REGISTRY_VERSION
 
     def __post_init__(self) -> None:
         if not 0.0 <= self.probability <= 1.0:
             raise ValueError("probability must be in [0,1]")
         if self.observed_event not in {0.0, 1.0}:
             raise ValueError("observed_event must be 0 or 1")
-        if self.probability_source not in {
-            "explicit_event_probability",
-            "ensemble_member_fraction",
-        }:
-            raise ValueError(
-                "probability source must be explicit event probability or ensemble member fraction"
-            )
+        definition = precip_event_definition(self.event_definition_id)
+        definition.validate_probability_source(self.probability_source)
+        if self.event_registry_version != definition.registry_version:
+            raise ValueError("probability event registry version is unsupported")
         if self.event_version != PRECIP_EVENT_VERSION:
             raise ValueError("probability event definition is unsupported")
+
+    def event_definition_identity(self) -> dict[str, object]:
+        return precip_event_definition(self.event_definition_id).as_dict()
 
 
 LEAD_BUCKETS = (
@@ -136,20 +143,34 @@ def summarize(
     }
 
 
+def _probability_event_identity(items: list[ProbabilityPair]) -> dict[str, object]:
+    identity = DEFAULT_PRECIP_EVENT.as_dict()
+    if not items:
+        return identity
+    identity = items[0].event_definition_identity()
+    for item in items[1:]:
+        if item.event_definition_identity() != identity:
+            raise ValueError("mixed precipitation event definitions")
+    return identity
+
+
 def brier_score(
     pairs: Iterable[ProbabilityPair], *, expected_n: int | None = None
 ) -> dict[str, object]:
     items = list(pairs)
     evidence = sample_evidence(len(items), expected_n=expected_n)
+    event_definition = _probability_event_identity(items)
     if not items:
         return {
             **evidence,
             "brier_score": None,
+            "event_definition": event_definition,
         }
     score = mean((item.probability - item.observed_event) ** 2 for item in items)
     return {
         **evidence,
         "brier_score": score,
+        "event_definition": event_definition,
     }
 
 
@@ -158,24 +179,26 @@ def reliability_bins(
 ) -> list[dict[str, float | int]]:
     if bins < 2:
         raise ValueError("bins must be >= 2")
+    items = list(pairs)
+    _probability_event_identity(items)
     buckets: list[list[ProbabilityPair]] = [[] for _ in range(bins)]
-    for item in pairs:
+    for item in items:
         index = min(bins - 1, int(item.probability * bins))
         buckets[index].append(item)
     result: list[dict[str, float | int]] = []
-    for index, items in enumerate(buckets):
+    for index, bucket_items in enumerate(buckets):
         lower = index / bins
         upper = (index + 1) / bins
         result.append(
             {
                 "bin_lower": lower,
                 "bin_upper": upper,
-                "n": len(items),
-                "mean_probability": mean(x.probability for x in items)
-                if items
+                "n": len(bucket_items),
+                "mean_probability": mean(x.probability for x in bucket_items)
+                if bucket_items
                 else (lower + upper) / 2,
-                "observed_frequency": mean(x.observed_event for x in items)
-                if items
+                "observed_frequency": mean(x.observed_event for x in bucket_items)
+                if bucket_items
                 else 0.0,
             }
         )

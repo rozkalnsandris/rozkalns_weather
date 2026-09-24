@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "registry_version": "precip-event-registry-v1",
+  "events": [
+    {
+      "registry_version": "precip-event-registry-v1",
+      "event_id": "precipitation_1h_ge_0p1mm",
+      "amount_variable": "precipitation_1h",
+      "probability_variable": "precipitation_probability_1h",
+      "threshold": 0.1,
+      "threshold_unit": "mm",
+      "accumulation_window_minutes": 60,
+      "direction": "at_or_above",
+      "probability_sources": [
+        "explicit_event_probability",
+        "ensemble_member_fraction"
+      ],
+      "deterministic_amount_probability_eligible": false,
+      "summary_quantile_probability_eligible": false
+    }
+  ]
+}

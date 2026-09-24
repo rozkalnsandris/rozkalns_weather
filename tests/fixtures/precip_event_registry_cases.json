@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "event_id": "precipitation_1h_ge_0p1mm",
+  "boundary_cases": [
+    {
+      "value": 0.099,
+      "expected": false
+    },
+    {
+      "value": 0.1,
+      "expected": true
+    },
+    {
+      "value": 0.101,
+      "expected": true
+    }
+  ],
+  "mismatch_cases": [
+    {
+      "kind": "unit",
+      "unit": "kg/m2",
+      "window_minutes": 60,
+      "error": "precip_event_unit_mismatch"
+    },
+    {
+      "kind": "window",
+      "unit": "mm",
+      "window_minutes": 180,
+      "error": "precip_event_window_mismatch"
+    }
+  ],
+  "probability_source_cases": [
+    {
+      "source": "explicit_event_probability",
+      "eligible": true
+    },
+    {
+      "source": "ensemble_member_fraction",
+      "eligible": true
+    },
+    {
+      "source": "deterministic_amount",
+      "eligible": false
+    },
+    {
+      "source": "summary_quantile",
+      "eligible": false
+    }
+  ]
+}

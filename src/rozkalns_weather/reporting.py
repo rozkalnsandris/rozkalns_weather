@@ -9,6 +9,7 @@ from .db import Database
 from .events import EventPair, matched_event_groups
 from .leaderboard import SkillSample, common_sample_leaderboard
 from .locations import DWD_10416
+from .precip_events import DEFAULT_PRECIP_EVENT, PRECIP_EVENT_REGISTRY_VERSION
 from .probabilistic import (
     brier_from_members,
     ensemble_crps,
@@ -19,7 +20,7 @@ from .probabilistic import (
 from .verification import lead_bucket, sample_confidence, sample_evidence
 
 WEATHERNEXT_RELEASE_NOTES_URL = "https://developers.google.com/weathernext/release-notes"
-PRECIP_EVENT_THRESHOLD_MM = 0.1
+PRECIP_EVENT_THRESHOLD_MM = DEFAULT_PRECIP_EVENT.threshold
 
 EVENT_DEFINITIONS = (
     ("temperature_2m", 30.0, "at_or_above", "temperature_high_30c"),
@@ -247,6 +248,7 @@ def _ensemble_calibration(database: Database, *, start: str, end: str) -> dict[s
                 "mean_width": mean(temperature_width[provider]) if temperature_width.get(provider) else None,
             },
             "precipitation_probability": {
+                "event_definition": DEFAULT_PRECIP_EVENT.as_dict(),
                 **brier_from_members(precip_members, precip_observed, threshold=PRECIP_EVENT_THRESHOLD_MM),
                 "sample_sufficiency_state": sample_confidence(precip_n),
                 "missingness": sample_evidence(precip_n)["missingness"],
@@ -326,6 +328,8 @@ def monthly_weather_next_report(database: Database, *, month: str) -> dict[str, 
     return {
         "report_type": "station_benchmark_monthly_v3",
         "sample_sufficiency_contract": "common-sample-sufficiency-v1",
+        "precipitation_event_registry_version": PRECIP_EVENT_REGISTRY_VERSION,
+        "precipitation_event_definition": DEFAULT_PRECIP_EVENT.as_dict(),
         "month": month,
         "comparison_location": {"id": DWD_10416.id, "station_id": "10416"},
         "truth_source": "DWD WMO 10416",
@@ -353,6 +357,7 @@ def monthly_weather_next_report(database: Database, *, month: str) -> dict[str, 
             "each comparison row exposes missingness and sample-sufficiency evidence, and bootstrap MAE intervals are emitted only when n>=30. "
             "Wins/losses are also separated by the complete provider model-version cohort. "
             "Ensemble calibration exposes n/sufficiency beside CRPS, interval/WIS and precipitation Brier evidence and uses stored member_* values only. "
+            "Precipitation Brier/reliability provenance is bound to the versioned registered event definition and genuine member fractions. "
             "Release events are included only when previously recorded from verified source metadata."
         ),
     }
