@@ -6,7 +6,12 @@ from pathlib import Path
 import sqlite3
 from typing import Iterable
 
-from .backfill import ARCHIVE_START, COMMON_BENCHMARK_START, MODEL_REGISTRY, iter_run_times
+from .backfill import ARCHIVE_START, COMMON_BENCHMARK_START, iter_run_times
+from .cycle_coverage import (
+    CYCLE_COVERAGE_REGISTRY_VERSION,
+    contract_for,
+    cycle_class_coverage,
+)
 from .db import Database
 from .locations import BENCHMARK_LOCATION
 from .models import utc_iso
@@ -15,8 +20,12 @@ from .verification import LEAD_BUCKETS, lead_bucket
 
 DEFAULT_MODELS = ("icon_d2", "ecmwf_ifs", "ecmwf_aifs")
 DEFAULT_RUN_HOURS = (0, 6, 12, 18)
-IFS_SHORT_CYCLE_HOURS = frozenset({6, 18})
-IFS_SHORT_CYCLE_HORIZON_HOURS = 144
+_IFS_CONTRACT = contract_for("ecmwf_ifs")
+_IFS_HORIZONS = dict(_IFS_CONTRACT.horizon_by_cycle_hours)
+IFS_SHORT_CYCLE_HORIZON_HOURS = min(_IFS_HORIZONS.values())
+IFS_SHORT_CYCLE_HOURS = frozenset(
+    hour for hour, horizon in _IFS_HORIZONS.items() if horizon == IFS_SHORT_CYCLE_HORIZON_HOURS
+)
 MAX_EXAMPLES = 50
 CRITICAL_PROVENANCE_FIELDS = (
     "model_provider",
@@ -57,9 +66,7 @@ def _init_hour(init_time: str) -> int:
 
 
 def _expected_horizon_hours(provider: str, init_time: str) -> int:
-    if provider == "ecmwf_ifs" and _init_hour(init_time) in IFS_SHORT_CYCLE_HOURS:
-        return IFS_SHORT_CYCLE_HORIZON_HOURS
-    return MODEL_REGISTRY[provider].forecast_days * 24
+    return contract_for(provider).horizon_for_cycle(_init_hour(init_time))
 
 
 def _expected_inits_for_bucket(provider: str, expected_init_times: tuple[str, ...], bucket: str) -> set[str]:
@@ -69,6 +76,27 @@ def _expected_inits_for_bucket(provider: str, expected_init_times: tuple[str, ..
         for init_time in expected_init_times
         if lower < _expected_horizon_hours(provider, init_time)
     }
+
+
+def _model_version_boundaries(grouped: dict[str, list[sqlite3.Row]]) -> list[dict[str, object]]:
+    by_version: dict[str, set[str]] = defaultdict(set)
+    for init_time, snapshots in grouped.items():
+        for row in snapshots:
+            version = str(row["model_version"]) if row["model_version"] not in (None, "") else "<missing>"
+            by_version[version].add(init_time)
+    output: list[dict[str, object]] = []
+    for version in sorted(by_version):
+        init_times = sorted(by_version[version])
+        output.append(
+            {
+                "model_version": None if version == "<missing>" else version,
+                "first_init_time_utc": init_times[0],
+                "last_init_time_utc": init_times[-1],
+                "run_count": len(init_times),
+                "coverage_registry_version": CYCLE_COVERAGE_REGISTRY_VERSION,
+            }
+        )
+    return output
 
 
 def _model_summary(
@@ -130,6 +158,11 @@ def _model_summary(
         blockers.append(f"{prefix}_CRITICAL_PROVENANCE_GAPS")
     if model_version_missing:
         warnings.append(f"{prefix}_MODEL_VERSION_MISSING")
+
+    cycle_coverage = cycle_class_coverage(provider, present & expected)
+    for reason in cycle_coverage["reason_codes"]:
+        blockers.append(f"{prefix}_{reason}")
+
     expected_lead_buckets = tuple(
         label
         for _lower, _upper, label in LEAD_BUCKETS
@@ -166,6 +199,12 @@ def _model_summary(
             "kind": "cycle_aware" if provider == "ecmwf_ifs" else "provider_default",
             "ifs_short_cycle_hours_utc": sorted(IFS_SHORT_CYCLE_HOURS) if provider == "ecmwf_ifs" else [],
             "ifs_short_cycle_horizon_hours": IFS_SHORT_CYCLE_HORIZON_HOURS if provider == "ecmwf_ifs" else None,
+        },
+        "cycle_horizon_contract": {
+            "registry_version": CYCLE_COVERAGE_REGISTRY_VERSION,
+            "contract": contract_for(provider).as_dict(),
+            "cycle_class_coverage": cycle_coverage,
+            "model_version_boundaries": _model_version_boundaries(grouped),
         },
         "expected_lead_buckets": list(expected_lead_buckets),
         "lead_bucket_coverage": lead_bucket_coverage,
@@ -312,6 +351,7 @@ def public_corpus_report(
     state = "BLOCKED" if blockers else "WARN" if warnings else "PASS"
     return {
         "schema_version": 1,
+        "cycle_horizon_registry_version": CYCLE_COVERAGE_REGISTRY_VERSION,
         "state": state,
         "block_reasons": blockers,
         "warn_reasons": warnings,

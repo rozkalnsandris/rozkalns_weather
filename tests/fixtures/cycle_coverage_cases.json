@@ -1,0 +1,75 @@
+{
+  "schema_version": 1,
+  "run_cases": [
+    {
+      "id": "complete_icon_run",
+      "provider_id": "icon_d2",
+      "init_time": "2026-08-13T00:00:00Z",
+      "lead_hours": [0, 24, 48],
+      "expected_state": "PASS",
+      "expected_reasons": []
+    },
+    {
+      "id": "early_truncation",
+      "provider_id": "icon_d2",
+      "init_time": "2026-08-13T00:00:00Z",
+      "lead_hours": [0, 24, 47],
+      "expected_state": "BLOCKED",
+      "expected_reasons": ["EARLY_TRUNCATION"]
+    },
+    {
+      "id": "unexpected_extra_lead",
+      "provider_id": "icon_d2",
+      "init_time": "2026-08-13T00:00:00Z",
+      "lead_hours": [0, 24, 48, 49],
+      "expected_state": "BLOCKED",
+      "expected_reasons": ["UNEXPECTED_EXTRA_LEAD"]
+    },
+    {
+      "id": "duplicate_lead",
+      "provider_id": "icon_d2",
+      "init_time": "2026-08-13T00:00:00Z",
+      "lead_hours": [0, 24, 48, 48],
+      "expected_state": "BLOCKED",
+      "expected_reasons": ["DUPLICATE_LEAD"]
+    },
+    {
+      "id": "changed_model_horizon",
+      "provider_id": "icon_d2",
+      "init_time": "2026-08-13T00:00:00Z",
+      "lead_hours": [0, 24, 48],
+      "declared_horizon_hours": 72,
+      "expected_state": "BLOCKED",
+      "expected_reasons": ["HORIZON_CONTRACT_CHANGE"]
+    }
+  ],
+  "cycle_cases": [
+    {
+      "id": "missing_18_cycle",
+      "provider_id": "icon_d2",
+      "init_times": ["2026-08-13T00:00:00Z", "2026-08-13T06:00:00Z", "2026-08-13T12:00:00Z"],
+      "expected_state": "BLOCKED",
+      "expected_missing_cycle_hours_utc": [18]
+    }
+  ],
+  "comparison_cases": [
+    {
+      "id": "unsupported_long_lead",
+      "providers": ["icon_d2", "ecmwf_ifs"],
+      "init_hour_utc": 0,
+      "requested_max_lead_hours": 72,
+      "expected_state": "BLOCKED",
+      "expected_common_max_lead_hours": 48,
+      "expected_reasons": ["UNSUPPORTED_LONG_LEAD_COMPARISON"]
+    },
+    {
+      "id": "supported_common_lead",
+      "providers": ["icon_d2", "ecmwf_ifs"],
+      "init_hour_utc": 0,
+      "requested_max_lead_hours": 48,
+      "expected_state": "PASS",
+      "expected_common_max_lead_hours": 48,
+      "expected_reasons": []
+    }
+  ]
+}
