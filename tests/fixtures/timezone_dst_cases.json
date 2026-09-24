@@ -1,0 +1,64 @@
+{
+  "contract": "timezone-dst-v1",
+  "spring_forward": [
+    {
+      "utc": "2026-03-29T00:30:00Z",
+      "local_iso": "2026-03-29T01:30:00+01:00",
+      "fold": 0
+    },
+    {
+      "utc": "2026-03-29T01:30:00Z",
+      "local_iso": "2026-03-29T03:30:00+02:00",
+      "fold": 0
+    }
+  ],
+  "autumn_repeat": [
+    {
+      "utc": "2026-10-25T00:30:00Z",
+      "local_iso": "2026-10-25T02:30:00+02:00",
+      "fold": 0
+    },
+    {
+      "utc": "2026-10-25T01:30:00Z",
+      "local_iso": "2026-10-25T02:30:00+01:00",
+      "fold": 1
+    }
+  ],
+  "calendar_boundaries": [
+    {
+      "utc": "2026-03-31T21:30:00Z",
+      "local_date": "2026-03-31",
+      "local_month": "2026-03"
+    },
+    {
+      "utc": "2026-03-31T22:30:00Z",
+      "local_date": "2026-04-01",
+      "local_month": "2026-04"
+    }
+  ],
+  "invalid": [
+    {"value": "2026-10-25T02:30:00", "reason_code": "TIMEZONE_NAIVE"},
+    {"value": "2026-10-25T02:30:00+02:00", "reason_code": "LOCAL_TIME_PERSISTENCE_FORBIDDEN"},
+    {"value": "2026-10-25T02:30:00+03:00", "reason_code": "CANONICAL_TIMESTAMP_NOT_UTC"},
+    {"value": "2026-10-25T02:30:00+25:00", "reason_code": "INVALID_OFFSET"},
+    {"value": "not-a-time", "reason_code": "INVALID_TIMESTAMP"}
+  ],
+  "report_periods": [
+    {
+      "month": "2026-03",
+      "start_utc": "2026-02-28T23:00:00Z",
+      "end_utc_exclusive": "2026-03-31T22:00:00Z",
+      "duration_hours": 743.0
+    },
+    {
+      "month": "2026-10",
+      "start_utc": "2026-09-30T22:00:00Z",
+      "end_utc_exclusive": "2026-10-31T23:00:00Z",
+      "duration_hours": 745.0
+    }
+  ],
+  "transition_days": [
+    {"day": "2026-03-29", "duration_hours": 23.0},
+    {"day": "2026-10-25", "duration_hours": 25.0}
+  ]
+}
