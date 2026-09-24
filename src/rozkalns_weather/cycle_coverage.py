@@ -128,7 +128,7 @@ def registry_payload() -> dict[str, object]:
     return {
         "schema_version": 1,
         "registry_version": CYCLE_COVERAGE_REGISTRY_VERSION,
-        "contracts": [CYCLE_HORIZON_REGISTRY[key].as_dict() for key in sorted(CYCLE_HORIZON_REGISTRY)],
+        "contracts": [contract.as_dict() for contract in CYCLE_HORIZON_REGISTRY.values()],
     }
 
 
