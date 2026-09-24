@@ -1,0 +1,37 @@
+{
+  "schema": "rozkalns.timezone-dst.v1",
+  "contract_version": "timezone-dst-v1",
+  "canonical_storage_timezone": "UTC",
+  "display_timezone": "Europe/Berlin",
+  "period_semantics": {
+    "local_day": "Europe/Berlin calendar day converted to a half-open UTC interval",
+    "local_month": "Europe/Berlin calendar month converted to a half-open UTC interval",
+    "canonical_timestamps_mutated": false
+  },
+  "display_identity": {
+    "required_fields": ["local wall clock", "numeric UTC offset", "canonical UTC timestamp"],
+    "repeated_autumn_hour_must_remain_distinct": true,
+    "spring_forward_missing_local_hour_must_not_be_synthesized": true
+  },
+  "reason_codes": [
+    "OK",
+    "INVALID_TIMESTAMP",
+    "INVALID_OFFSET",
+    "TIMEZONE_NAIVE",
+    "CANONICAL_TIMESTAMP_NOT_UTC",
+    "LOCAL_TIME_PERSISTENCE_FORBIDDEN",
+    "INVALID_LOCAL_DATE",
+    "INVALID_LOCAL_MONTH"
+  ],
+  "pwa": {
+    "timezone_is_explicit": true,
+    "browser_host_timezone_must_not_define_grouping": true,
+    "hour_labels_include_offset": true,
+    "month_default_uses_berlin_calendar": true
+  },
+  "reports": {
+    "period_boundaries_are_half_open": true,
+    "boundary_conversion_direction": "Europe/Berlin local period -> UTC query bounds",
+    "stored_forecast_and_observation_timestamps_remain_utc": true
+  }
+}
