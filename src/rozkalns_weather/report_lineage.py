@@ -9,6 +9,7 @@ from typing import Any
 REPORT_LINEAGE_SCHEMA_VERSION = 1
 REPORT_LINEAGE_CONTRACT = "verification-report-lineage-v1"
 CORPUS_MANIFEST_CONTRACT = "corpus-provenance-manifest-v1"
+TRUTH_REVISION_CONTRACT = "dwd-observation-revision-v1"
 
 _SHA40_RE = re.compile(r"^[0-9a-f]{40}$")
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
@@ -115,6 +116,40 @@ def _validate_corpus_manifest(corpus_manifest: Mapping[str, object]) -> dict[str
     }
 
 
+def _validate_truth_revision_set(truth_revision_set: Mapping[str, object]) -> dict[str, object]:
+    if truth_revision_set.get("contract") != TRUTH_REVISION_CONTRACT:
+        raise ReportLineageError("TRUTH_REVISION_CONTRACT_MISMATCH", "unsupported truth revision contract")
+    if truth_revision_set.get("read_only") is not True:
+        raise ReportLineageError("TRUTH_REVISION_NOT_READ_ONLY", "truth revision evidence must be read-only")
+    state = str(truth_revision_set.get("state") or "")
+    if state not in {"PASS", "WARN"}:
+        raise ReportLineageError(
+            "TRUTH_REVISION_NOT_ADMISSIBLE",
+            "truth revision evidence must be PASS or WARN for report lineage",
+        )
+    identity = _require_sha256(
+        truth_revision_set.get("truth_revision_set_sha256"),
+        reason_code="MISSING_TRUTH_REVISION_PROVENANCE",
+        field="truth_revision_set_sha256",
+    )
+    station_id = str(truth_revision_set.get("station_id") or "")
+    location_id = str(truth_revision_set.get("location_id") or "")
+    if not station_id or not location_id:
+        raise ReportLineageError(
+            "MISSING_TRUTH_REVISION_PROVENANCE",
+            "truth revision station/location identity is required",
+        )
+    return {
+        "contract": TRUTH_REVISION_CONTRACT,
+        "state": state,
+        "station_id": station_id,
+        "location_id": location_id,
+        "truth_revision_set_sha256": identity,
+        "verification_ready": truth_revision_set.get("verification_ready") is True,
+        "evidence_checksum_sha256": _sha256(truth_revision_set),
+    }
+
+
 def _normalize_report_schema(report_schema: Mapping[str, object]) -> dict[str, object]:
     name = str(report_schema.get("name") or "")
     version = report_schema.get("version")
@@ -204,6 +239,7 @@ def build_report_lineage_receipt(
     source_sha: str,
     report_schema: Mapping[str, object],
     corpus_manifest: Mapping[str, object],
+    truth_revision_set: Mapping[str, object],
     window: Mapping[str, object],
     provider_models: Sequence[Mapping[str, object]],
     lead_filters: Mapping[str, object],
@@ -219,6 +255,7 @@ def build_report_lineage_receipt(
         raise ReportLineageError("MISSING_REPORT_ARTIFACT", "machine-readable report artifact is required")
     exact_source_sha = _require_sha40(source_sha, field="source_sha")
     corpus_identity = _validate_corpus_manifest(corpus_manifest)
+    truth_revision_identity = _validate_truth_revision_set(truth_revision_set)
     normalized_window = _validate_window(window, corpus_manifest)
     normalized_schema = _normalize_report_schema(report_schema)
     normalized_models = _normalize_provider_models(provider_models)
@@ -253,6 +290,7 @@ def build_report_lineage_receipt(
         "report_schema": normalized_schema,
         "window": normalized_window,
         "corpus_manifest": corpus_identity,
+        "truth_revision_set": truth_revision_identity,
         "provider_models": normalized_models,
         "configuration": configuration,
         "configuration_sha256": configuration_sha256,
@@ -286,13 +324,15 @@ def validate_report_lineage_receipt(
     *,
     artifact: Mapping[str, object],
     corpus_manifest: Mapping[str, object],
+    truth_revision_set: Mapping[str, object],
 ) -> dict[str, object]:
     if receipt.get("contract") != REPORT_LINEAGE_CONTRACT or receipt.get("schema_version") != REPORT_LINEAGE_SCHEMA_VERSION:
         raise ReportLineageError("RECEIPT_CONTRACT_MISMATCH", "unsupported report lineage receipt contract")
     artifact_meta = receipt.get("artifact")
     corpus_meta = receipt.get("corpus_manifest")
-    if not isinstance(artifact_meta, Mapping) or not isinstance(corpus_meta, Mapping):
-        raise ReportLineageError("MISSING_RECEIPT_PROVENANCE", "receipt artifact/corpus provenance is missing")
+    truth_meta = receipt.get("truth_revision_set")
+    if not isinstance(artifact_meta, Mapping) or not isinstance(corpus_meta, Mapping) or not isinstance(truth_meta, Mapping):
+        raise ReportLineageError("MISSING_RECEIPT_PROVENANCE", "receipt artifact/corpus/truth provenance is missing")
     if artifact_meta.get("machine_readable_checksum_sha256") != _sha256(artifact):
         raise ReportLineageError("REPORT_ARTIFACT_CHECKSUM_MISMATCH", "machine-readable report artifact changed")
     current_corpus = _validate_corpus_manifest(corpus_manifest)
@@ -300,6 +340,11 @@ def validate_report_lineage_receipt(
         raise ReportLineageError("CORPUS_MANIFEST_MISMATCH", "corpus provenance manifest changed")
     if corpus_meta.get("aggregate_checksum_sha256") != current_corpus["aggregate_checksum_sha256"]:
         raise ReportLineageError("CORPUS_MANIFEST_MISMATCH", "corpus aggregate identity changed")
+    current_truth = _validate_truth_revision_set(truth_revision_set)
+    if truth_meta.get("truth_revision_set_sha256") != current_truth["truth_revision_set_sha256"]:
+        raise ReportLineageError("TRUTH_REVISION_SET_MISMATCH", "truth revision set changed")
+    if truth_meta.get("evidence_checksum_sha256") != current_truth["evidence_checksum_sha256"]:
+        raise ReportLineageError("TRUTH_REVISION_EVIDENCE_MISMATCH", "truth revision evidence changed")
 
     receipt_core = {
         key: receipt[key]
@@ -310,6 +355,7 @@ def validate_report_lineage_receipt(
             "report_schema",
             "window",
             "corpus_manifest",
+            "truth_revision_set",
             "provider_models",
             "configuration",
             "configuration_sha256",
@@ -328,6 +374,7 @@ def validate_report_lineage_receipt(
         "lineage_identity_sha256": expected_identity,
         "artifact_checksum_sha256": artifact_meta["machine_readable_checksum_sha256"],
         "corpus_manifest_checksum_sha256": current_corpus["manifest_checksum_sha256"],
+        "truth_revision_set_sha256": current_truth["truth_revision_set_sha256"],
         "reproducible": True,
         "read_only": True,
     }
