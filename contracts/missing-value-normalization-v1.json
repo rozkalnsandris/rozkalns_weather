@@ -1,0 +1,32 @@
+{
+  "schema": "missing-value-normalization-v1",
+  "classes": [
+    "ABSENT_FIELD",
+    "UPSTREAM_NULL",
+    "NON_FINITE_NUMERIC",
+    "PROVIDER_SENTINEL",
+    "TRANSPORT_PARSE_OMISSION"
+  ],
+  "reason_codes": [
+    "MISSING_ABSENT_FIELD",
+    "MISSING_UPSTREAM_NULL",
+    "MISSING_NON_FINITE_NUMERIC",
+    "MISSING_PROVIDER_SENTINEL",
+    "MISSING_TRANSPORT_PARSE_OMISSION"
+  ],
+  "invariants": [
+    "Missing values are never replaced with zero.",
+    "Missing values are never imputed or inferred.",
+    "Provider sentinels are explicit provider-and-field contract data and are never guessed globally.",
+    "NaN and positive or negative infinity are ineligible for verification metrics.",
+    "Legitimate numeric zero remains PRESENT.",
+    "Raw provenance is preserved as a safe serializable token without emitting NaN or Infinity JSON literals.",
+    "Corpus integration is read-only and performs no repair."
+  ],
+  "integrations": {
+    "verification_metrics": "reject missing or non-finite numeric inputs before scoring",
+    "verification_missingness": "attach granular normalization reason evidence without automatic weighting",
+    "provider_health": "optional value_missingness evidence block, independent of freshness classification",
+    "corpus_integrity": "read-only blocking audit with no repair"
+  }
+}
