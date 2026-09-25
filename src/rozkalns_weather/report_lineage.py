@@ -6,6 +6,8 @@ from collections.abc import Mapping, Sequence
 import re
 from typing import Any
 
+from .artifact_schema_compatibility import ArtifactSchemaError, artifact_schema_identity
+
 REPORT_LINEAGE_SCHEMA_VERSION = 1
 REPORT_LINEAGE_CONTRACT = "verification-report-lineage-v1"
 CORPUS_MANIFEST_CONTRACT = "corpus-provenance-manifest-v1"
@@ -155,7 +157,27 @@ def _normalize_report_schema(report_schema: Mapping[str, object]) -> dict[str, o
     version = report_schema.get("version")
     if not name or version in (None, ""):
         raise ReportLineageError("MISSING_REPORT_SCHEMA", "report schema name/version are required")
+    if not isinstance(version, int) or isinstance(version, bool) or version < 1:
+        raise ReportLineageError("INVALID_REPORT_SCHEMA_VERSION", "report schema version must be a positive integer")
     return {"name": name, "version": version}
+
+
+def _validate_report_schema_binding(
+    artifact: Mapping[str, object],
+    report_schema: Mapping[str, object],
+) -> dict[str, object]:
+    try:
+        artifact_identity = artifact_schema_identity(artifact)
+    except ArtifactSchemaError as exc:
+        raise ReportLineageError(exc.reason_code, str(exc)) from exc
+    expected = _normalize_report_schema(report_schema)
+    actual = {"name": artifact_identity["name"], "version": artifact_identity["version"]}
+    if actual != expected:
+        raise ReportLineageError(
+            "REPORT_SCHEMA_MISMATCH",
+            f"declared report schema {expected!r} does not match artifact schema {actual!r}",
+        )
+    return actual
 
 
 def _normalize_provider_models(provider_models: Sequence[Mapping[str, object]]) -> list[dict[str, object]]:
@@ -258,6 +280,7 @@ def build_report_lineage_receipt(
     truth_revision_identity = _validate_truth_revision_set(truth_revision_set)
     normalized_window = _validate_window(window, corpus_manifest)
     normalized_schema = _normalize_report_schema(report_schema)
+    _validate_report_schema_binding(artifact, normalized_schema)
     normalized_models = _normalize_provider_models(provider_models)
     normalized_sample_evidence = _validate_sample_evidence(sample_evidence)
     normalized_eligibility = _normalize_metric_eligibility(metric_eligibility)
@@ -331,8 +354,16 @@ def validate_report_lineage_receipt(
     artifact_meta = receipt.get("artifact")
     corpus_meta = receipt.get("corpus_manifest")
     truth_meta = receipt.get("truth_revision_set")
-    if not isinstance(artifact_meta, Mapping) or not isinstance(corpus_meta, Mapping) or not isinstance(truth_meta, Mapping):
-        raise ReportLineageError("MISSING_RECEIPT_PROVENANCE", "receipt artifact/corpus/truth provenance is missing")
+    report_schema = receipt.get("report_schema")
+    if (
+        not isinstance(artifact_meta, Mapping)
+        or not isinstance(corpus_meta, Mapping)
+        or not isinstance(truth_meta, Mapping)
+        or not isinstance(report_schema, Mapping)
+    ):
+        raise ReportLineageError("MISSING_RECEIPT_PROVENANCE", "receipt artifact/corpus/truth/schema provenance is missing")
+    normalized_schema = _normalize_report_schema(report_schema)
+    _validate_report_schema_binding(artifact, normalized_schema)
     if artifact_meta.get("machine_readable_checksum_sha256") != _sha256(artifact):
         raise ReportLineageError("REPORT_ARTIFACT_CHECKSUM_MISMATCH", "machine-readable report artifact changed")
     current_corpus = _validate_corpus_manifest(corpus_manifest)
@@ -371,6 +402,7 @@ def validate_report_lineage_receipt(
         "schema_version": REPORT_LINEAGE_SCHEMA_VERSION,
         "contract": REPORT_LINEAGE_CONTRACT,
         "state": "PASS",
+        "report_schema": normalized_schema,
         "lineage_identity_sha256": expected_identity,
         "artifact_checksum_sha256": artifact_meta["machine_readable_checksum_sha256"],
         "corpus_manifest_checksum_sha256": current_corpus["manifest_checksum_sha256"],
