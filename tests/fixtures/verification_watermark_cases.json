@@ -1,0 +1,71 @@
+{
+  "cutoff": "2026-09-30T23:59:00Z",
+  "later_cutoff": "2026-10-01T06:00:00Z",
+  "report_generated_at": "2026-10-01T08:00:00Z",
+  "samples": [
+    {
+      "sample_id": "on-time",
+      "provider": "icon_d2",
+      "model_version": "2026-09",
+      "valid_time_utc": "2026-09-30T21:00:00Z",
+      "forecast_retrieved_at_utc": "2026-09-30T18:15:00Z",
+      "truth_revisions": [
+        {
+          "retrieved_at_utc": "2026-09-30T22:20:00Z",
+          "revision_identity_sha256": "1111111111111111111111111111111111111111111111111111111111111111"
+        }
+      ]
+    },
+    {
+      "sample_id": "late-forecast",
+      "provider": "ecmwf_ifs",
+      "model_version": "2026-09",
+      "valid_time_utc": "2026-09-30T21:00:00Z",
+      "forecast_retrieved_at_utc": "2026-10-01T00:10:00Z",
+      "truth_revisions": [
+        {
+          "retrieved_at_utc": "2026-09-30T22:25:00Z",
+          "revision_identity_sha256": "2222222222222222222222222222222222222222222222222222222222222222"
+        }
+      ]
+    },
+    {
+      "sample_id": "late-truth-month-boundary",
+      "provider": "ecmwf_aifs",
+      "model_version": "2026-09",
+      "valid_time_utc": "2026-09-30T23:00:00Z",
+      "forecast_retrieved_at_utc": "2026-09-30T20:00:00Z",
+      "truth_revisions": [
+        {
+          "retrieved_at_utc": "2026-10-01T00:20:00Z",
+          "revision_identity_sha256": "3333333333333333333333333333333333333333333333333333333333333333"
+        }
+      ]
+    },
+    {
+      "sample_id": "post-cutoff-revision",
+      "provider": "icon_d2",
+      "model_version": "2026-09",
+      "valid_time_utc": "2026-09-30T20:00:00Z",
+      "forecast_retrieved_at_utc": "2026-09-30T17:00:00Z",
+      "truth_revisions": [
+        {
+          "retrieved_at_utc": "2026-09-30T21:30:00Z",
+          "revision_identity_sha256": "4444444444444444444444444444444444444444444444444444444444444444"
+        },
+        {
+          "retrieved_at_utc": "2026-10-01T02:00:00Z",
+          "revision_identity_sha256": "5555555555555555555555555555555555555555555555555555555555555555"
+        }
+      ]
+    },
+    {
+      "sample_id": "genuinely-missing",
+      "provider": "icon_d2",
+      "model_version": "2026-09",
+      "valid_time_utc": "2026-09-30T22:00:00Z",
+      "forecast_retrieved_at_utc": null,
+      "truth_revisions": []
+    }
+  ]
+}
