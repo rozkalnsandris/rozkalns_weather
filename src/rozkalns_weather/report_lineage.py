@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-import hashlib
-import json
 from collections.abc import Mapping, Sequence
 import re
 from typing import Any
 
 from .artifact_schema_compatibility import ArtifactSchemaError, artifact_schema_identity
+from .canonical_serialization import CanonicalSerializationError, canonical_sha256
 
 REPORT_LINEAGE_SCHEMA_VERSION = 1
 REPORT_LINEAGE_CONTRACT = "verification-report-lineage-v1"
@@ -28,22 +27,11 @@ class ReportLineageError(ValueError):
         self.reason_code = reason_code
 
 
-def _canonical_json(value: object) -> bytes:
-    try:
-        encoded = json.dumps(
-            value,
-            sort_keys=True,
-            separators=(",", ":"),
-            ensure_ascii=False,
-            allow_nan=False,
-        )
-    except (TypeError, ValueError) as exc:
-        raise ReportLineageError("NON_CANONICAL_VALUE", "lineage inputs must be finite JSON values") from exc
-    return (encoded + "\n").encode("utf-8")
-
-
 def _sha256(value: object) -> str:
-    return hashlib.sha256(_canonical_json(value)).hexdigest()
+    try:
+        return canonical_sha256(value)
+    except CanonicalSerializationError as exc:
+        raise ReportLineageError("NON_CANONICAL_VALUE", "lineage inputs must be canonical finite JSON values") from exc
 
 
 def _require_sha40(value: object, *, field: str) -> str:
@@ -120,7 +108,7 @@ def _validate_corpus_manifest(corpus_manifest: Mapping[str, object]) -> dict[str
 
 def _validate_truth_revision_set(truth_revision_set: Mapping[str, object]) -> dict[str, object]:
     if truth_revision_set.get("contract") != TRUTH_REVISION_CONTRACT:
-        raise ReportLineageError("TRUTH_REVISION_CONTRACT_MISMATCH", "unsupported truth revision contract")
+        raise ReportLineageError("TRUTH_REVISION_CONTRACT_MISMATCH", "unsupported report lineage receipt contract")
     if truth_revision_set.get("read_only") is not True:
         raise ReportLineageError("TRUTH_REVISION_NOT_READ_ONLY", "truth revision evidence must be read-only")
     state = str(truth_revision_set.get("state") or "")
