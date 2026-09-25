@@ -51,9 +51,27 @@ def test_theme_uses_provider_daylight_before_explicit_timezone_fallback() -> Non
     assert "body.weather-theme-night" in source
 
 
+def test_public_reference_identity_and_unknown_observation_semantics_are_explicit() -> None:
+    source = (STATIC / "weather_ui.js").read_text()
+    observed = source.split("function observedCondition(items)", 1)[1].split("function renderObservedIcon", 1)[0]
+
+    assert 'station_05480: "DWD CDC Werl 05480 · reference"' in source
+    assert "PUBLIC_REFERENCE_PRESENTATION[selector.value]" in source
+    assert "applyForecastLocationIdentity()" in source
+    assert "MutationObserver" in source
+    assert "Condition unavailable from current observation" in observed
+    assert '["precipitation_1h", "cloud_cover"]' in observed
+    assert "fallbackCondition(precip, cloudCover)" in observed
+    assert "loadVariable" not in observed
+    assert "weather_code" not in observed
+    assert 'source: "insufficient_condition_evidence"' in observed
+    assert "HOME_LAT" not in source
+    assert "HOME_LON" not in source
+
+
 def test_pwa_cache_is_versioned_and_old_weather_caches_are_deleted_on_activate() -> None:
     source = (STATIC / "sw.js").read_text()
-    assert 'const CACHE = "rozkalns-weather-v4"' in source
+    assert 'const CACHE = "rozkalns-weather-v5"' in source
     assert '"/static/weather_ui.js"' in source
     assert 'self.addEventListener("activate"' in source
     assert "caches.keys()" in source
