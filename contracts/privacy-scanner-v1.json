@@ -1,0 +1,97 @@
+{
+  "artifact_kinds": [
+    "api_snapshot",
+    "benchmark_export",
+    "diagnostics_bundle",
+    "report",
+    "reproducibility_receipt",
+    "rollout_evidence"
+  ],
+  "execution": {
+    "github_settings_or_secrets_mutation_authority": false,
+    "private_runtime_file_access_required": false,
+    "production_data_access_required": false,
+    "runtime_mutation_authority": false,
+    "secret_retrieval_required": false
+  },
+  "prohibited_classes": {
+    "address_material": [
+      "home_address",
+      "private_address",
+      "street_address",
+      "residential_address"
+    ],
+    "credentials_tokens": [
+      "api_key",
+      "access_token",
+      "refresh_token",
+      "authorization",
+      "password",
+      "client_secret",
+      "private_key",
+      "credentials"
+    ],
+    "private_home_coordinates": [
+      "HOME_LAT",
+      "HOME_LON",
+      "unscoped coordinate pair"
+    ],
+    "private_paths": [
+      "runtime_path",
+      "filesystem_path",
+      "database_path",
+      "db_path",
+      "sqlite_path",
+      "log_path",
+      "/home/...",
+      "/root/...",
+      "file:///..."
+    ],
+    "raw_private_logs": [
+      "raw_log",
+      "raw_logs",
+      "private_log",
+      "private_logs"
+    ]
+  },
+  "public_station_metadata": {
+    "canonical_benchmark": "station_05480",
+    "coordinate_pair_allowed_only_when_bound_to_public_station_identity": true,
+    "legacy_reference": "station_10416"
+  },
+  "reason_codes": [
+    "CREDENTIAL_OR_SECRET_FIELD",
+    "CREDENTIAL_OR_SECRET_TEXT",
+    "PRIVATE_ADDRESS_FIELD",
+    "PRIVATE_HOME_COORDINATE_FIELD",
+    "PRIVATE_OR_UNSCOPED_COORDINATE_PAIR",
+    "PRIVATE_RUNTIME_PATH_FIELD",
+    "PRIVATE_RUNTIME_PATH_TEXT",
+    "RAW_PRIVATE_LOG_FIELD",
+    "UNSUPPORTED_ARTIFACT_KIND",
+    "URL_EMBEDDED_CREDENTIAL",
+    "URL_QUERY_CREDENTIAL"
+  ],
+  "sanitized_evidence": {
+    "may_include": [
+      "artifact_kind",
+      "status",
+      "github_safe",
+      "finding_path",
+      "reason_code"
+    ],
+    "must_not_include": [
+      "source_value",
+      "credential_value",
+      "coordinate_value",
+      "raw_log_text",
+      "private_path_value"
+    ]
+  },
+  "scanner_schema": "rozkalns.weather.privacy-scan.v1",
+  "schema": "rozkalns.weather.privacy-scanner-contract.v1",
+  "status_values": [
+    "PASS",
+    "BLOCKED"
+  ]
+}
