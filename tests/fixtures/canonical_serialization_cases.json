@@ -1,0 +1,56 @@
+{
+  "equivalent_pairs": [
+    {
+      "name": "mapping_order_timestamp_signed_zero",
+      "expected_sha256": "b0d98ebbe9b6b945963f5b50991c18c790b29ea8510b7b01a11e52737183cee8",
+      "left": {
+        "z": [true, null, "Å"],
+        "value": 1e-6,
+        "checked_at_utc": "2026-09-25T10:00:00+00:00",
+        "negative_zero": -0.0
+      },
+      "right": {
+        "negative_zero": 0,
+        "checked_at_utc": "2026-09-25T10:00:00.000000Z",
+        "value": 0.000001,
+        "z": [true, null, "Å"]
+      }
+    },
+    {
+      "name": "nested_fractional_timestamp_and_scientific_notation",
+      "left": {
+        "provider": "DWD",
+        "nested": {
+          "retrieved_at_utc": "2026-09-25 10:00:00.120000+0000",
+          "small": 1.25e-9,
+          "raw_value": 1.2345678901234567
+        }
+      },
+      "right": {
+        "nested": {
+          "raw_value": 1.2345678901234567,
+          "small": 0.00000000125,
+          "retrieved_at_utc": "2026-09-25T10:00:00.12Z"
+        },
+        "provider": "DWD"
+      }
+    }
+  ],
+  "different_pairs": [
+    {
+      "name": "different_provenance",
+      "left": {"provider": "icon_d2", "model_version": "2026.09"},
+      "right": {"provider": "ifs", "model_version": "2026.09"}
+    },
+    {
+      "name": "different_value",
+      "left": {"value": 1.0},
+      "right": {"value": 1.0000000000000002}
+    },
+    {
+      "name": "different_configuration",
+      "left": {"configuration": {"threshold": 0.1}},
+      "right": {"configuration": {"threshold": 0.2}}
+    }
+  ]
+}
