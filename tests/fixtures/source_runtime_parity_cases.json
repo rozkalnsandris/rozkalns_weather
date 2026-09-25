@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "cases": [
+    {
+      "name": "exact_parity",
+      "mutations": [],
+      "expected_state": "PASS",
+      "expected_reason_codes": []
+    },
+    {
+      "name": "stale_descriptor_endpoint",
+      "mutations": [
+        {"op": "set", "path": "runtime_descriptor.health.readiness_endpoint", "value": "/ready-v2"}
+      ],
+      "expected_state": "BLOCKED",
+      "expected_reason_codes": ["READINESS_ENDPOINT_MISMATCH"]
+    },
+    {
+      "name": "changed_compose_identity",
+      "mutations": [
+        {"op": "set", "path": "runtime_descriptor.packaging.application_service", "value": "weather-v2"}
+      ],
+      "expected_state": "BLOCKED",
+      "expected_reason_codes": ["COMPOSE_SERVICE_IDENTITY_MISMATCH", "MISSING_COMPOSE_SERVICE"]
+    },
+    {
+      "name": "missing_schedule_entry",
+      "mutations": [
+        {"op": "set", "path": "schedule.public_ingest.service", "value": null}
+      ],
+      "expected_state": "BLOCKED",
+      "expected_reason_codes": ["INGEST_SERVICE_MISMATCH"]
+    },
+    {
+      "name": "timer_job_identity_drift",
+      "mutations": [
+        {"op": "set", "path": "schedule.systemd_timer.timer_unit", "value": "renamed-weather.timer"}
+      ],
+      "expected_state": "BLOCKED",
+      "expected_reason_codes": ["TIMER_JOB_IDENTITY_MISMATCH"]
+    },
+    {
+      "name": "unsupported_implicit_schema_init",
+      "mutations": [
+        {"op": "set", "path": "bootstrap.schema_init.implicit_init_or_migration_from_backfill", "value": true}
+      ],
+      "expected_state": "BLOCKED",
+      "expected_reason_codes": ["IMPLICIT_SCHEMA_INIT_UNSUPPORTED"]
+    },
+    {
+      "name": "active_stale_source_binding",
+      "mutations": [
+        {"op": "set", "path": "source_binding.lifecycle.current_ordinary_release_role", "value": "SIMPLE_DEPLOY_V1"},
+        {"op": "set", "path": "source_binding.weather_source.snapshot_role", "value": "current_release_candidate"},
+        {"op": "set", "path": "source_binding.weather_source.candidate_sha_at_reconciliation", "value": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},
+        {"op": "set", "path": "current_source_sha", "value": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}
+      ],
+      "expected_state": "BLOCKED",
+      "expected_reason_codes": ["STALE_SOURCE_BINDING"]
+    }
+  ]
+}
