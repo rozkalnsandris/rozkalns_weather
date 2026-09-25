@@ -4,12 +4,16 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from math import sqrt
 from statistics import mean
-from typing import Iterable
+from typing import Iterable, Mapping
 
 from .precip_events import (
     DEFAULT_PRECIP_EVENT,
     PRECIP_EVENT_REGISTRY_VERSION,
     event_definition as precip_event_definition,
+)
+from .quantile_admissibility import (
+    CONTRACT_VERSION as QUANTILE_ADMISSIBILITY_CONTRACT_VERSION,
+    interval_bounds,
 )
 from .semantics import PRECIP_EVENT_VERSION
 
@@ -140,6 +144,40 @@ def summarize(
         "bias": mean(errors),
         "p10_p90_coverage": coverage,
         "coverage_n": len(intervals),
+    }
+
+
+def summary_quantile_coverage(
+    quantile_evidence: Mapping[str, object],
+    *,
+    observed: float,
+    lower_statistic: str = "p10",
+    upper_statistic: str = "p90",
+) -> dict[str, object]:
+    """Score one summary-quantile interval only after structural admission.
+
+    This path is intentionally distinct from ensemble-member CRPS/WIS/Brier logic.
+    Raw summary quantile values are not accepted here without PASS evidence from the
+    forecast-quantile-admissibility contract.
+    """
+
+    lower, upper = interval_bounds(
+        quantile_evidence,
+        lower_statistic=lower_statistic,
+        upper_statistic=upper_statistic,
+    )
+    return {
+        "quantile_admissibility_contract": QUANTILE_ADMISSIBILITY_CONTRACT_VERSION,
+        "representation": "summary_quantiles",
+        "lower_statistic": lower_statistic,
+        "upper_statistic": upper_statistic,
+        "lower": lower,
+        "upper": upper,
+        "observed": float(observed),
+        "covered": 1.0 if lower <= float(observed) <= upper else 0.0,
+        "crps_eligible": False,
+        "brier_eligible": False,
+        "reliability_eligible": False,
     }
 
 

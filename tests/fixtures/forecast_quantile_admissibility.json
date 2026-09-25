@@ -1,0 +1,77 @@
+{
+  "base_identity": {
+    "provider": "weathernext3",
+    "model_name": "WeatherNext 3",
+    "model_version": "3.0.0",
+    "init_time_utc": "2026-09-12T00:00:00Z",
+    "retrieved_at_utc": "2026-09-12T00:30:00Z",
+    "valid_time_utc": "2026-09-12T12:00:00Z",
+    "lead_hours": 12,
+    "variable": "temperature_2m",
+    "unit": "degC",
+    "location_id": "station_05480",
+    "source_surface": "weathernext_3_0_0_0p05deg",
+    "resolution": "0.05deg"
+  },
+  "scenarios": [
+    {
+      "name": "valid_quantiles",
+      "values": {"p10": 16.0, "p25": 17.0, "p50": 18.0, "p75": 19.0, "p90": 20.0},
+      "expected_state": "PASS",
+      "expected_reasons": []
+    },
+    {
+      "name": "equal_quantiles",
+      "values": {"p10": 17.0, "p25": 17.0, "p50": 18.0, "p75": 18.0, "p90": 20.0},
+      "expected_state": "PASS",
+      "expected_reasons": []
+    },
+    {
+      "name": "crossing_pair",
+      "values": {"p10": 16.0, "p25": 19.0, "p50": 18.0, "p75": 20.0, "p90": 21.0},
+      "expected_state": "BLOCKED",
+      "expected_reasons": ["QUANTILE_CROSSING"]
+    },
+    {
+      "name": "incomplete_set",
+      "values": {"p10": 16.0, "p25": 17.0, "p50": 18.0, "p90": 20.0},
+      "expected_state": "BLOCKED",
+      "expected_reasons": ["INCOMPLETE_QUANTILE_SET"]
+    },
+    {
+      "name": "duplicate_statistic",
+      "values": {"p10": 16.0, "p25": 17.0, "p50": 18.0, "p75": 19.0, "p90": 20.0},
+      "duplicate": {"statistic": "p50", "value": 18.5},
+      "expected_state": "BLOCKED",
+      "expected_reasons": ["DUPLICATE_QUANTILE_STATISTIC"]
+    },
+    {
+      "name": "mixed_provenance",
+      "values": {"p10": 16.0, "p25": 17.0, "p50": 18.0, "p75": 19.0, "p90": 20.0},
+      "override": {"statistic": "p90", "field": "model_version", "value": "3.0.1"},
+      "expected_state": "BLOCKED",
+      "expected_reasons": ["MIXED_MODEL_VERSION"]
+    },
+    {
+      "name": "mixed_unit",
+      "values": {"p10": 16.0, "p25": 17.0, "p50": 18.0, "p75": 19.0, "p90": 20.0},
+      "override": {"statistic": "p90", "field": "unit", "value": "K"},
+      "expected_state": "BLOCKED",
+      "expected_reasons": ["MIXED_UNIT"]
+    },
+    {
+      "name": "mixed_source_surface",
+      "values": {"p10": 16.0, "p25": 17.0, "p50": 18.0, "p75": 19.0, "p90": 20.0},
+      "override": {"statistic": "p90", "field": "source_surface", "value": "weathernext_3_0_0_0p1deg"},
+      "expected_state": "BLOCKED",
+      "expected_reasons": ["MIXED_SOURCE_SURFACE"]
+    },
+    {
+      "name": "mixed_resolution",
+      "values": {"p10": 16.0, "p25": 17.0, "p50": 18.0, "p75": 19.0, "p90": 20.0},
+      "override": {"statistic": "p90", "field": "resolution", "value": "0.1deg"},
+      "expected_state": "BLOCKED",
+      "expected_reasons": ["MIXED_RESOLUTION"]
+    }
+  ]
+}
