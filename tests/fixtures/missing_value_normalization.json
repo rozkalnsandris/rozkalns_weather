@@ -1,0 +1,16 @@
+{
+  "cases": [
+    {"name":"upstream_null","provider":"fixture_a","field":"temperature_2m","kind":"none","expected_state":"missing","expected_reason":"MISSING_UPSTREAM_NULL"},
+    {"name":"nan","provider":"fixture_a","field":"temperature_2m","kind":"nan","expected_state":"missing","expected_reason":"MISSING_NON_FINITE_NUMERIC"},
+    {"name":"positive_infinity","provider":"fixture_a","field":"temperature_2m","kind":"pos_inf","expected_state":"missing","expected_reason":"MISSING_NON_FINITE_NUMERIC"},
+    {"name":"negative_infinity","provider":"fixture_a","field":"temperature_2m","kind":"neg_inf","expected_state":"missing","expected_reason":"MISSING_NON_FINITE_NUMERIC"},
+    {"name":"missing_json_field","provider":"fixture_a","field":"temperature_2m","kind":"absent","expected_state":"missing","expected_reason":"MISSING_ABSENT_FIELD"},
+    {"name":"transport_parse_omission","provider":"fixture_a","field":"temperature_2m","kind":"transport_omitted","expected_state":"missing","expected_reason":"MISSING_TRANSPORT_PARSE_OMISSION"},
+    {"name":"numeric_provider_sentinel","provider":"fixture_a","field":"temperature_2m","kind":"numeric_sentinel","value":-9999.0,"sentinels":[-9999.0],"expected_state":"missing","expected_reason":"MISSING_PROVIDER_SENTINEL"},
+    {"name":"string_provider_sentinel","provider":"fixture_b","field":"temperature_2m","kind":"string_sentinel","value":"MISSING","sentinels":["missing"],"expected_state":"missing","expected_reason":"MISSING_PROVIDER_SENTINEL"},
+    {"name":"zero_precipitation","provider":"fixture_a","field":"precipitation_1h","kind":"numeric","value":0.0,"expected_state":"present","expected_reason":"VALUE_PRESENT"},
+    {"name":"zero_wind","provider":"fixture_a","field":"wind_speed_10m","kind":"numeric","value":0.0,"expected_state":"present","expected_reason":"VALUE_PRESENT"},
+    {"name":"zero_probability","provider":"fixture_b","field":"probability","kind":"numeric","value":0.0,"expected_state":"present","expected_reason":"VALUE_PRESENT"},
+    {"name":"mixed_provider_legitimate_minus9999","provider":"fixture_b","field":"temperature_2m","kind":"numeric","value":-9999.0,"sentinels":[],"expected_state":"present","expected_reason":"VALUE_PRESENT"}
+  ]
+}
