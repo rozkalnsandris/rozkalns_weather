@@ -23,6 +23,24 @@ _REPORT_LINEAGE_CORE_KEYS = (
     "sample_evidence",
     "artifact",
 )
+_RESAMPLING_CORE_KEYS = (
+    "schema_version",
+    "contract",
+    "algorithm",
+    "seed_identity_sha256",
+    "sample_identity_sha256",
+    "binding",
+    "sample_count",
+    "sample_sufficiency_state",
+    "metric_configuration",
+    "metric_configuration_sha256",
+    "statistic",
+    "confidence_level",
+    "point_estimate",
+    "interval",
+    "interpretation",
+    "ranking_verdict",
+)
 
 
 class ReportResamplingError(ValueError):
@@ -49,6 +67,21 @@ def _core(receipt: Mapping[str, object]) -> dict[str, object]:
             f"report lineage receipt is missing required fields: {missing}",
         )
     return {key: receipt[key] for key in _REPORT_LINEAGE_CORE_KEYS}
+
+
+def _validate_resampling_receipt_identity(receipt: Mapping[str, object]) -> None:
+    missing = [key for key in _RESAMPLING_CORE_KEYS if key not in receipt]
+    if missing:
+        raise ReportResamplingError(
+            "RESAMPLING_RECEIPT_CONTRACT_MISMATCH",
+            f"resampling receipt is missing required fields: {missing}",
+        )
+    core = {key: receipt[key] for key in _RESAMPLING_CORE_KEYS}
+    if receipt.get("resampling_receipt_identity_sha256") != _sha256(core):
+        raise ReportResamplingError(
+            "INVALID_RESAMPLING_RECEIPT_IDENTITY",
+            "resampling receipt identity does not match its canonical receipt core",
+        )
 
 
 def bind_resampling_receipts_to_report_lineage(
@@ -96,6 +129,7 @@ def bind_resampling_receipts_to_report_lineage(
 
     normalized: list[dict[str, object]] = []
     for receipt in resampling_receipts:
+        _validate_resampling_receipt_identity(receipt)
         try:
             normalized.append(resampling_lineage_binding(receipt))
         except ResamplingError as exc:
