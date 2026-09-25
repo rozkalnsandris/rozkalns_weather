@@ -1,0 +1,68 @@
+{
+  "contract": "weathernext-cost-quota-accounting-v1",
+  "schema_version": 1,
+  "status": "ACTIVE_SOURCE_GATE",
+  "scope": {
+    "provider": "weathernext3",
+    "model_version_contract": "3.0.0",
+    "supported_run_classes": ["interim_48h", "synoptic_360h"],
+    "dry_run_estimates_only": true,
+    "actual_billed_cost_known": false,
+    "real_bigquery_query_allowed": false,
+    "billing_or_quota_mutation_allowed": false,
+    "runtime_live_authority_granted": false
+  },
+  "query_requirements": {
+    "dry_run_required": true,
+    "partition_bounded_required": true,
+    "selected_columns_only_required": true,
+    "maximum_bytes_billed_required": true,
+    "maximum_bytes_billed_source_ceiling": 1073741824,
+    "select_star_allowed": false
+  },
+  "periods": {
+    "daily": {"days": 1},
+    "weekly": {"days": 7},
+    "monthly": {"days": 31, "semantics": "conservative planning envelope, not billed calendar usage"}
+  },
+  "quota_state": {
+    "accepted": ["known_within_limit"],
+    "blocking": ["known_exceeded", "unknown"],
+    "hardcoded_provider_quota_defaults_allowed": false
+  },
+  "stable_reason_codes": [
+    "DRY_RUN_REQUIRED",
+    "DRY_RUN_ESTIMATE_MISSING",
+    "MAXIMUM_BYTES_BILLED_MISSING",
+    "MAXIMUM_BYTES_BILLED_POLICY_OVERFLOW",
+    "PER_QUERY_CAP_OVERFLOW",
+    "PARTITION_BOUND_REQUIRED",
+    "SELECTED_COLUMNS_REQUIRED",
+    "RUN_CLASS_ESTIMATE_MISSING",
+    "QUOTA_STATE_UNKNOWN",
+    "QUOTA_EXCEEDED",
+    "PERIOD_BUDGET_WARNING",
+    "PERIOD_BUDGET_EXCEEDED",
+    "MODEL_VERSION_PLAN_CHANGED",
+    "SCHEMA_FINGERPRINT_PLAN_CHANGED",
+    "DUPLICATE_QUERY_PLAN_ITEM"
+  ],
+  "evidence_semantics": {
+    "dry_run_estimated_bytes_are_actual_billed_cost": false,
+    "dry_run_estimated_bytes_are_planning_evidence": true,
+    "missing_estimate_may_default_to_zero": false,
+    "unknown_quota_state_may_pass": false,
+    "period_projection_requires_complete_run_class_evidence": true,
+    "output_contains_raw_sql": false,
+    "output_contains_project_or_dataset_identity": false,
+    "output_contains_credentials_or_billing_identifiers": false
+  },
+  "authority": {
+    "source_auto_full_authorizes_real_bigquery_query": false,
+    "source_auto_full_authorizes_billing_or_quota_mutation": false,
+    "source_auto_full_authorizes_credential_or_iam_mutation": false,
+    "source_auto_full_authorizes_production_corpus_write": false,
+    "source_auto_full_authorizes_scheduler_activation": false,
+    "runtime_live_authority_granted": false
+  }
+}
