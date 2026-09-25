@@ -108,7 +108,7 @@ def _validate_corpus_manifest(corpus_manifest: Mapping[str, object]) -> dict[str
 
 def _validate_truth_revision_set(truth_revision_set: Mapping[str, object]) -> dict[str, object]:
     if truth_revision_set.get("contract") != TRUTH_REVISION_CONTRACT:
-        raise ReportLineageError("TRUTH_REVISION_CONTRACT_MISMATCH", "unsupported report lineage receipt contract")
+        raise ReportLineageError("TRUTH_REVISION_CONTRACT_MISMATCH", "unsupported truth revision contract")
     if truth_revision_set.get("read_only") is not True:
         raise ReportLineageError("TRUTH_REVISION_NOT_READ_ONLY", "truth revision evidence must be read-only")
     state = str(truth_revision_set.get("state") or "")
