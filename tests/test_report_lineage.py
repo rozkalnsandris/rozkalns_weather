@@ -15,6 +15,7 @@ SOURCE_SHA = "a" * 40
 SCHEMA_SHA = "b" * 64
 CORPUS_SHA = "c" * 64
 COMMON_SAMPLE_SHA = "d" * 64
+TRUTH_REVISION_SHA = "e" * 64
 
 
 def _manifest() -> dict[str, object]:
@@ -26,6 +27,22 @@ def _manifest() -> dict[str, object]:
         "window": {"start": "2026-09-01", "end": "2026-09-30"},
         "corpus_schema": {"identity_sha256": SCHEMA_SHA},
         "aggregate_checksum_sha256": CORPUS_SHA,
+    }
+
+
+def _truth_revisions() -> dict[str, object]:
+    return {
+        "schema_version": 1,
+        "contract": "dwd-observation-revision-v1",
+        "state": "PASS",
+        "read_only": True,
+        "verification_ready": True,
+        "station_id": "05480",
+        "location_id": "station_05480",
+        "retrieval_count": 2,
+        "sample_count": 30,
+        "truth_revision_set_sha256": TRUTH_REVISION_SHA,
+        "reason_codes": [],
     }
 
 
@@ -51,6 +68,7 @@ def _kwargs() -> dict[str, object]:
         "source_sha": SOURCE_SHA,
         "report_schema": {"name": "station_benchmark_monthly", "version": 3},
         "corpus_manifest": _manifest(),
+        "truth_revision_set": _truth_revisions(),
         "window": {"start": "2026-09-01", "end": "2026-09-30"},
         "provider_models": [
             {"provider": "weathernext3", "model_name": "WeatherNext 3", "model_version": "3.0.0"},
@@ -58,9 +76,9 @@ def _kwargs() -> dict[str, object]:
         ],
         "lead_filters": {"lead_buckets": ["0-6h", "6-12h", "12-24h"]},
         "sample_filters": {
-            "location_id": "station_10416",
+            "location_id": "station_05480",
             "comparison_mode": "monthly_common_valid_time",
-            "truth_source": "DWD WMO 10416",
+            "truth_source": "DWD CDC 05480",
         },
         "metric_configuration": {
             "deterministic": ["mae", "rmse", "bias"],
@@ -80,6 +98,15 @@ def _kwargs() -> dict[str, object]:
     }
 
 
+def _validate(receipt: dict[str, object], *, artifact: dict[str, object] | None = None, manifest: dict[str, object] | None = None, truth: dict[str, object] | None = None) -> dict[str, object]:
+    return validate_report_lineage_receipt(
+        receipt,
+        artifact=artifact or _artifact(),
+        corpus_manifest=manifest or _manifest(),
+        truth_revision_set=truth or _truth_revisions(),
+    )
+
+
 def test_same_frozen_inputs_reproduce_same_receipt() -> None:
     first = build_report_lineage_receipt(**_kwargs())
     second = build_report_lineage_receipt(**_kwargs())
@@ -87,6 +114,8 @@ def test_same_frozen_inputs_reproduce_same_receipt() -> None:
     assert first == second
     assert first["source_sha"] == SOURCE_SHA
     assert first["corpus_manifest"]["aggregate_checksum_sha256"] == CORPUS_SHA
+    assert first["truth_revision_set"]["truth_revision_set_sha256"] == TRUTH_REVISION_SHA
+    assert first["truth_revision_set"]["station_id"] == "05480"
     assert first["sample_evidence"]["sample_counts"]["weathernext3:6-12h"] == 30
     assert first["configuration"]["metric_eligibility"]["ensemble_members"] == [
         "brier",
@@ -97,12 +126,9 @@ def test_same_frozen_inputs_reproduce_same_receipt() -> None:
     assert len(first["artifact"]["machine_readable_checksum_sha256"]) == 64
     assert len(first["lineage_identity_sha256"]) == 64
 
-    validation = validate_report_lineage_receipt(
-        first,
-        artifact=_artifact(),
-        corpus_manifest=_manifest(),
-    )
+    validation = _validate(first)
     assert validation["state"] == "PASS"
+    assert validation["truth_revision_set_sha256"] == TRUTH_REVISION_SHA
     assert validation["reproducible"] is True
     assert validation["read_only"] is True
 
@@ -130,6 +156,19 @@ def test_changed_artifact_or_configuration_changes_lineage_identity() -> None:
     assert changed_config_receipt["lineage_identity_sha256"] != original["lineage_identity_sha256"]
 
 
+def test_changed_truth_revision_set_changes_lineage_identity() -> None:
+    original = build_report_lineage_receipt(**_kwargs())
+    changed = _kwargs()
+    truth = _truth_revisions()
+    truth["truth_revision_set_sha256"] = "f" * 64
+    changed["truth_revision_set"] = truth
+
+    receipt = build_report_lineage_receipt(**changed)
+
+    assert receipt["truth_revision_set"]["truth_revision_set_sha256"] == "f" * 64
+    assert receipt["lineage_identity_sha256"] != original["lineage_identity_sha256"]
+
+
 def test_rejects_stale_or_mismatched_corpus_manifest() -> None:
     blocked = _kwargs()
     blocked_manifest = _manifest()
@@ -144,6 +183,24 @@ def test_rejects_stale_or_mismatched_corpus_manifest() -> None:
     with pytest.raises(ReportLineageError, match="exactly match") as window_error:
         build_report_lineage_receipt(**mismatched)
     assert window_error.value.reason_code == "CORPUS_WINDOW_MISMATCH"
+
+
+def test_rejects_blocked_or_missing_truth_revision_provenance() -> None:
+    blocked = _kwargs()
+    blocked_truth = _truth_revisions()
+    blocked_truth["state"] = "BLOCKED"
+    blocked["truth_revision_set"] = blocked_truth
+    with pytest.raises(ReportLineageError) as blocked_error:
+        build_report_lineage_receipt(**blocked)
+    assert blocked_error.value.reason_code == "TRUTH_REVISION_NOT_ADMISSIBLE"
+
+    missing = _kwargs()
+    missing_truth = _truth_revisions()
+    del missing_truth["truth_revision_set_sha256"]
+    missing["truth_revision_set"] = missing_truth
+    with pytest.raises(ReportLineageError) as missing_error:
+        build_report_lineage_receipt(**missing)
+    assert missing_error.value.reason_code == "MISSING_TRUTH_REVISION_PROVENANCE"
 
 
 def test_rejects_missing_provenance_and_unsupported_metric_semantics() -> None:
@@ -169,7 +226,7 @@ def test_rejects_missing_provenance_and_unsupported_metric_semantics() -> None:
 
 def test_rejects_mixed_source_and_configuration_identities() -> None:
     mixed_source = _kwargs()
-    mixed_source["source_identities"] = [SOURCE_SHA, "e" * 40]
+    mixed_source["source_identities"] = [SOURCE_SHA, "1" * 40]
     with pytest.raises(ReportLineageError) as source_error:
         build_report_lineage_receipt(**mixed_source)
     assert source_error.value.reason_code == "MIXED_SOURCE_IDENTITY"
@@ -182,25 +239,31 @@ def test_rejects_mixed_source_and_configuration_identities() -> None:
     assert config_error.value.reason_code == "MIXED_CONFIGURATION_IDENTITY"
 
 
-def test_validator_detects_artifact_and_manifest_drift() -> None:
+def test_validator_detects_artifact_manifest_and_truth_drift() -> None:
     receipt = build_report_lineage_receipt(**_kwargs())
 
     changed_artifact = _artifact()
     changed_artifact["month"] = "2026-10"
     with pytest.raises(ReportLineageError) as artifact_error:
-        validate_report_lineage_receipt(receipt, artifact=changed_artifact, corpus_manifest=_manifest())
+        _validate(receipt, artifact=changed_artifact)
     assert artifact_error.value.reason_code == "REPORT_ARTIFACT_CHECKSUM_MISMATCH"
 
     changed_manifest = _manifest()
     changed_manifest["aggregate_checksum_sha256"] = "1" * 64
     with pytest.raises(ReportLineageError) as manifest_error:
-        validate_report_lineage_receipt(receipt, artifact=_artifact(), corpus_manifest=changed_manifest)
+        _validate(receipt, manifest=changed_manifest)
     assert manifest_error.value.reason_code == "CORPUS_MANIFEST_MISMATCH"
+
+    changed_truth = _truth_revisions()
+    changed_truth["truth_revision_set_sha256"] = "2" * 64
+    with pytest.raises(ReportLineageError) as truth_error:
+        _validate(receipt, truth=changed_truth)
+    assert truth_error.value.reason_code == "TRUTH_REVISION_SET_MISMATCH"
 
 
 def test_human_reference_is_privacy_safe_relative_identifier() -> None:
     absolute = _kwargs()
-    absolute["human_readable_reference"] = "/home/andris/private/report.md"
+    absolute["human_readable_reference"] = "/private/runtime/report.md"
     with pytest.raises(ReportLineageError) as absolute_error:
         build_report_lineage_receipt(**absolute)
     assert absolute_error.value.reason_code == "UNSAFE_HUMAN_REFERENCE"
