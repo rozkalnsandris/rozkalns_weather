@@ -1,0 +1,67 @@
+{
+  "schema_version": 1,
+  "contract": "spatial-collocation-provenance-v1",
+  "canonical_benchmark": {
+    "location_id": "station_05480",
+    "station_id": "05480",
+    "scope": "public_benchmark",
+    "coordinates_exposed": false
+  },
+  "required_forecast_identity": [
+    "location_id",
+    "provider",
+    "model_name",
+    "source_surface",
+    "variable",
+    "native_resolution",
+    "grid_role",
+    "sampling_mode",
+    "interpolation_mode"
+  ],
+  "weathernext_surfaces": {
+    "BigQuery WeatherNext 3 0p05": {
+      "native_resolution": "0p05deg",
+      "grid_role": "station_head",
+      "sampling_mode": "station_head",
+      "interpolation_mode": "station_head"
+    },
+    "BigQuery WeatherNext 3 0p1": {
+      "native_resolution": "0p1deg",
+      "grid_role": "surface",
+      "sampling_mode": "surface_grid_cell",
+      "interpolation_mode": "surface_grid_cell"
+    }
+  },
+  "public_transport_caveats": {
+    "Open-Meteo Single Runs API": {
+      "native_resolution_may_be": "provider_native_not_exposed",
+      "required_interpolation_mode": "transport_interpolated_or_resampled"
+    }
+  },
+  "stable_reason_codes": [
+    "MISSING_SPATIAL_IDENTITY",
+    "PRIVATE_HOME_BENCHMARK_FORBIDDEN",
+    "LEGACY_LOCATION_NOT_CANONICAL",
+    "LOCATION_IDENTITY_MISMATCH",
+    "STATION_IDENTITY_MISMATCH",
+    "SOURCE_SURFACE_DRIFT",
+    "GRID_RESOLUTION_DRIFT",
+    "UNKNOWN_GRID_RESOLUTION",
+    "UNKNOWN_INTERPOLATION_IDENTITY",
+    "INTERPOLATION_MODE_DRIFT",
+    "WEATHERNEXT_SURFACE_MISMATCH",
+    "COLLOCATION_INCOMPATIBLE",
+    "SPATIAL_RECEIPT_IDENTITY_MISMATCH",
+    "EMPTY_SPATIAL_SAMPLE"
+  ],
+  "privacy": {
+    "home_coordinates_forbidden": true,
+    "coordinate_fields_in_receipts": false,
+    "nearest_station_fallback": false
+  },
+  "authority": {
+    "provider_network_query_required": false,
+    "production_corpus_rewrite_authorized": false,
+    "runtime_live_authorized": false
+  }
+}

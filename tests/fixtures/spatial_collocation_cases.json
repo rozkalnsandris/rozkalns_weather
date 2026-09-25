@@ -1,0 +1,82 @@
+{
+  "truth_05480": {
+    "kind": "truth",
+    "location_id": "station_05480",
+    "station_id": "05480",
+    "provider": "DWD",
+    "model_name": "DWD CDC observation",
+    "source_surface": "DWD CDC station observation",
+    "variable": "temperature_2m",
+    "native_resolution": "point_station",
+    "grid_role": "observation_station",
+    "sampling_mode": "exact_station",
+    "interpolation_mode": "none_station_observation",
+    "transport_provider": "DWD CDC"
+  },
+  "icon_d2": {
+    "kind": "forecast",
+    "location_id": "station_05480",
+    "provider": "icon_d2",
+    "model_name": "ICON-D2",
+    "source_surface": "Open-Meteo Single Runs API",
+    "variable": "temperature_2m",
+    "native_resolution": "provider_native_not_exposed",
+    "grid_role": "provider_grid",
+    "sampling_mode": "transport_point",
+    "interpolation_mode": "transport_interpolated_or_resampled",
+    "transport_provider": "Open-Meteo"
+  },
+  "weathernext_005": {
+    "kind": "forecast",
+    "location_id": "station_05480",
+    "provider": "weathernext3",
+    "model_name": "WeatherNext 3",
+    "source_surface": "BigQuery WeatherNext 3 0p05",
+    "variable": "temperature_2m",
+    "native_resolution": "0p05deg",
+    "grid_role": "station_head",
+    "sampling_mode": "station_head",
+    "interpolation_mode": "station_head",
+    "transport_provider": "Google BigQuery"
+  },
+  "weathernext_01": {
+    "kind": "forecast",
+    "location_id": "station_05480",
+    "provider": "weathernext3",
+    "model_name": "WeatherNext 3",
+    "source_surface": "BigQuery WeatherNext 3 0p1",
+    "variable": "wind_speed_10m",
+    "native_resolution": "0p1deg",
+    "grid_role": "surface",
+    "sampling_mode": "surface_grid_cell",
+    "interpolation_mode": "surface_grid_cell",
+    "transport_provider": "Google BigQuery"
+  },
+  "home_forecast": {
+    "kind": "forecast",
+    "location_id": "home",
+    "provider": "icon_d2",
+    "model_name": "ICON-D2",
+    "source_surface": "Open-Meteo Single Runs API",
+    "variable": "temperature_2m",
+    "native_resolution": "provider_native_not_exposed",
+    "grid_role": "provider_grid",
+    "sampling_mode": "transport_point",
+    "interpolation_mode": "transport_interpolated_or_resampled",
+    "transport_provider": "Open-Meteo"
+  },
+  "legacy_10416": {
+    "kind": "forecast",
+    "location_id": "station_10416",
+    "station_id": "10416",
+    "provider": "dwd_mosmix",
+    "model_name": "MOSMIX",
+    "source_surface": "DWD MOSMIX",
+    "variable": "temperature_2m",
+    "native_resolution": "station_product",
+    "grid_role": "legacy_station_product",
+    "sampling_mode": "station_product",
+    "interpolation_mode": "provider_product",
+    "transport_provider": "DWD"
+  }
+}
