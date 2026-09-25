@@ -41,6 +41,38 @@
     }).format(new Date(stamp));
   }
 
+  function normalizedProviderUiState(provider) {
+    const freshness = provider?.freshness_state || "unknown";
+    const ingest = provider?.ingest_state || provider?.state || "unknown";
+    const outsideRecurringScope = provider?.reason_code === "NOT_IN_PUBLIC_RECURRING_SCOPE";
+
+    if (freshness === "error" || ingest === "error" || provider?.state === "error") return "error";
+    if (["access_pending", "pending"].includes(freshness) || ["access_pending", "pending"].includes(ingest)) return "pending";
+    if (
+      ["not_tracked", "inactive"].includes(freshness)
+      || ["not_tracked", "inactive"].includes(ingest)
+      || provider?.tracked === false
+      || outsideRecurringScope
+    ) return "inactive";
+    if (freshness === "fresh") return "fresh";
+    if (["lagging", "degraded", "stale", "unknown", "not_ingested"].includes(freshness)) return "stale";
+    return "stale";
+  }
+
+  if (typeof window.normalizedProviderState === "function") {
+    window.normalizedProviderState = normalizedProviderUiState;
+  }
+
+  function rerenderProviderCardsIfReady() {
+    if (typeof lastHealth === "undefined" || !lastHealth?.providers) return;
+    if (typeof window.providersCard !== "function") return;
+    const markup = window.providersCard(lastHealth.providers);
+    ["providerGrid", "providerClasses"].forEach((id) => {
+      const element = document.querySelector(`#${id}`);
+      if (element) element.innerHTML = markup;
+    });
+  }
+
   function restoreSurface(id) {
     const element = document.querySelector(`#${id}`);
     if (!element) return;
@@ -122,9 +154,12 @@
     };
   }
 
+  rerenderProviderCardsIfReady();
+
   window.RozkalnsConsumerUI = Object.freeze({
     NOW_WINDOW_MS,
     selectNowIndex,
+    normalizedProviderUiState,
     dedupeSurfacePair,
   });
 })();
