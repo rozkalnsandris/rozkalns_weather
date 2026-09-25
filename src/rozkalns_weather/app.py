@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse
 from .app_core import (
     _daily_payload,
     _public_location_label,
+    _safety_reference,
     _temperature_common_samples,
     app as _core_app,
     create_app as _core_create_app,
@@ -37,6 +38,7 @@ from .query_bounds import (
     query_identity,
     snapshot_identity,
 )
+from .radar_warnings import fetch_dwd_alerts, fetch_radar_point
 from .runtime import database_schema_state
 from .semantics import PRECIP_EVENT_VERSION
 from .truth_quality import database_truth_quality
@@ -48,6 +50,8 @@ _GUARDED_PATHS = {
     "/api/verification/truth-quality",
     "/api/verification/summary",
     "/api/verification/precipitation",
+    "/api/warnings",
+    "/api/radar",
 }
 
 
@@ -396,6 +400,19 @@ def _install_query_guards(app):
             return payload
         except QueryGuardError as exc:
             return _blocked(exc)
+
+    @app.get("/api/warnings")
+    def warnings() -> dict[str, object]:
+        lat, lon, reference = _safety_reference(settings)
+        return {**fetch_dwd_alerts(lat=lat, lon=lon), "reference_location": reference}
+
+    @app.get("/api/radar")
+    def radar() -> dict[str, object]:
+        lat, lon, reference = _safety_reference(settings)
+        return {
+            **fetch_radar_point(lat=lat, lon=lon, center_location_id=str(reference["id"])),
+            "reference_location": reference,
+        }
 
     return app
 
