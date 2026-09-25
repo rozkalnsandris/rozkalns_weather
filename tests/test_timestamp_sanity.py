@@ -64,7 +64,7 @@ def test_normal_timing_is_pass_with_explicit_reference_and_runtime_clock_evidenc
 
 def test_provider_clock_skew_evidence_is_distinct_from_scheduler_delay() -> None:
     result = timestamp_sanity_sample(
-        _forecast(upstream_available_at_utc="2026-09-25T01:20:00Z"),
+        _forecast(upstream_available_at_utc="2026-09-25T01:21:00Z"),
         reference_time_utc="2026-09-25T01:15:00Z",
         runtime_clock_evidence=_clock(),
     )
@@ -194,6 +194,7 @@ def test_latency_report_exposes_timestamp_sanity_without_rewriting_latency_seman
     assert report["state"] == "PASS"
     assert report["reason_codes"] == ["LATENCY_WITHIN_BOUNDS"]
     assert report["timestamp_sanity"]["state"] == "PASS"
+    assert report["latency_eligible"] is True
 
     health = provider_health_latency_summary(report, "icon_d2")
     assert health["state"] == "PASS"
