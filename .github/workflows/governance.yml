@@ -55,6 +55,100 @@ jobs:
           grep -F 'AUTO-RUN FULL rozkalns_weather #<issue>' AGENTS.md >/dev/null
           grep -F 'controller_issue": 9' .github/auto-run-full-v2.json >/dev/null
 
+  github-api-access-canary:
+    name: GitHub API access canary
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Validate rate-limit-safe consumer contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          manifest_path = Path('.github/github-api-access-v1.json')
+          manifest = json.loads(manifest_path.read_text(encoding='utf-8'))
+          agents = Path('AGENTS.md').read_text(encoding='utf-8')
+
+          assert manifest['schema'] == 'rozkalns.github-api-access-consumer.v1'
+          assert manifest['status'] == 'CANARY_SOURCE_ONLY'
+          assert manifest['repository'] == 'rozkalnsandris/rozkalns_weather'
+          assert manifest['canonical_repository'] == 'rozkalnsandris/ops-workflows'
+          assert manifest['tracking']['rollout_issue'] == 112
+          assert manifest['shared_contract']['revision'] == '3bb0740b5f0a8ce631d2ff79f1acc4999ff6ed2c'
+
+          read_plan = manifest['read_plan']
+          assert read_plan['serial_by_default_per_repository_lane'] is True
+          assert read_plan['minimum_sufficient_retrieval_required'] is True
+          assert read_plan['changed_files_on_demand_only'] is True
+          assert read_plan['event_or_state_driven_continuation_preferred'] is True
+          assert read_plan['tight_polling_allowed'] is False
+          assert read_plan['historical_workflow_runs_by_default'] is False
+
+          assert set(manifest['rate_limit_dispositions']) == {
+              'PRIMARY_RATE_LIMIT_EXHAUSTED',
+              'SECONDARY_RATE_LIMIT_SUSPECTED',
+              'RETRY_AFTER_REQUIRED',
+              'RESET_WAIT_REQUIRED',
+              'READ_BACKOFF_REQUIRED',
+              'TRANSPORT_RATE_LIMIT_METADATA_UNAVAILABLE',
+          }
+
+          mutation = manifest['mutation_boundary']
+          assert mutation['final_pre_mutation_budget_class'] == 'FINAL_PREMERGE_COMPACT'
+          assert mutation['expected_head_binding_required_when_supported'] is True
+          assert mutation['authorization_consumed_when_mutation_dispatched'] is True
+          for key in (
+              'automatic_duplicate_mutation_after_403',
+              'automatic_duplicate_mutation_after_429',
+              'automatic_duplicate_mutation_after_timeout',
+              'automatic_duplicate_mutation_after_transport_error',
+          ):
+              assert mutation[key] is False
+          assert mutation['post_dispatch_uncertainty_fail_closed'] is True
+          assert mutation['minimal_read_only_reconciliation_only'] is True
+          assert mutation['stop_after_ambiguous_outcome'] is True
+          assert mutation['confirmed_success_budget_class'] == 'EXACT_MAIN_MINIMAL'
+          assert mutation['merge_success_implies_live_or_deploy_authority'] is False
+
+          scenarios = manifest['synthetic_canary']
+          assert scenarios['intentionally_exhaust_real_quota'] is False
+          expected = {
+              'post_dispatch_429': 'MUTATION_OUTCOME_UNKNOWN_RATE_LIMIT',
+              'post_dispatch_timeout': 'MUTATION_OUTCOME_UNKNOWN_TIMEOUT',
+              'post_dispatch_transport_error': 'MUTATION_OUTCOME_UNKNOWN_TRANSPORT',
+          }
+          for scenario, disposition in expected.items():
+              evidence = scenarios[scenario]
+              assert evidence['disposition'] == disposition
+              assert evidence['automatic_duplicate_mutation_allowed'] is False
+              assert evidence['requires_reconciliation'] is True
+              assert evidence['stop'] is True
+
+          local = manifest['local_stricter_rules']
+          assert local['fast_merge_requires_explicit_owner_decision'] is True
+          assert local['auto_run_full_requires_explicit_issue_scoped_activation'] is True
+          assert local['live_runtime_requires_exact_authority'] is True
+          assert local['production_sqlite_or_corpus_write_requires_exact_authority'] is True
+          assert local['weather_privacy_provider_provenance_and_dwd_warning_authority_unchanged'] is True
+
+          for marker in (
+              '.github/github-api-access-v1.json',
+              '3bb0740b5f0a8ce631d2ff79f1acc4999ff6ed2c',
+              'FINAL_PREMERGE_COMPACT',
+              'EXACT_MAIN_MINIMAL',
+              'never triggers a duplicate merge/write',
+          ):
+              assert marker in agents
+
+          print('GITHUB_API_ACCESS_CANARY=PASS')
+          PY
+
   merge-gate:
     name: FAST-LANE Merge Gate
     runs-on: ubuntu-24.04
@@ -64,6 +158,7 @@ jobs:
       - public-repository-baseline
       - workflow-security
       - auto-run-contract
+      - github-api-access-canary
     if: ${{ always() }}
     steps:
       - name: Require all governance checks
@@ -73,6 +168,7 @@ jobs:
           PUBLIC_BASELINE_RESULT: ${{ needs.public-repository-baseline.result }}
           WORKFLOW_SECURITY_RESULT: ${{ needs.workflow-security.result }}
           AUTO_RUN_RESULT: ${{ needs.auto-run-contract.result }}
+          GITHUB_API_ACCESS_RESULT: ${{ needs.github-api-access-canary.result }}
         run: |
           set -euo pipefail
           test "$FAST_LANE_RESULT" = success
@@ -80,3 +176,4 @@ jobs:
           test "$PUBLIC_BASELINE_RESULT" = success
           test "$WORKFLOW_SECURITY_RESULT" = success
           test "$AUTO_RUN_RESULT" = success
+          test "$GITHUB_API_ACCESS_RESULT" = success
