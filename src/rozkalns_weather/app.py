@@ -401,7 +401,7 @@ def create_app(settings: Settings | None = None, database: Database | None = Non
         except ValueError as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
 
-    @app.get("/api/provenance/verification")
+    @app.get("/api/provenance/verification", response_model=None)
     def provenance_verification(
         provider: str = Query(..., min_length=1),
         valid_time_utc: str = Query(..., min_length=1),
