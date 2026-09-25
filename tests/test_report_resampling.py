@@ -187,6 +187,15 @@ def test_tampered_base_lineage_fails_closed_before_binding() -> None:
     assert error.value.reason_code == "REPORT_LINEAGE_IDENTITY_MISMATCH"
 
 
+def test_tampered_resampling_receipt_fails_closed_before_lineage_binding() -> None:
+    tampered = deepcopy(_resampling_receipt())
+    tampered["interval"]["upper"] += 1.0
+
+    with pytest.raises(ReportResamplingError) as error:
+        bind_resampling_receipts_to_report_lineage(_lineage(), resampling_receipts=[tampered])
+    assert error.value.reason_code == "INVALID_RESAMPLING_RECEIPT_IDENTITY"
+
+
 def test_existing_resampling_lineage_cannot_be_silently_replaced() -> None:
     receipt = _resampling_receipt()
     bound = bind_resampling_receipts_to_report_lineage(_lineage(), resampling_receipts=[receipt])
