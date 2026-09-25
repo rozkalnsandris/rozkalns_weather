@@ -1,0 +1,50 @@
+{
+  "schema": "canonical-evidence-serialization-v1",
+  "encoding": "UTF-8",
+  "terminator": "LF",
+  "object_keys": "lexicographic Unicode code-point order",
+  "arrays": "preserve caller order",
+  "booleans_and_null": "lowercase JSON true/false/null",
+  "enums": "serialize the enum value recursively",
+  "utc_timestamps": {
+    "scope": "fields named utc or ending in _utc",
+    "accepted_zero_offset_forms": [
+      "Z",
+      "z",
+      "+00",
+      "+0000",
+      "+00:00"
+    ],
+    "canonical_suffix": "Z",
+    "separator": "T",
+    "fractional_seconds": "preserve significant digits and remove only trailing zeroes",
+    "non_zero_offset": "reject"
+  },
+  "numbers": {
+    "integers": "base-10 JSON integer token",
+    "finite_floats": "shortest round-trip decimal representation",
+    "float_exponent": "lowercase e, no plus sign, no leading exponent zeroes",
+    "signed_zero": "0",
+    "nan_and_infinity": "reject",
+    "unsupported_numeric_types": "reject",
+    "domain_rounding": false
+  },
+  "precision": {
+    "raw_provider_values": "preserve the parsed finite value; never round or correct during canonical serialization",
+    "derived_metric_values": "serialize the computed value without additional canonicalization rounding",
+    "display_values": "rounding is permitted only in presentation-specific payloads and must not replace raw/provenance evidence"
+  },
+  "identity": "SHA-256 over the canonical UTF-8 bytes including the final LF",
+  "integrations": [
+    "corpus provenance manifest checksums",
+    "verification report lineage identities",
+    "verification watermark identities",
+    "readiness/evidence checksums that require deterministic identity"
+  ],
+  "exclusions": [
+    "no production corpus rehash or rewrite",
+    "no floating-point value correction",
+    "no artifact publication",
+    "no runtime or LIVE mutation"
+  ]
+}
