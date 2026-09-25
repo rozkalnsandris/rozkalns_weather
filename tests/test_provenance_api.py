@@ -89,13 +89,20 @@ def test_hourly_api_adds_trace_without_expanding_legacy_top_level_surface(tmp_pa
     assert trace["normalized_value"]["statistic"] == "deterministic"
     assert len(trace["snapshot"]["id"]) == 64
     assert len(trace["trace_identity_sha256"]) == 64
+    assert trace["privacy"] == {
+        "coordinates_exposed": False,
+        "database_path_exposed": False,
+        "credentials_exposed": False,
+        "raw_logs_exposed": False,
+    }
 
     lowered = response.text.lower()
     assert "51.5" not in lowered
     assert "7.6" not in lowered
     assert "home_lat" not in lowered
     assert "home_lon" not in lowered
-    assert "database_path" not in lowered
+    assert "sqlite:///" not in lowered
+    assert "/private/" not in lowered
 
 
 def test_station_verification_trace_binds_dwd_truth_and_metric(tmp_path) -> None:
