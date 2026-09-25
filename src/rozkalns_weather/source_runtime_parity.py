@@ -8,6 +8,13 @@ from typing import Any, Mapping
 
 CONTRACT = "source-runtime-descriptor-parity-v1"
 SCHEMA_VERSION = 1
+SERVICE_ROLES = (
+    "application_service",
+    "schema_init_service",
+    "public_ingest_service",
+    "readiness_service",
+    "corpus_check_service",
+)
 
 
 def _json(path: Path) -> dict[str, Any]:
@@ -98,9 +105,14 @@ def evaluate_source_runtime_parity(bundle: Mapping[str, Any]) -> dict[str, Any]:
     compose = data.get("compose") or {}
     systemd = data.get("systemd_examples") or {}
 
-    expected_services = _nested(runtime, "packaging", "services") or {}
+    packaging = _nested(runtime, "packaging") or {}
+    expected_services = {
+        role: packaging.get(role)
+        for role in SERVICE_ROLES
+        if isinstance(packaging, Mapping) and packaging.get(role)
+    }
     compose_services = (compose.get("services") or {}) if isinstance(compose, Mapping) else {}
-    for role, service_name in sorted(expected_services.items()):
+    for service_name in expected_services.values():
         if service_name not in compose_services:
             reasons.add("MISSING_COMPOSE_SERVICE")
 
@@ -108,20 +120,20 @@ def evaluate_source_runtime_parity(bundle: Mapping[str, Any]) -> dict[str, Any]:
     public_ingest_service = expected_services.get("public_ingest_service")
     schema_init_service = expected_services.get("schema_init_service")
 
-    if simple.get("compose_service") != application_service:
+    if _nested(simple, "compose", "service") != application_service:
         reasons.add("COMPOSE_SERVICE_IDENTITY_MISMATCH")
-    if simple.get("compose_file") != _nested(runtime, "packaging", "compose_file"):
+    if _nested(simple, "compose", "file") != packaging.get("compose_file"):
         reasons.add("COMPOSE_FILE_IDENTITY_MISMATCH")
-    if simple.get("compose_project") != _nested(runtime, "deployment_architecture", "compose_project"):
+    if _nested(simple, "compose", "project") != _nested(runtime, "deployment_architecture", "compose_project"):
         reasons.add("COMPOSE_PROJECT_MISMATCH")
 
     scheduled_service = _nested(schedule, "public_ingest", "service")
     if scheduled_service != public_ingest_service or scheduled_service not in compose_services:
         reasons.add("INGEST_SERVICE_MISMATCH")
 
-    schedule_service_unit = _nested(schedule, "public_ingest", "systemd", "service_unit")
-    schedule_timer_unit = _nested(schedule, "public_ingest", "systemd", "timer_unit")
-    schedule_calendar = _nested(schedule, "public_ingest", "timer", "on_calendar")
+    schedule_service_unit = _nested(schedule, "systemd_timer", "service_unit")
+    schedule_timer_unit = _nested(schedule, "systemd_timer", "timer_unit")
+    schedule_calendar = _nested(schedule, "systemd_timer", "on_calendar")
     if (
         schedule_service_unit != systemd.get("service_unit")
         or schedule_timer_unit != systemd.get("timer_unit")
@@ -132,9 +144,9 @@ def evaluate_source_runtime_parity(bundle: Mapping[str, Any]) -> dict[str, Any]:
 
     health_endpoint = _nested(runtime, "health", "liveness_endpoint")
     ready_endpoint = _nested(runtime, "health", "readiness_endpoint")
-    if simple.get("health_endpoint") != health_endpoint:
+    if _nested(simple, "health", "liveness_path") != health_endpoint:
         reasons.add("LIVENESS_ENDPOINT_MISMATCH")
-    if simple.get("readiness_endpoint") != ready_endpoint:
+    if _nested(simple, "health", "readiness", "path") != ready_endpoint:
         reasons.add("READINESS_ENDPOINT_MISMATCH")
     weather_payload = compose_services.get(application_service, {}) if application_service else {}
     if ready_endpoint == "/ready" and not weather_payload.get("ready_healthcheck"):
@@ -156,12 +168,14 @@ def evaluate_source_runtime_parity(bundle: Mapping[str, Any]) -> dict[str, Any]:
     if schema_env.get("DATABASE_INIT_MODE") != "require-existing":
         reasons.add("IMPLICIT_SCHEMA_INIT_UNSUPPORTED")
     if isinstance(bootstrap_schema, Mapping):
-        if bootstrap_schema.get("implicit_init_allowed") is True or bootstrap_schema.get("implicit_migration_allowed") is True:
+        if bootstrap_schema.get("implicit_init_or_migration_from_backfill") is not False:
+            reasons.add("IMPLICIT_SCHEMA_INIT_UNSUPPORTED")
+        if bootstrap_schema.get("require_existing_ready_schema_before_backfill") is not True:
             reasons.add("IMPLICIT_SCHEMA_INIT_UNSUPPORTED")
 
     aliases = {
-        _nested(runtime, "target_alias"),
-        simple.get("target_alias"),
+        runtime.get("target_alias"),
+        _nested(simple, "target", "alias"),
         bootstrap.get("target_alias"),
         _nested(release, "expected_runtime", "target_alias"),
         binding.get("target_alias"),
@@ -171,7 +185,8 @@ def evaluate_source_runtime_parity(bundle: Mapping[str, Any]) -> dict[str, Any]:
         reasons.add("TARGET_ALIAS_MISMATCH")
 
     runtime_classes = {
-        _nested(runtime, "runtime_class"),
+        runtime.get("runtime_class"),
+        schedule.get("runtime_class"),
         _nested(release, "expected_runtime", "runtime_class"),
     }
     runtime_classes.discard(None)
@@ -179,8 +194,8 @@ def evaluate_source_runtime_parity(bundle: Mapping[str, Any]) -> dict[str, Any]:
         reasons.add("RELEASE_RUNTIME_IDENTITY_MISMATCH")
 
     image_repositories = {
-        _nested(runtime, "deployment_architecture", "image_repository"),
-        simple.get("image_repository"),
+        _nested(runtime, "deployment_architecture", "image"),
+        simple.get("image"),
         _nested(release, "simple_deploy_v1", "image_repository"),
     }
     image_repositories.discard(None)
