@@ -28,6 +28,8 @@ HOURLY_VARIABLES = (
     "cloud_cover",
     "wind_speed_10m",
     "wind_gusts_10m",
+    "weather_code",
+    "is_day",
 )
 VARIABLE_MAP = {
     "temperature_2m": ("temperature_2m", "degC", None),
@@ -37,6 +39,8 @@ VARIABLE_MAP = {
     "cloud_cover": ("cloud_cover", "%", None),
     "wind_speed_10m": ("wind_speed_10m", "m/s", None),
     "wind_gusts_10m": ("wind_gust_10m", "m/s", None),
+    "weather_code": ("weather_code", "wmo_code", None),
+    "is_day": ("is_day", "1", None),
 }
 
 
@@ -244,6 +248,10 @@ def parse_open_meteo(
             "historical_backfill": availability_time is None,
             "native_timestep_interpolation_caveat": "Open-Meteo may interpolate model-native timesteps to requested hourly fields",
             "probability_fields_included": False,
+            "condition_fields_included": {
+                "weather_code": "weather_code" in requested_variables,
+                "is_day": "is_day" in requested_variables,
+            },
             "generationtime_ms": payload.get("generationtime_ms"),
             "provider_contract_drift": contract_report.to_metadata(),
         },

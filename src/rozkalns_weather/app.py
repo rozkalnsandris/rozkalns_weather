@@ -43,6 +43,7 @@ from .runtime import database_schema_state
 from .semantics import PRECIP_EVENT_VERSION
 from .truth_quality import database_truth_quality
 from .verification import ErrorPair, ProbabilityPair, brier_score, lead_bucket, reliability_bins, summarize
+from .weather_conditions import annotate_daily_conditions
 
 _GUARDED_PATHS = {
     "/api/hourly",
@@ -190,6 +191,12 @@ def _install_query_guards(app):
         require_database_ready()
         try:
             bounded_integer("days", days, minimum=1, maximum=MAX_DAILY_DAYS)
+            daily_rows = _daily_payload(
+                database,
+                days=days,
+                timezone_name=settings.home_timezone,
+                location_id=location_id,
+            )
             payload = {
                 "days": days,
                 "timezone": settings.home_timezone,
@@ -198,8 +205,9 @@ def _install_query_guards(app):
                     "label": _public_location_label(location_id, settings),
                     "coordinates_exposed": False,
                 },
-                "days_by_provider": _daily_payload(
+                "days_by_provider": annotate_daily_conditions(
                     database,
+                    daily_rows,
                     days=days,
                     timezone_name=settings.home_timezone,
                     location_id=location_id,

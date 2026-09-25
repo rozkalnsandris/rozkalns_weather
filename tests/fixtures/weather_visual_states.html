@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Rozkalns Weather visual states</title>
+  <style>
+    *{box-sizing:border-box}
+    body{margin:0;padding:28px;font-family:Inter,system-ui,sans-serif;background:#071727;color:#f5f8ff}
+    h1{margin:0 0 18px;font-size:24px}
+    .fixture-grid{display:grid;grid-template-columns:repeat(3,minmax(220px,1fr));gap:14px}
+    .fixture{min-height:220px;border-radius:20px;padding:20px;border:1px solid rgba(255,255,255,.2);overflow:hidden}
+    .fixture.day{background:linear-gradient(180deg,#188ed0,#0d68a6 65%,#0b4773)}
+    .fixture.night{background:linear-gradient(180deg,#0a223b,#08192b)}
+    .fixture.storm{background:linear-gradient(180deg,#38506a,#15283b)}
+    .fixture.unknown{background:linear-gradient(180deg,#203548,#112537)}
+    .icon{width:112px;height:112px}
+    .label{font-size:20px;font-weight:750;margin-top:8px}
+    .meta{margin-top:4px;color:#d5e5f2;font-size:13px}
+    @media(max-width:600px){body{padding:14px}.fixture-grid{grid-template-columns:1fr}.fixture{min-height:178px;display:grid;grid-template-columns:112px 1fr;align-items:center}.label{margin-top:0}}
+  </style>
+</head>
+<body>
+  <h1>Rozkalns Weather · condition visual fixture</h1>
+  <main id="fixtures" class="fixture-grid"></main>
+  <script src="../../src/rozkalns_weather/static/weather_ui.js"></script>
+  <script>
+    const cases = [
+      ["clear", "day", "Clear daytime", "provider is_day=1"],
+      ["partly_cloudy", "day", "Partly cloudy daytime", "provider is_day=1"],
+      ["rain", "day", "Rainy daytime", "WMO/fallback rain"],
+      ["clear", "night", "Clear night", "provider is_day=0"],
+      ["thunderstorm", "day", "Thunderstorm", "explicit WMO adverse state"],
+      ["unknown", "unknown", "Unknown", "missing evidence"],
+    ];
+    const api = window.RozkalnsWeatherConditions;
+    document.querySelector("#fixtures").innerHTML = cases.map(([condition, daylight, label, meta]) => {
+      const theme = daylight === "night" ? "night" : condition === "thunderstorm" ? "storm" : condition === "unknown" ? "unknown" : "day";
+      return `<section class="fixture ${theme}" data-condition="${condition}" data-daylight="${daylight}">
+        <div class="icon">${api.weatherIcon(condition, daylight, {label})}</div>
+        <div><div class="label">${label}</div><div class="meta">${meta}</div></div>
+      </section>`;
+    }).join("");
+  </script>
+</body>
+</html>
