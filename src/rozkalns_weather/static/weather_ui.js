@@ -9,6 +9,9 @@
   const DRIZZLE_MIN_MM = 0.05;
   const RAIN_MIN_MM = 0.2;
   const HEAVY_RAIN_MIN_MM = 2.0;
+  const PUBLIC_REFERENCE_PRESENTATION = Object.freeze({
+    station_05480: "DWD CDC Werl 05480 · reference",
+  });
 
   const WMO = new Map([
     [0, ["clear", "Clear"]],
@@ -291,15 +294,22 @@
     if (lastObservedCondition) renderObservedIcon(lastObservedCondition);
   }
 
+  function applyForecastLocationIdentity() {
+    const selector = document.querySelector("#forecastLocation");
+    const target = document.querySelector("#heroLocation");
+    const label = selector ? PUBLIC_REFERENCE_PRESENTATION[selector.value] : null;
+    if (label && target && target.textContent !== label) target.textContent = label;
+  }
+
   function observedCondition(items) {
     const conditionItems = (items || []).filter((item) => ["precipitation_1h", "cloud_cover"].includes(item.variable) && item.observed_at_utc);
     const timestamp = conditionItems.map((item) => item.observed_at_utc).sort().at(-1);
-    if (!timestamp) return { condition: "unknown", label: "Observed conditions", source: "insufficient_condition_evidence" };
+    if (!timestamp) return { condition: "unknown", label: "Condition unavailable from current observation", source: "insufficient_condition_evidence" };
     const aligned = conditionItems.filter((item) => item.observed_at_utc === timestamp);
     const precip = aligned.find((item) => item.variable === "precipitation_1h")?.value;
     const cloudCover = aligned.find((item) => item.variable === "cloud_cover")?.value;
     const result = fallbackCondition(precip, cloudCover);
-    return { ...result, label: result.condition === "unknown" ? "Observed conditions" : `${result.label} observed` };
+    return { ...result, label: result.condition === "unknown" ? "Condition unavailable from current observation" : `${result.label} observed` };
   }
 
   function renderObservedIcon(condition) {
@@ -314,6 +324,7 @@
   if (typeof baseRenderCurrent === "function") {
     window.renderCurrent = function renderCurrentWithNativeCondition(result, healthMap) {
       baseRenderCurrent(result, healthMap);
+      applyForecastLocationIdentity();
       const condition = observedCondition(result?.payload?.observations || []);
       lastObservedCondition = condition;
       const text = document.querySelector("#heroCondition");
@@ -428,6 +439,17 @@
 
   injectStyles();
   applyTheme(activeDaylight, "unknown");
+  applyForecastLocationIdentity();
+
+  const locationIdentityTarget = document.querySelector("#heroLocation");
+  if (locationIdentityTarget && typeof MutationObserver !== "undefined") {
+    new MutationObserver(() => applyForecastLocationIdentity()).observe(locationIdentityTarget, {
+      childList: true,
+      characterData: true,
+      subtree: true,
+    });
+  }
+  document.querySelector("#forecastLocation")?.addEventListener("change", () => queueMicrotask(applyForecastLocationIdentity));
 
   const heroPlaceholder = document.querySelector("#heroIcon");
   if (heroPlaceholder) heroPlaceholder.innerHTML = weatherIcon("unknown", activeDaylight, { label: "Unknown conditions", decorative: true });
