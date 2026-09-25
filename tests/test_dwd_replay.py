@@ -6,7 +6,9 @@ from pathlib import Path
 
 from rozkalns_weather.dwd_replay import CONTRACT_VERSION, main, replay_scenario
 
+ROOT = Path(__file__).parent.parent
 FIXTURE = Path(__file__).parent / "fixtures" / "dwd_warning_radar_replay.json"
+CONTRACT = ROOT / "contracts" / "dwd-warning-radar-replay-v1.json"
 
 
 def _fixture() -> dict[str, object]:
@@ -18,6 +20,17 @@ def _fresh_frames() -> list[dict[str, str]]:
         {"timestamp": "2026-09-12T09:55:00Z", "kind": "radar_observed"},
         {"timestamp": "2026-09-12T10:30:00Z", "kind": "radar_nowcast"},
     ]
+
+
+def test_machine_readable_contract_matches_python_contract() -> None:
+    contract = json.loads(CONTRACT.read_text(encoding="utf-8"))
+    assert contract["schema"] == CONTRACT_VERSION
+    assert contract["warning_authority"] == "DWD"
+    assert contract["model_warning_substitution_allowed"] is False
+    assert contract["network_access_performed"] is False
+    assert contract["runtime_mutation_performed"] is False
+    assert contract["privacy"]["input_coordinates"] == "synthetic-only"
+    assert contract["privacy"]["coordinates_in_output"] is False
 
 
 def test_full_lifecycle_replay_is_deterministic_and_privacy_safe() -> None:
