@@ -1,12 +1,30 @@
 from __future__ import annotations
 
-from collections.abc import Mapping
-
 from .db import Database
 from .value_provenance import (
     ValueProvenanceError,
     build_verification_value_trace,
     forecast_trace_evidence,
+)
+
+_HOURLY_PUBLIC_FIELDS = (
+    "provider",
+    "model_name",
+    "model_version",
+    "location_id",
+    "init_time_utc",
+    "init_time_quality",
+    "upstream_available_at_utc",
+    "retrieved_at_utc",
+    "transport_provider",
+    "revision",
+    "valid_time_utc",
+    "lead_hours",
+    "variable",
+    "statistic",
+    "value",
+    "unit",
+    "accumulation_window_minutes",
 )
 
 
@@ -40,8 +58,9 @@ def hourly_with_provenance(
         ).fetchall()
     output: list[dict[str, object]] = []
     for raw in rows:
-        row = dict(raw)
-        row["provenance_trace"] = forecast_trace_evidence(row)
+        trace_row = dict(raw)
+        row = {field: trace_row[field] for field in _HOURLY_PUBLIC_FIELDS}
+        row["provenance_trace"] = forecast_trace_evidence(trace_row)
         output.append(row)
     return output
 
