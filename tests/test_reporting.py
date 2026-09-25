@@ -166,6 +166,7 @@ def test_monthly_v3_has_common_ci_wins_ensemble_calibration_and_events(tmp_path:
     report = monthly_weather_next_report(database, month="2026-09")
     assert report["report_type"] == "station_benchmark_monthly_v3"
     assert report["sample_sufficiency_contract"] == "common-sample-sufficiency-v1"
+    assert report["ensemble_member_completeness_contract"] == "ensemble-member-completeness-v1"
 
     weather_next = next(
         row
@@ -187,13 +188,23 @@ def test_monthly_v3_has_common_ci_wins_ensemble_calibration_and_events(tmp_path:
     assert wins["losses"] == 0
 
     ensemble = report["ensemble_calibration"]["icon_d2_eps"]
+    assert ensemble["n_member_groups"] == 4
+    assert ensemble["n_metric_eligible_member_groups"] == 0
+    assert ensemble["n_metric_excluded_member_groups"] == 4
+    assert ensemble["member_completeness_status_counts"] == {"partial": 4}
+    assert ensemble["member_exclusion_reason_counts"]["MISSING_MEMBER"] == 4
     assert ensemble["sample_sufficiency_state"] == "insufficient_sample"
-    assert ensemble["crps_sample_evidence_by_variable"]["temperature_2m"]["n"] == 2
-    assert ensemble["temperature_80_interval"]["n"] == 2
-    assert ensemble["temperature_80_interval"]["sample_sufficiency_state"] == "insufficient_sample"
-    assert ensemble["precipitation_probability"]["n"] == 2
-    assert ensemble["precipitation_probability"]["sample_sufficiency_state"] == "insufficient_sample"
-    assert ensemble["precipitation_probability"]["brier_score"] is not None
+    assert ensemble["mean_crps_by_variable"] == {}
+    assert ensemble["crps_sample_evidence_by_variable"] == {}
+    assert ensemble["temperature_80_interval"]["n"] == 0
+    assert ensemble["temperature_80_interval"]["mean_wis"] is None
+    assert ensemble["precipitation_probability"]["n"] == 0
+    assert ensemble["precipitation_probability"]["brier_score"] is None
+    assert ensemble["precipitation_probability"]["reliability_bins"] == []
+    assert all(
+        item["status"] == "partial" and "MISSING_MEMBER" in item["reason_codes"]
+        for item in ensemble["member_completeness_evidence"]
+    )
 
     event_variables = {row["variable"] for row in report["event_summaries"]}
     assert {"temperature_2m", "precipitation_1h", "wind_gust_10m"} <= event_variables
