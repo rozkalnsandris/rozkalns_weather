@@ -1,0 +1,64 @@
+{
+  "contract_version": "ensemble-member-completeness-v1",
+  "cases": [
+    {
+      "name": "icon_complete",
+      "provider_id": "icon_d2_eps",
+      "member_ids": ["member_00", "member_01", "member_02", "member_03", "member_04", "member_05", "member_06", "member_07", "member_08", "member_09", "member_10", "member_11", "member_12", "member_13", "member_14", "member_15", "member_16", "member_17", "member_18", "member_19"],
+      "expected_status": "complete",
+      "expected_reason": "COMPLETE_MEMBER_SET"
+    },
+    {
+      "name": "icon_one_missing",
+      "provider_id": "icon_d2_eps",
+      "member_ids": ["member_00", "member_01", "member_02", "member_03", "member_04", "member_05", "member_06", "member_07", "member_08", "member_09", "member_10", "member_11", "member_12", "member_13", "member_14", "member_15", "member_16", "member_17", "member_18"],
+      "expected_status": "partial",
+      "expected_reason": "MISSING_MEMBER"
+    },
+    {
+      "name": "icon_many_missing",
+      "provider_id": "icon_d2_eps",
+      "member_ids": ["member_00", "member_01"],
+      "expected_status": "partial",
+      "expected_reason": "MISSING_MEMBER"
+    },
+    {
+      "name": "icon_duplicate",
+      "provider_id": "icon_d2_eps",
+      "member_ids": ["member_00", "member_01", "member_01"],
+      "expected_status": "blocked",
+      "expected_reason": "DUPLICATE_MEMBER_ID"
+    },
+    {
+      "name": "icon_control_collision",
+      "provider_id": "icon_d2_eps",
+      "member_ids": ["control", "member_00", "member_01"],
+      "expected_status": "blocked",
+      "expected_reason": "CONTROL_MEMBER_COLLISION"
+    },
+    {
+      "name": "ifs_changed_expected_size",
+      "provider_id": "ecmwf_ifs_ens",
+      "member_ids": ["member_00"],
+      "declared_member_count": 52,
+      "expected_status": "blocked",
+      "expected_reason": "EXPECTED_SIZE_CHANGED"
+    },
+    {
+      "name": "aifs_mixed_versions",
+      "provider_id": "ecmwf_aifs_ens",
+      "member_ids": ["member_00"],
+      "model_versions": ["v1", "v2"],
+      "expected_status": "blocked",
+      "expected_reason": "MIXED_MODEL_VERSION"
+    },
+    {
+      "name": "icon_truncated_retention",
+      "provider_id": "icon_d2_eps",
+      "member_ids": ["member_00", "member_01"],
+      "retention_truncated": true,
+      "expected_status": "partial",
+      "expected_reason": "TRUNCATED_RETENTION"
+    }
+  ]
+}
