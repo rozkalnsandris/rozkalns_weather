@@ -1,0 +1,64 @@
+{
+  "contract": "api-query-bounds-v1",
+  "schema_version": 1,
+  "status": "ACTIVE_SOURCE_GUARD",
+  "limits": {
+    "max_hourly_hours": 360,
+    "max_daily_days": 15,
+    "max_verification_days": 366,
+    "max_report_window_days": 31,
+    "default_page_size": 100,
+    "max_page_size": 200,
+    "max_provider_selections": 8,
+    "max_model_selections": 8,
+    "max_hourly_source_rows": 5000,
+    "max_verification_samples": 50000,
+    "max_response_bytes": 524288
+  },
+  "reason_codes": [
+    "INVALID_QUERY_RANGE",
+    "QUERY_WINDOW_TOO_LARGE",
+    "INVALID_QUERY_WINDOW",
+    "INVALID_PAGE_SIZE",
+    "PAGE_SIZE_TOO_LARGE",
+    "INVALID_SELECTION",
+    "SELECTION_TOO_BROAD",
+    "INVALID_CURSOR",
+    "CURSOR_QUERY_MISMATCH",
+    "CURSOR_SNAPSHOT_MISMATCH",
+    "INVALID_SAMPLE_COUNT",
+    "SAMPLE_COUNT_TOO_LARGE",
+    "HOURLY_SOURCE_ROWS_TOO_LARGE",
+    "INVALID_QUERY_IDENTITY",
+    "INVALID_QUERY_SNAPSHOT",
+    "INVALID_RESPONSE_PAYLOAD",
+    "RESPONSE_PAYLOAD_TOO_LARGE"
+  ],
+  "continuation": {
+    "strategy": "snapshot-bound-offset-cursor",
+    "deterministic_for_stable_snapshot": true,
+    "rejects_snapshot_drift": true,
+    "silent_truncation": false
+  },
+  "coverage": {
+    "hourly": "bounded window, provider/model breadth, source-row cap, page-size cap, snapshot-bound continuation and byte envelope",
+    "daily": "bounded 15-day window; existing response cardinality is provider/day bounded",
+    "verification": "bounded 366-day window plus explicit sample cap before metric publication",
+    "monthly_reporting": "calendar-month query window validated against 31-day maximum",
+    "health_readiness": "no pagination/query expansion; remains lightweight and independent of benchmark query guards"
+  },
+  "authority": {
+    "production_data_mutation_authority_granted": false,
+    "production_schema_or_index_mutation_authority_granted": false,
+    "runtime_live_authority_granted": false,
+    "reverse_proxy_rate_limit_authority_granted": false,
+    "cloudflare_network_authority_granted": false
+  },
+  "privacy": {
+    "request_values_echoed_in_blocked_responses": false,
+    "private_coordinates_exposed": false,
+    "credentials_exposed": false,
+    "database_path_exposed": false,
+    "raw_logs_exposed": false
+  }
+}
