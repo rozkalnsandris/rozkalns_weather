@@ -6,6 +6,7 @@ from math import sqrt
 from statistics import mean
 from typing import Iterable, Mapping
 
+from .missing_values import require_present_numeric
 from .precip_events import (
     DEFAULT_PRECIP_EVENT,
     PRECIP_EVENT_REGISTRY_VERSION,
@@ -28,6 +29,15 @@ class ErrorPair:
     p10: float | None = None
     p90: float | None = None
 
+    def __post_init__(self) -> None:
+        require_present_numeric(self.forecast, provider=self.provider, field="forecast")
+        require_present_numeric(self.observed, provider=self.provider, field="observed")
+        require_present_numeric(self.lead_hours, provider=self.provider, field="lead_hours")
+        if self.p10 is not None:
+            require_present_numeric(self.p10, provider=self.provider, field="p10")
+        if self.p90 is not None:
+            require_present_numeric(self.p90, provider=self.provider, field="p90")
+
 
 @dataclass(frozen=True, slots=True)
 class ProbabilityPair:
@@ -42,6 +52,9 @@ class ProbabilityPair:
     event_registry_version: str = PRECIP_EVENT_REGISTRY_VERSION
 
     def __post_init__(self) -> None:
+        require_present_numeric(self.probability, provider=self.provider, field="probability")
+        require_present_numeric(self.observed_event, provider=self.provider, field="observed_event")
+        require_present_numeric(self.lead_hours, provider=self.provider, field="lead_hours")
         if not 0.0 <= self.probability <= 1.0:
             raise ValueError("probability must be in [0,1]")
         if self.observed_event not in {0.0, 1.0}:
@@ -161,6 +174,7 @@ def summary_quantile_coverage(
     forecast-quantile-admissibility contract.
     """
 
+    require_present_numeric(observed, provider="verification", field="observed")
     lower, upper = interval_bounds(
         quantile_evidence,
         lower_statistic=lower_statistic,
