@@ -1,0 +1,98 @@
+{
+  "schema_version": 1,
+  "contract": "value-provenance-trace-v1",
+  "canonical_benchmark": {
+    "location_id": "station_05480",
+    "truth_source_provider": "DWD",
+    "station_id": "05480"
+  },
+  "forecast_snapshot_identity": {
+    "field": "raw_payload_hash",
+    "format": "sha256_lower_hex",
+    "revision_field": "revision"
+  },
+  "required_forecast_dimensions": [
+    "provider",
+    "model_provider",
+    "model_name",
+    "model_version",
+    "source_surface",
+    "init_time_utc",
+    "retrieved_at_utc",
+    "valid_time_utc",
+    "lead_hours",
+    "location_id",
+    "variable",
+    "statistic",
+    "value",
+    "unit"
+  ],
+  "truth_identity": [
+    "source_provider",
+    "station_id",
+    "location_id",
+    "observed_at_utc",
+    "variable",
+    "value",
+    "unit"
+  ],
+  "stable_reason_codes": [
+    "MISSING_SNAPSHOT_ID",
+    "INVALID_SNAPSHOT_ID",
+    "INCOMPLETE_PROVENANCE",
+    "MISSING_MODEL_VERSION",
+    "MISSING_LOCATION_IDENTITY",
+    "MISSING_TRUTH_IDENTITY",
+    "MISSING_METRIC_IDENTITY",
+    "MISSING_VERIFICATION_RECEIPT",
+    "INVALID_VERIFICATION_RECEIPT",
+    "BROKEN_LINEAGE",
+    "MIXED_MODEL_VERSIONS",
+    "VERIFICATION_RECEIPT_MISMATCH",
+    "EMPTY_TRACE_BUNDLE",
+    "NON_CANONICAL_TRACE_VALUE"
+  ],
+  "privacy": {
+    "home_location_identity": {
+      "id": "home",
+      "scope": "private_home",
+      "coordinates_exposed": false
+    },
+    "forbidden_output_classes": [
+      "HOME_LAT",
+      "HOME_LON",
+      "latitude",
+      "longitude",
+      "database_path",
+      "credentials",
+      "raw_logs"
+    ]
+  },
+  "presentation": {
+    "provider_values_remain_separate": true,
+    "combined_weighting_emitted": false,
+    "pwa_drilldown_fields": [
+      "provider",
+      "model_name",
+      "model_version",
+      "snapshot_id",
+      "init_time_utc",
+      "valid_time_utc",
+      "lead_hours",
+      "retrieved_at_utc",
+      "variable",
+      "statistic",
+      "unit"
+    ],
+    "verification_drilldown_adds": [
+      "truth_trace_identity_sha256",
+      "metric_identity",
+      "report_lineage_identity_sha256"
+    ]
+  },
+  "authority": {
+    "production_corpus_mutation": false,
+    "runtime_live_mutation": false,
+    "historical_station_10416_rewrite": false
+  }
+}
