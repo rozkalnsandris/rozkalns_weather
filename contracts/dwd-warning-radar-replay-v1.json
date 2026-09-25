@@ -1,0 +1,37 @@
+{
+  "schema": "dwd-warning-radar-replay-v1",
+  "warning_authority": "DWD",
+  "warning_actions": ["issue", "update", "cancel", "expire"],
+  "radar_kinds": ["radar_observed", "radar_nowcast"],
+  "states": ["PASS", "WARN", "BLOCKED"],
+  "stable_reason_codes": [
+    "REPLAY_INPUT_INVALID",
+    "REPLAY_SCENARIO_ID_INVALID",
+    "REPLAY_STEPS_MISSING",
+    "REPLAY_STEP_INVALID",
+    "REPLAY_STEP_TIME_INVALID",
+    "REPLAY_STEP_TIME_NOT_INCREASING",
+    "REPLAY_WARNING_EVENTS_INVALID",
+    "REPLAY_WARNING_EVENT_INVALID",
+    "REPLAY_WARNING_ACTION_INVALID",
+    "REPLAY_WARNING_ID_INVALID",
+    "REPLAY_WARNING_DUPLICATE_ISSUE",
+    "REPLAY_WARNING_UPDATE_MISSING_BASE",
+    "REPLAY_WARNING_UPDATE_INVALID",
+    "REPLAY_WARNING_CANCEL_MISSING_BASE",
+    "REPLAY_WARNING_EXPIRE_MISSING_BASE",
+    "REPLAY_RADAR_FRAMES_INVALID"
+  ],
+  "delegated_map_validation_contract": "live-map-validation-v1",
+  "privacy": {
+    "input_coordinates": "synthetic-only",
+    "coordinates_in_output": false,
+    "geometry_in_output": false,
+    "credentials_in_output": false,
+    "raw_payload_in_output": false
+  },
+  "network_access_performed": false,
+  "runtime_mutation_performed": false,
+  "live_authority_granted": false,
+  "model_warning_substitution_allowed": false
+}
