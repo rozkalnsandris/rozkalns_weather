@@ -14,6 +14,7 @@ CANONICAL_SERIALIZATION_CONTRACT = "canonical-evidence-serialization-v1"
 CANONICAL_SERIALIZATION_SCHEMA_VERSION = 1
 
 _UTC_FIELD_RE = re.compile(r"(?:^|_)utc$")
+_UTC_TIMESTAMP_CANDIDATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}(?:[Tt ]|$)")
 _UTC_TIMESTAMP_RE = re.compile(
     r"^(?P<date>\d{4}-\d{2}-\d{2})[Tt ](?P<time>\d{2}:\d{2}:\d{2})"
     r"(?P<fraction>\.\d+)?(?P<zone>Z|z|\+00(?::?00)?)$"
@@ -110,7 +111,11 @@ def _encode(value: object, *, field_name: str | None = None) -> str:
             )
         return _quoted(_normalize_utc_timestamp(value.isoformat().replace("+00:00", "Z")))
     if isinstance(value, str):
-        if field_name is not None and _UTC_FIELD_RE.search(field_name.lower()):
+        if (
+            field_name is not None
+            and _UTC_FIELD_RE.search(field_name.lower())
+            and _UTC_TIMESTAMP_CANDIDATE_RE.search(value.strip())
+        ):
             value = _normalize_utc_timestamp(value)
         return _quoted(value)
     if isinstance(value, Mapping):
@@ -136,11 +141,12 @@ def _encode(value: object, *, field_name: str | None = None) -> str:
 def canonical_json_bytes(value: object) -> bytes:
     """Serialize evidence to versioned, deterministic UTF-8 JSON plus one LF.
 
-    Object keys are sorted lexicographically; array order is preserved. UTC fields
-    named ``utc`` or ending in ``_utc`` normalize equivalent zero-offset timestamp
-    spellings without reducing fractional-second precision. Finite floats use the
-    runtime's shortest round-trip decimal representation with normalized exponent
-    spelling, and signed zero is canonicalized to JSON numeric zero. No domain
+    Object keys are sorted lexicographically; array order is preserved. Timestamp-like
+    strings in fields named ``utc`` or ending in ``_utc`` normalize equivalent
+    zero-offset timestamp spellings without reducing fractional-second precision;
+    non-timestamp metadata tokens under those keys remain ordinary strings. Finite
+    floats use the runtime's shortest round-trip decimal representation with normalized
+    exponent spelling, and signed zero is canonicalized to JSON numeric zero. No domain
     rounding, imputation, unit conversion, or value correction is performed.
     """
 
@@ -165,7 +171,7 @@ def canonical_contract_evidence() -> dict[str, Any]:
         "terminator": "LF",
         "object_key_order": "lexicographic_unicode_codepoint",
         "array_order": "preserved",
-        "utc_timestamp_fields": "utc_or_suffix__utc",
+        "utc_timestamp_fields": "timestamp_like_strings_in_utc_or_suffix__utc",
         "numeric_policy": {
             "finite_only": True,
             "float_representation": "shortest_round_trip_decimal",
