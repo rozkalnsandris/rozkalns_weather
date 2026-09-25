@@ -26,23 +26,33 @@ def _compose_snapshot(path: Path) -> dict[str, Any]:
     services: dict[str, dict[str, Any]] = {}
     current: str | None = None
     in_services = False
+    in_environment = False
     for line in text.splitlines():
         if line == "services:":
             in_services = True
             continue
         if in_services and line and not line.startswith(" "):
             break
-        match = re.match(r"^  ([A-Za-z0-9_-]+):\s*$", line) if in_services else None
-        if match:
-            current = match.group(1)
+        service_match = re.match(r"^  ([A-Za-z0-9_-]+):\s*$", line) if in_services else None
+        if service_match:
+            current = service_match.group(1)
             services[current] = {"environment": {}, "text": ""}
+            in_environment = False
             continue
         if current is None:
             continue
         services[current]["text"] += line + "\n"
-        env_match = re.match(r"^\s+-\s+([A-Z0-9_]+)=(.*)$", line)
-        if env_match:
-            services[current]["environment"][env_match.group(1)] = env_match.group(2)
+        if line == "    environment:":
+            in_environment = True
+            continue
+        if in_environment:
+            env_match = re.match(r"^      ([A-Z0-9_]+):\s*(.*)$", line)
+            if env_match:
+                value = env_match.group(2).strip().strip('"').strip("'")
+                services[current]["environment"][env_match.group(1)] = value
+                continue
+            if line and not line.startswith("      "):
+                in_environment = False
 
     for payload in services.values():
         body = str(payload.pop("text"))
