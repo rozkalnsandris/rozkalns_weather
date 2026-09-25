@@ -1,0 +1,121 @@
+{
+  "cases": [
+    {
+      "name": "added_optional_field",
+      "previous": {
+        "family": "monthly_report",
+        "name": "public_monthly_benchmark_report",
+        "contract": "public-monthly-benchmark-report-v1",
+        "version": 1,
+        "fields": {
+          "state": {"required": true, "nullable": false, "type": "string", "enum": ["PASS", "WARN", "BLOCKED"]}
+        }
+      },
+      "current": {
+        "family": "monthly_report",
+        "name": "public_monthly_benchmark_report",
+        "contract": "public-monthly-benchmark-report-v2",
+        "version": 2,
+        "fields": {
+          "state": {"required": true, "nullable": false, "type": "string", "enum": ["PASS", "WARN", "BLOCKED"]},
+          "diagnostic_note": {"required": false, "nullable": true, "type": "string", "default": null}
+        }
+      },
+      "expected_classification": "additive-compatible",
+      "expected_reason": "OPTIONAL_FIELD_ADDED:diagnostic_note"
+    },
+    {
+      "name": "removed_required_field",
+      "previous": {
+        "family": "verification_summary",
+        "name": "verification_summary",
+        "contract": "verification-summary-v1",
+        "version": 1,
+        "fields": {
+          "n": {"required": true, "nullable": false, "type": "integer"},
+          "mae": {"required": true, "nullable": true, "type": "number"}
+        }
+      },
+      "current": {
+        "family": "verification_summary",
+        "name": "verification_summary",
+        "contract": "verification-summary-v2",
+        "version": 2,
+        "fields": {
+          "n": {"required": true, "nullable": false, "type": "integer"}
+        }
+      },
+      "expected_classification": "breaking",
+      "expected_reason": "REQUIRED_FIELD_REMOVED:mae"
+    },
+    {
+      "name": "renamed_required_field",
+      "previous": {
+        "family": "benchmark_export",
+        "name": "public_benchmark_export",
+        "contract": "public-benchmark-export-v1",
+        "version": 1,
+        "fields": {
+          "source_sha": {"required": true, "nullable": false, "type": "string"}
+        }
+      },
+      "current": {
+        "family": "benchmark_export",
+        "name": "public_benchmark_export",
+        "contract": "public-benchmark-export-v2",
+        "version": 2,
+        "fields": {
+          "source_revision": {"required": true, "nullable": false, "type": "string"}
+        }
+      },
+      "expected_classification": "breaking",
+      "expected_reason": "REQUIRED_FIELD_REMOVED:source_sha"
+    },
+    {
+      "name": "enum_expansion",
+      "previous": {
+        "family": "monthly_report",
+        "name": "public_monthly_benchmark_report",
+        "contract": "public-monthly-benchmark-report-v1",
+        "version": 1,
+        "fields": {
+          "state": {"required": true, "nullable": false, "type": "string", "enum": ["PASS", "BLOCKED"]}
+        }
+      },
+      "current": {
+        "family": "monthly_report",
+        "name": "public_monthly_benchmark_report",
+        "contract": "public-monthly-benchmark-report-v2",
+        "version": 2,
+        "fields": {
+          "state": {"required": true, "nullable": false, "type": "string", "enum": ["PASS", "WARN", "BLOCKED"]}
+        }
+      },
+      "expected_classification": "reader-compatible",
+      "expected_reason": "ENUM_VALUE_ADDED:state"
+    },
+    {
+      "name": "nullability_change",
+      "previous": {
+        "family": "reproducibility_receipt",
+        "name": "verification_report_lineage",
+        "contract": "verification-report-lineage-v1",
+        "version": 1,
+        "fields": {
+          "source_sha": {"required": true, "nullable": false, "type": "string"}
+        }
+      },
+      "current": {
+        "family": "reproducibility_receipt",
+        "name": "verification_report_lineage",
+        "contract": "verification-report-lineage-v2",
+        "version": 2,
+        "fields": {
+          "source_sha": {"required": true, "nullable": true, "type": "string"}
+        }
+      },
+      "expected_classification": "breaking",
+      "expected_reason": "FIELD_NULLABILITY_CHANGED:source_sha"
+    }
+  ]
+}
