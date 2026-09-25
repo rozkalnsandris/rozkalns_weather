@@ -159,6 +159,7 @@ def _value(valid: datetime, lead: float, variable: str, value: float, unit: str,
 def test_hourly_conditions_keep_provider_run_and_valid_time_aligned(tmp_path) -> None:
     database = Database(f"sqlite:///{tmp_path / 'conditions.db'}")
     database.initialize()
+    database.ensure_home_location(label="Home", lat=51.5, lon=7.6, timezone="Europe/Berlin")
     init = datetime(2026, 9, 25, 6, tzinfo=timezone.utc)
     valid = init + timedelta(hours=2)
     retrieved = init + timedelta(hours=1)

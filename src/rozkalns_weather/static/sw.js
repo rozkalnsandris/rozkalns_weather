@@ -1,6 +1,6 @@
 const CACHE = "rozkalns-weather-v4";
 const CACHE_PREFIX = "rozkalns-weather-";
-const ASSETS = [
+const ASSETS=[
   "/",
   "/static/app.css",
   "/static/app.js",
