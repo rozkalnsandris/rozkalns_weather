@@ -2,10 +2,17 @@ from __future__ import annotations
 
 from collections import defaultdict
 from datetime import datetime, timezone
+import json
 from statistics import mean
 from typing import Any
 
 from .db import Database
+from .ensemble_completeness import (
+    CONTRACT_VERSION as ENSEMBLE_COMPLETENESS_CONTRACT_VERSION,
+    evaluate_member_set,
+    evaluate_run_stability,
+    metric_eligible,
+)
 from .events import EventPair, matched_event_groups
 from .leaderboard import SkillSample, common_sample_leaderboard
 from .locations import DWD_10416
@@ -164,12 +171,23 @@ def _common_wins_losses(rows: list[dict[str, object]]) -> tuple[dict[str, int], 
     return common_counts, rows_out
 
 
+def _source_metadata(raw: object) -> dict[str, object]:
+    if raw in (None, ""):
+        return {}
+    try:
+        parsed = json.loads(str(raw))
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return {}
+    return parsed if isinstance(parsed, dict) else {}
+
+
 def _ensemble_calibration(database: Database, *, start: str, end: str) -> dict[str, object]:
     with database.connect() as connection:
         rows = [
             dict(row)
             for row in connection.execute(
-                """SELECT r.id AS run_id,r.provider,r.model_version,
+                """SELECT r.id AS run_id,r.provider,r.model_version,r.init_time_utc,
+                          r.source_surface,r.source_metadata_json,
                           v.valid_time_utc,v.lead_hours,v.variable,v.statistic,v.value,
                           o.value AS observed_value
                    FROM forecast_runs r
@@ -198,6 +216,37 @@ def _ensemble_calibration(database: Database, *, start: str, end: str) -> dict[s
             )
         ].append(row)
 
+    completeness: dict[tuple[str, int, str, str], dict[str, object]] = {}
+    stability_inputs: dict[tuple[str, int, str], list[dict[str, object]]] = defaultdict(list)
+    for key, member_rows in grouped.items():
+        provider, run_id, valid_time, variable = key
+        first = member_rows[0]
+        metadata = _source_metadata(first.get("source_metadata_json"))
+        declared_raw = metadata.get("documented_member_count")
+        declared_count = int(declared_raw) if isinstance(declared_raw, int) else None
+        evidence = evaluate_member_set(
+            provider_id=provider,
+            member_ids=tuple(str(row["statistic"]) for row in member_rows),
+            model_versions=tuple(
+                str(row["model_version"]) if row.get("model_version") is not None else None
+                for row in member_rows
+            ),
+            init_time_utc=str(first["init_time_utc"]),
+            valid_time_utc=valid_time,
+            lead_hours=float(first["lead_hours"]),
+            variable=variable,
+            source_surface=str(first["source_surface"]),
+            declared_member_count=declared_count,
+            retention_truncated=bool(metadata.get("retention_truncated", False)),
+        )
+        completeness[key] = evidence
+        stability_inputs[(provider, run_id, variable)].append(evidence)
+
+    stability = {
+        key: evaluate_run_stability(evidence)
+        for key, evidence in stability_inputs.items()
+    }
+
     crps: dict[str, dict[str, list[float]]] = defaultdict(lambda: defaultdict(list))
     temperature_wis: dict[str, list[float]] = defaultdict(list)
     temperature_coverage: dict[str, list[float]] = defaultdict(list)
@@ -205,11 +254,34 @@ def _ensemble_calibration(database: Database, *, start: str, end: str) -> dict[s
     precipitation_members: dict[str, list[list[float]]] = defaultdict(list)
     precipitation_observed: dict[str, list[float]] = defaultdict(list)
     group_counts: dict[str, int] = defaultdict(int)
+    eligible_group_counts: dict[str, int] = defaultdict(int)
+    status_counts: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
+    reason_counts: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
+    evidence_by_provider: dict[str, list[dict[str, object]]] = defaultdict(list)
 
-    for (provider, _run_id, _valid, variable), member_rows in grouped.items():
+    for (provider, run_id, _valid, variable), member_rows in grouped.items():
+        group_counts[provider] += 1
+        evidence = completeness[(provider, run_id, str(member_rows[0]["valid_time_utc"]), variable)]
+        run_state = stability[(provider, run_id, variable)]
+        status_counts[provider][str(evidence["status"])] += 1
+        for reason in evidence["reason_codes"]:
+            reason_counts[provider][str(reason)] += 1
+        if run_state["status"] == "blocked":
+            reason_counts[provider]["MEMBER_SET_CHANGED"] += 1
+        evidence_by_provider[provider].append(
+            {
+                **evidence,
+                "run_stability_status": run_state["status"],
+                "run_stability_reason_codes": run_state["reason_codes"],
+            }
+        )
+
+        eligible = metric_eligible(evidence, "crps") and metric_eligible(run_state, "crps")
+        if not eligible:
+            continue
+        eligible_group_counts[provider] += 1
         members = [float(row["value"]) for row in member_rows]
         observed = float(member_rows[0]["observed_value"])
-        group_counts[provider] += 1
         crps[provider][variable].append(ensemble_crps(members, observed))
         if variable == "temperature_2m":
             interval = interval_score(members, observed, alpha=0.2)
@@ -221,16 +293,23 @@ def _ensemble_calibration(database: Database, *, start: str, end: str) -> dict[s
             precipitation_observed[provider].append(observed)
 
     result: dict[str, object] = {}
-    providers = sorted(set(group_counts) | set(precipitation_members) | set(temperature_wis))
-    for provider in providers:
+    for provider in sorted(group_counts):
         precip_members = precipitation_members.get(provider, [])
         precip_observed = precipitation_observed.get(provider, [])
         crps_values = crps.get(provider, {})
         temp_n = len(temperature_wis.get(provider, []))
         precip_n = len(precip_members)
+        eligible_n = eligible_group_counts.get(provider, 0)
+        total_n = group_counts.get(provider, 0)
         result[provider] = {
-            "n_member_groups": group_counts.get(provider, 0),
-            "sample_sufficiency_state": sample_confidence(group_counts.get(provider, 0)),
+            "member_completeness_contract": ENSEMBLE_COMPLETENESS_CONTRACT_VERSION,
+            "n_member_groups": total_n,
+            "n_metric_eligible_member_groups": eligible_n,
+            "n_metric_excluded_member_groups": total_n - eligible_n,
+            "member_completeness_status_counts": dict(sorted(status_counts.get(provider, {}).items())),
+            "member_exclusion_reason_counts": dict(sorted(reason_counts.get(provider, {}).items())),
+            "member_completeness_evidence": evidence_by_provider.get(provider, []),
+            "sample_sufficiency_state": sample_confidence(eligible_n),
             "mean_crps_by_variable": {
                 variable: mean(values)
                 for variable, values in sorted(crps_values.items())
@@ -328,6 +407,7 @@ def monthly_weather_next_report(database: Database, *, month: str) -> dict[str, 
     return {
         "report_type": "station_benchmark_monthly_v3",
         "sample_sufficiency_contract": "common-sample-sufficiency-v1",
+        "ensemble_member_completeness_contract": ENSEMBLE_COMPLETENESS_CONTRACT_VERSION,
         "precipitation_event_registry_version": PRECIP_EVENT_REGISTRY_VERSION,
         "precipitation_event_definition": DEFAULT_PRECIP_EVENT.as_dict(),
         "month": month,
@@ -356,8 +436,8 @@ def monthly_weather_next_report(database: Database, *, month: str) -> dict[str, 
             "Monthly deterministic comparisons use only common station valid-times inside each lead bucket and exact provider model-version cohort; "
             "each comparison row exposes missingness and sample-sufficiency evidence, and bootstrap MAE intervals are emitted only when n>=30. "
             "Wins/losses are also separated by the complete provider model-version cohort. "
-            "Ensemble calibration exposes n/sufficiency beside CRPS, interval/WIS and precipitation Brier evidence and uses stored member_* values only. "
-            "Precipitation Brier/reliability provenance is bound to the versioned registered event definition and genuine member fractions. "
+            "Ensemble calibration preserves every stored member group as completeness evidence but admits only complete, run-stable member sets to CRPS, interval/WIS, member-fraction probability, Brier and reliability metrics. "
+            "Missing ensemble members are never synthesized. Precipitation Brier/reliability provenance is bound to the versioned registered event definition and genuine member fractions. "
             "Release events are included only when previously recorded from verified source metadata."
         ),
     }
