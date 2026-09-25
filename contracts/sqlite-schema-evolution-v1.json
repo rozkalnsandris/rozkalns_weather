@@ -1,0 +1,94 @@
+{
+  "authority": {
+    "production_data_mutation_granted": false,
+    "production_schema_mutation_granted": false,
+    "runtime_live_authority_granted": false
+  },
+  "compatibility_expectations": {
+    "immutable_forecast_runs_required": true,
+    "immutable_forecast_values_required": true,
+    "location_aware_uniqueness_required": true,
+    "observation_identity_required": true,
+    "provider_health_identity_required": true,
+    "provider_model_provenance_required": true
+  },
+  "contract": "sqlite-schema-evolution-v1",
+  "current_schema_version": 1,
+  "evidence": {
+    "deterministic": true,
+    "include_database_path": false,
+    "include_production_rows": false,
+    "include_private_coordinates": false,
+    "states": [
+      "PASS",
+      "BLOCKED"
+    ]
+  },
+  "migration_metadata_required": [
+    "contract_id",
+    "from_version",
+    "to_version",
+    "operations",
+    "preconditions",
+    "rollback_semantics"
+  ],
+  "operation_policy": {
+    "add_column": {
+      "allowed": true,
+      "non_null_requires_default": true,
+      "safe_types": [
+        "TEXT",
+        "INTEGER",
+        "REAL",
+        "BLOB",
+        "NUMERIC"
+      ]
+    },
+    "create_non_unique_index": {
+      "allowed": true,
+      "all_columns_must_exist_or_be_added_by_same_contract": true
+    },
+    "destructive_or_ambiguous": {
+      "allowed": false,
+      "classification": "BLOCKED",
+      "required_followup": "separate explicit reviewed migration contract and production authorization"
+    },
+    "new_unique_constraint": {
+      "allowed": false,
+      "classification": "BLOCKED"
+    }
+  },
+  "partial_migration_policy": {
+    "all_operations_applied": "PASS_ALREADY_APPLIED",
+    "mixed_applied_and_pending": "BLOCKED_PARTIAL_MIGRATION",
+    "no_operations_applied": "PASS_PLAN"
+  },
+  "privacy": {
+    "credentials_allowed_in_evidence": false,
+    "private_coordinates_allowed_in_evidence": false,
+    "production_database_paths_allowed_in_evidence": false,
+    "production_rows_allowed_in_evidence": false
+  },
+  "production_boundary": {
+    "actual_migration_separately_gated": true,
+    "backup_restore_authority_granted": false,
+    "production_database_opened_by_gate": false,
+    "vacuum_analyze_authority_granted": false
+  },
+  "rollback": {
+    "automatic_column_rollback": false,
+    "index_rollback_requires_exact_authorized_index": true,
+    "rebuild_or_restore_requires_separate_authority": true
+  },
+  "schema_version": 1,
+  "supported_transitions": [
+    {
+      "allowed_operation_classes": [
+        "add_column",
+        "create_non_unique_index"
+      ],
+      "from_version": 1,
+      "to_version": 2
+    }
+  ]
+}
