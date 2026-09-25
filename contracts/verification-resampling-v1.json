@@ -1,0 +1,75 @@
+{
+  "contract": "verification-resampling-v1",
+  "schema_version": 1,
+  "status": "ACTIVE_SOURCE_GATE",
+  "algorithm": {
+    "method": "sha256-index-bootstrap",
+    "version": 1,
+    "seed_derivation": "canonical-sha256-v1",
+    "draw_index_derivation": "sha256(seed_identity:replicate:draw) modulo sample_count",
+    "percentile_method": "linear-interpolation-v1",
+    "supported_statistics": [
+      "mean",
+      "root_mean_square"
+    ]
+  },
+  "sample_sufficiency": {
+    "source": "rozkalns_weather.verification.sample_confidence",
+    "insufficient_sample": "n < 30",
+    "limited_sample": "30 <= n < 100",
+    "usable_sample": "n >= 100",
+    "resampling_allowed_for": [
+      "limited_sample",
+      "usable_sample"
+    ]
+  },
+  "identity_binding": [
+    "sample_identity_sha256",
+    "provider",
+    "model_name",
+    "model_version",
+    "lead_bucket",
+    "variable",
+    "comparison_mode",
+    "sample_count",
+    "metric_configuration_sha256",
+    "algorithm_method",
+    "algorithm_version",
+    "seed_identity_sha256",
+    "confidence_level",
+    "resample_count",
+    "statistic"
+  ],
+  "determinism": {
+    "sample_order_affects_identity": false,
+    "identical_inputs_reproduce_identical_interval": true,
+    "outcome_driven_seed_selection_allowed": false,
+    "runtime_randomness_used": false
+  },
+  "stable_reason_codes": [
+    "SAMPLE_NOT_ELIGIBLE",
+    "INSUFFICIENT_SAMPLE_COUNT",
+    "MISSING_SAMPLE_IDENTITY",
+    "DUPLICATE_SAMPLE_IDENTITY",
+    "INVALID_SAMPLE_VALUE",
+    "MISSING_RESAMPLING_BINDING",
+    "MISSING_METRIC_CONFIGURATION",
+    "UNSUPPORTED_STATISTIC",
+    "UNSUPPORTED_ALGORITHM_VERSION",
+    "INVALID_CONFIDENCE_LEVEL",
+    "INVALID_RESAMPLE_COUNT",
+    "MISSING_RESAMPLING_LINEAGE",
+    "RESAMPLING_RECEIPT_CONTRACT_MISMATCH",
+    "INVALID_RESAMPLING_RECEIPT_IDENTITY"
+  ],
+  "interpretation": {
+    "confidence_interval_is_uncertainty_evidence_only": true,
+    "ranking_verdict_allowed": false,
+    "combined_weighting_allowed": false
+  },
+  "authority": {
+    "production_corpus_mutation_granted": false,
+    "runtime_live_authority_granted": false,
+    "artifact_publication_authority_granted": false
+  }
+}
