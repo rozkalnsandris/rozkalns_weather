@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from collections import defaultdict
 from datetime import date, datetime, time, timedelta, timezone
-import hashlib
 import json
 from math import isfinite
 from pathlib import Path
@@ -11,6 +10,7 @@ import sqlite3
 from typing import Iterable, Mapping
 
 from .backfill import ARCHIVE_START, COMMON_BENCHMARK_START
+from .canonical_serialization import CanonicalSerializationError, canonical_sha256
 from .db import Database
 from .locations import DWD_10416
 from .models import utc_iso
@@ -121,12 +121,14 @@ class CorpusManifestError(ValueError):
         self.reason_code = reason_code
 
 
-def _canonical_json(value: object) -> bytes:
-    return (json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False) + "\n").encode("utf-8")
-
-
 def _sha256(value: object) -> str:
-    return hashlib.sha256(_canonical_json(value)).hexdigest()
+    try:
+        return canonical_sha256(value)
+    except CanonicalSerializationError as exc:
+        raise CorpusManifestError(
+            "NON_CANONICAL_MANIFEST_VALUE",
+            "corpus manifest identities require canonical finite JSON-compatible values",
+        ) from exc
 
 
 def _readonly_connection(database: Database) -> sqlite3.Connection:
