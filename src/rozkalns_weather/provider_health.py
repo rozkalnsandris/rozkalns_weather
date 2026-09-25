@@ -74,6 +74,7 @@ def classify_public_provider_health(
     *,
     now: datetime | None = None,
     latency_summary: Mapping[str, object] | None = None,
+    value_missingness_summary: Mapping[str, object] | None = None,
 ) -> dict[str, object]:
     if provider not in PUBLIC_PROVIDER_HEALTH_POLICIES:
         raise ValueError(f"provider is not in public recurring health scope: {provider}")
@@ -172,4 +173,6 @@ def classify_public_provider_health(
     }
     if latency_summary is not None:
         result["latency_benchmark"] = dict(latency_summary)
+    if value_missingness_summary is not None:
+        result["value_missingness"] = dict(value_missingness_summary)
     return result
