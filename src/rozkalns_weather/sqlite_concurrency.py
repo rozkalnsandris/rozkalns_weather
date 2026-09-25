@@ -382,21 +382,24 @@ def failed_and_contended_writes_are_atomic(path: Path) -> dict[str, object]:
                 "station_fixture",
                 "2026-09-25T06:00:00Z",
                 0.0,
-                "temperature_2m",
+                "precipitation_1h",
                 "deterministic",
-                11.0,
-                "C",
+                1.0,
+                "mm",
+                60,
             )
             contender.execute(
                 """INSERT INTO forecast_values(
-                       run_id,location_id,valid_time_utc,lead_hours,variable,statistic,value,unit
-                   ) VALUES(?,?,?,?,?,?,?,?)""",
+                       run_id,location_id,valid_time_utc,lead_hours,variable,statistic,value,unit,
+                       accumulation_window_minutes
+                   ) VALUES(?,?,?,?,?,?,?,?,?)""",
                 row,
             )
             contender.execute(
                 """INSERT INTO forecast_values(
-                       run_id,location_id,valid_time_utc,lead_hours,variable,statistic,value,unit
-                   ) VALUES(?,?,?,?,?,?,?,?)""",
+                       run_id,location_id,valid_time_utc,lead_hours,variable,statistic,value,unit,
+                       accumulation_window_minutes
+                   ) VALUES(?,?,?,?,?,?,?,?,?)""",
                 row,
             )
             contender.execute("COMMIT")
