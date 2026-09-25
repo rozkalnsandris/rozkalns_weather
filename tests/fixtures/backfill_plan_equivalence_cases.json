@@ -1,0 +1,26 @@
+{
+  "base_identity": {
+    "source_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "start_date": "2026-08-13",
+    "end_date": "2026-08-26",
+    "providers_models": ["icon_d2", "ecmwf_ifs", "ecmwf_aifs"],
+    "run_hours_utc": [0, 6, 12, 18],
+    "truth_chunks": ["2026-08-13..2026-08-26"],
+    "rate_limits": {
+      "forecast_requests_per_minute": 30,
+      "truth_requests_per_minute": 10
+    },
+    "checkpoint_namespace": "fixed-window-20260813-20260826-v1",
+    "recovery_decision": "verified_backup_available"
+  },
+  "cases": [
+    {"name": "exact_equivalence", "mutations": {}, "expected_state": "PASS"},
+    {"name": "widened_date_range", "mutations": {"identity.end_date": "2026-08-27"}, "expected_reason": "END_DATE_DRIFT"},
+    {"name": "added_provider", "mutations": {"identity.providers_models": ["icon_d2", "ecmwf_ifs", "ecmwf_aifs", "extra_model"]}, "expected_reason": "PROVIDERS_MODELS_DRIFT"},
+    {"name": "added_run_hour", "mutations": {"identity.run_hours_utc": [0, 3, 6, 12, 18]}, "expected_reason": "RUN_HOURS_UTC_DRIFT"},
+    {"name": "changed_chunking", "mutations": {"identity.truth_chunks": ["2026-08-13..2026-08-19", "2026-08-20..2026-08-26"]}, "expected_reason": "TRUTH_CHUNKS_DRIFT"},
+    {"name": "stale_checkpoint", "mutations": {"checkpoint.completed_truth_chunks": ["2026-08-20..2026-08-26"]}, "expected_reason": "CHECKPOINT_PREFIX_REORDERED_OR_EXPANDED"},
+    {"name": "changed_recovery", "mutations": {"identity.recovery_decision": "owner_accepts_proceeding_without_prewrite_backup"}, "expected_reason": "RECOVERY_DECISION_DRIFT"},
+    {"name": "harmless_progress", "mutations": {"progress_metadata.completed_count": 12, "progress_metadata.attempt": 2}, "expected_state": "PASS"}
+  ]
+}
