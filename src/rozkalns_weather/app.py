@@ -20,10 +20,12 @@ from .providers import PROVIDERS
 from .providers.dwd_cdc_observations import CDC_STATION_ID
 from .providers.weathernext import access_state
 from .provider_health import PUBLIC_PROVIDER_HEALTH_POLICIES, classify_public_provider_health
+from .provenance_api import blocked_trace_response, hourly_with_provenance, verification_value_trace
 from .radar_warnings import fetch_dwd_alerts, fetch_radar_point
 from .runtime import database_schema_state, readiness_payload
 from .semantics import PRECIP_EVENT_VERSION
 from .truth_quality import database_truth_quality
+from .value_provenance import ValueProvenanceError
 from .verification import ErrorPair, ProbabilityPair, brier_score, lead_bucket, reliability_bins, summarize
 from .verification_drilldown import verification_drilldown_month
 
@@ -305,7 +307,7 @@ def create_app(settings: Settings | None = None, database: Database | None = Non
             "hours": hours,
             "variable": variable,
             "location": {"id": location_id, "label": _public_location_label(location_id, settings), "coordinates_exposed": False},
-            "series": database.latest_hourly(hours=hours, variable=variable, location_id=location_id),
+            "series": hourly_with_provenance(database, hours=hours, variable=variable, location_id=location_id),
         }
 
     @app.get("/api/daily")
@@ -398,6 +400,28 @@ def create_app(settings: Settings | None = None, database: Database | None = Non
             return verification_drilldown_month(database, month=month)
         except ValueError as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    @app.get("/api/provenance/verification", response_model=None)
+    def provenance_verification(
+        provider: str = Query(..., min_length=1),
+        valid_time_utc: str = Query(..., min_length=1),
+        variable: str = Query("temperature_2m", min_length=1),
+        statistic: str = Query("deterministic", min_length=1),
+        metric_name: str = Query("absolute_error", min_length=1),
+    ) -> dict[str, object] | JSONResponse:
+        require_database_ready()
+        try:
+            return verification_value_trace(
+                database,
+                provider=provider,
+                valid_time_utc=valid_time_utc,
+                variable=variable,
+                statistic=statistic,
+                metric_name=metric_name,
+            )
+        except ValueProvenanceError as exc:
+            status_code = 404 if exc.reason_code in {"FORECAST_VALUE_NOT_FOUND", "TRUTH_VALUE_NOT_FOUND"} else 422
+            return JSONResponse(blocked_trace_response(exc), status_code=status_code)
 
     @app.get("/api/verification/precipitation")
     def precipitation_verification(days: int = Query(90, ge=1, le=3650)) -> dict[str, object]:
