@@ -1,0 +1,98 @@
+{
+  "scenario_id": "warning-radar-lifecycle",
+  "location": {"lat": 50.0, "lon": 8.0},
+  "map_bounds": {"south": 49.0, "west": 7.0, "north": 51.0, "east": 9.0},
+  "steps": [
+    {
+      "at": "2026-09-12T10:00:00Z",
+      "warning_events": [
+        {
+          "action": "issue",
+          "warning": {
+            "identifier": "fixture-warning-1",
+            "sent": "2026-09-12T09:55:00Z",
+            "effective": "2026-09-12T09:55:00Z",
+            "expires": "2026-09-12T12:00:00Z",
+            "headline": "Synthetic warning one",
+            "polygon": "49.5,7.5 49.5,8.5 50.5,8.5 50.5,7.5 49.5,7.5"
+          }
+        }
+      ],
+      "radar_frames": [
+        {"timestamp": "2026-09-12T09:50:00Z", "kind": "radar_observed"},
+        {"timestamp": "2026-09-12T10:30:00Z", "kind": "radar_nowcast"}
+      ]
+    },
+    {
+      "at": "2026-09-12T10:10:00Z",
+      "warning_events": [
+        {
+          "action": "update",
+          "id": "fixture-warning-1",
+          "changes": {
+            "updated": "2026-09-12T10:08:00Z",
+            "headline": "Synthetic warning one updated"
+          }
+        },
+        {
+          "action": "issue",
+          "warning": {
+            "identifier": "fixture-warning-2",
+            "sent": "2026-09-12T10:05:00Z",
+            "effective": "2026-09-12T10:05:00Z",
+            "expires": "2026-09-12T13:00:00Z",
+            "headline": "Synthetic overlapping warning",
+            "polygon": "49.7,7.7 49.7,8.3 50.3,8.3 50.3,7.7 49.7,7.7"
+          }
+        }
+      ],
+      "radar_frames": [
+        {"timestamp": "2026-09-12T10:05:00Z", "kind": "radar_observed"},
+        {"timestamp": "2026-09-12T10:40:00Z", "kind": "radar_nowcast"}
+      ]
+    },
+    {
+      "at": "2026-09-12T10:20:00Z",
+      "warning_events": [
+        {
+          "action": "update",
+          "id": "fixture-warning-1",
+          "changes": {
+            "updated": "2026-09-12T10:18:00Z",
+            "polygon": "52.0,10.0 52.0,11.0 53.0,11.0 53.0,10.0 52.0,10.0"
+          }
+        }
+      ],
+      "radar_frames": [
+        {"timestamp": "2026-09-12T09:50:00Z", "kind": "radar_observed"}
+      ]
+    },
+    {
+      "at": "2026-09-12T10:30:00Z",
+      "warning_events": [
+        {"action": "expire", "id": "fixture-warning-2"}
+      ],
+      "radar_frames": []
+    },
+    {
+      "at": "2026-09-12T10:40:00Z",
+      "warning_events": [
+        {"action": "cancel", "id": "fixture-warning-1"}
+      ],
+      "radar_frames": [
+        {"timestamp": "2026-09-12T10:35:00Z", "kind": "radar_observed"},
+        {"timestamp": "2026-09-12T11:00:00Z", "kind": "radar_nowcast"}
+      ]
+    },
+    {
+      "at": "2026-09-12T10:50:00Z",
+      "warning_events": [
+        {"action": "cancel", "id": "fixture-warning-2"}
+      ],
+      "radar_frames": [
+        {"timestamp": "2026-09-12T10:45:00Z", "kind": "radar_observed"},
+        {"timestamp": "2026-09-12T11:10:00Z", "kind": "radar_nowcast"}
+      ]
+    }
+  ]
+}
