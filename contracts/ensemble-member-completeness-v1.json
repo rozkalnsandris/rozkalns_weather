@@ -1,0 +1,53 @@
+{
+  "schema": "ensemble-member-completeness-v1",
+  "identity_convention": {
+    "control": ["control", "member_00", "member00"],
+    "perturbed_member": "memberNN / member_NN -> canonical memberNN",
+    "member_count_semantics": "total expected identities including control"
+  },
+  "models": {
+    "icon_d2_eps": {
+      "model_name": "ICON-D2-EPS",
+      "expected_member_count": 20,
+      "expected_canonical_ids": "control, member01..member19"
+    },
+    "ecmwf_ifs_ens": {
+      "model_name": "IFS ENS 0.25°",
+      "expected_member_count": 51,
+      "expected_canonical_ids": "control, member01..member50"
+    },
+    "ecmwf_aifs_ens": {
+      "model_name": "AIFS ENS 0.25°",
+      "expected_member_count": 51,
+      "expected_canonical_ids": "control, member01..member50"
+    }
+  },
+  "states": ["complete", "partial", "blocked", "unsupported"],
+  "metric_eligibility": [
+    "crps",
+    "empirical_interval",
+    "member_fraction_probability",
+    "brier",
+    "reliability"
+  ],
+  "reason_codes": [
+    "COMPLETE_MEMBER_SET",
+    "MISSING_MEMBER",
+    "DUPLICATE_MEMBER_ID",
+    "UNEXPECTED_MEMBER_ID",
+    "CONTROL_MEMBER_COLLISION",
+    "MEMBER_SET_CHANGED",
+    "EXPECTED_SIZE_CHANGED",
+    "MIXED_MODEL_VERSION",
+    "TRUNCATED_RETENTION",
+    "UNSUPPORTED_ENSEMBLE_CONTRACT",
+    "MEMBER_SET_STABLE",
+    "NO_MEMBER_SETS"
+  ],
+  "invariants": [
+    "raw member identity is preserved in evidence",
+    "missing members are never synthesized",
+    "partial, blocked and unsupported sets are ineligible for member-derived probabilistic verification metrics",
+    "completeness evidence is source-side eligibility evidence and does not grant corpus-write or LIVE authority"
+  ]
+}
