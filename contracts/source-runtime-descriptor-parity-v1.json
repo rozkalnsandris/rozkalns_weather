@@ -1,0 +1,53 @@
+{
+  "contract": "source-runtime-descriptor-parity-v1",
+  "schema_version": 1,
+  "purpose": "Validate reviewed source contracts for internal runtime-descriptor parity without claiming live deployment or health.",
+  "source_surfaces": [
+    "deploy/runtime-descriptor.json",
+    "deploy/docker-compose.public.yml",
+    "deploy/public-ingest-schedule.json",
+    ".simple-deploy.json",
+    "deploy/production-public-corpus-bootstrap.json",
+    "deploy/release-artifact-identity.json",
+    "deploy/rpi5-source-binding.json",
+    "deploy/rozkalns-weather-public-ingest.service.example",
+    "deploy/rozkalns-weather-public-ingest.timer.example"
+  ],
+  "stable_reason_codes": [
+    "COMPOSE_FILE_IDENTITY_MISMATCH",
+    "COMPOSE_PROJECT_MISMATCH",
+    "COMPOSE_SERVICE_IDENTITY_MISMATCH",
+    "DATABASE_INIT_MODE_MISMATCH",
+    "IMPLICIT_SCHEMA_INIT_UNSUPPORTED",
+    "INGEST_SERVICE_MISMATCH",
+    "LIVENESS_ENDPOINT_MISMATCH",
+    "MISSING_COMPOSE_SERVICE",
+    "READINESS_ENDPOINT_MISMATCH",
+    "RELEASE_IMAGE_IDENTITY_MISMATCH",
+    "RELEASE_RUNTIME_IDENTITY_MISMATCH",
+    "RUNTIME_MODE_MISMATCH",
+    "SHARED_WORKFLOW_IDENTITY_MISMATCH",
+    "STALE_SOURCE_BINDING",
+    "TARGET_ALIAS_MISMATCH",
+    "TIMER_JOB_IDENTITY_MISMATCH"
+  ],
+  "states": ["PASS", "BLOCKED"],
+  "runtime_evidence_boundary": {
+    "source_parity_can_be_proven": true,
+    "runtime_deployed_can_be_proven_from_source": false,
+    "runtime_healthy_can_be_proven_from_source": false,
+    "host_state_observed": false,
+    "future_live_evidence_repository": "rozkalnsandris/RPi5_main"
+  },
+  "privacy": {
+    "private_host_paths_allowed": false,
+    "host_inventory_allowed": false,
+    "credentials_or_secrets_allowed": false,
+    "home_coordinates_allowed": false
+  },
+  "authority": {
+    "live_authority_granted": false,
+    "runtime_mutation_allowed": false,
+    "production_data_mutation_allowed": false
+  }
+}
