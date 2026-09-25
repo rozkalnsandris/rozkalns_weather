@@ -144,10 +144,12 @@ def _normalize_observation(
         if _utc(metadata_retrieved, field="source_metadata.retrieved_at_utc") != retrieval_at:
             reasons.append("RETRIEVAL_PROVENANCE_MISMATCH")
 
+    # Retrieval time is validated separately and belongs to revision identity.
+    # It must not make an otherwise unchanged source payload look revised.
     provenance = {
         field: metadata.get(field)
         for field in _REQUIRED_PROVENANCE_FIELDS
-        if metadata.get(field) not in (None, "")
+        if field != "retrieved_at_utc" and metadata.get(field) not in (None, "")
     }
     sample_key = {
         "source_provider": "DWD",
