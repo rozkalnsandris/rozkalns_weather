@@ -1,0 +1,92 @@
+{
+  "contract": "recovery-readiness-fault-injection-v1",
+  "schema_version": 1,
+  "status": "ACTIVE_SOURCE_GATE",
+  "scope": {
+    "synthetic_disposable_artifacts_only": true,
+    "production_paths_allowed": false,
+    "production_backup_or_restore_allowed": false,
+    "runtime_live_authority_granted": false
+  },
+  "scenarios": [
+    "valid_backup",
+    "truncated_sqlite",
+    "checksum_mismatch",
+    "missing_required_table",
+    "broken_provenance_chain",
+    "incompatible_schema_identity",
+    "ambiguous_source_identity",
+    "missing_metadata"
+  ],
+  "classifications": [
+    "VALID_BACKUP",
+    "INVALID_BACKUP",
+    "AMBIGUOUS_SOURCE_IDENTITY",
+    "INCOMPATIBLE_SCHEMA"
+  ],
+  "stable_reason_codes": [
+    "BACKUP_CHECKSUM_MISMATCH",
+    "CORPUS_MANIFEST_CHECKSUM_MISMATCH",
+    "SQLITE_UNREADABLE_OR_CORRUPT",
+    "SQLITE_INTEGRITY_FAILED",
+    "REQUIRED_TABLES_MISSING",
+    "SOURCE_IDENTITY_AMBIGUOUS",
+    "SCHEMA_IDENTITY_INCOMPATIBLE",
+    "CORPUS_MANIFEST_UNREADABLE",
+    "REFERENCE_FIXTURE_MUTATED",
+    "UNEXPECTED_SCENARIO_OUTCOME"
+  ],
+  "validator_reuse": {
+    "backup_readiness": "corpus-retention-readiness-v1",
+    "provenance_manifest": "corpus-provenance-manifest-v1",
+    "schema_evolution": "sqlite-schema-evolution-v1"
+  },
+  "suite_pass_semantics": {
+    "valid_backup_must_pass": true,
+    "all_injected_faults_must_block": true,
+    "reference_fixture_must_remain_unchanged": true,
+    "restore_must_not_run": true
+  },
+  "future_owner_gates": {
+    "REAL_BACKUP_VERIFICATION": {
+      "mutation_allowed": false,
+      "required_binding": [
+        "exact_host",
+        "exact_backup_identity",
+        "backup_sha256",
+        "reviewed_source_sha",
+        "corpus_manifest_sha256"
+      ]
+    },
+    "RESTORE_TARGET_SELECTION": {
+      "mutation_allowed": false,
+      "required_binding": [
+        "exact_restore_target_identity",
+        "verified_backup_identity",
+        "reviewed_source_sha",
+        "accepted_recovery_decision"
+      ]
+    },
+    "PRODUCTION_RECOVERY_MUTATION": {
+      "mutation_allowed": true,
+      "requires_separate_live_data_authorization": true,
+      "required_binding": [
+        "exact_host",
+        "reviewed_source_or_release_sha",
+        "exact_backup_sha256",
+        "exact_restore_target",
+        "exact_mutation",
+        "affected_resources",
+        "verification_semantics",
+        "rollback_semantics"
+      ]
+    }
+  },
+  "authority": {
+    "production_backup_verification_granted": false,
+    "restore_target_selection_granted": false,
+    "production_recovery_mutation_granted": false,
+    "filesystem_cleanup_granted": false,
+    "runtime_live_authority_granted": false
+  }
+}
