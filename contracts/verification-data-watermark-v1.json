@@ -1,0 +1,38 @@
+{
+  "contract": "verification-data-watermark-v1",
+  "schema_version": 1,
+  "purpose": "Freeze verification/report eligibility to data defensibly available by an explicit as_of cutoff without mutating corpus history.",
+  "required_output_fields": [
+    "contract",
+    "schema_version",
+    "state",
+    "read_only",
+    "as_of_utc",
+    "report_generated_at_utc",
+    "watermark_identity_sha256",
+    "matched_set_identity_sha256",
+    "eligible_sample_ids",
+    "summary",
+    "samples",
+    "latency_context",
+    "history_policy",
+    "privacy"
+  ],
+  "stable_reason_codes": [
+    "ON_TIME",
+    "LATE_FORECAST_RETRIEVAL",
+    "LATE_TRUTH_ARRIVAL",
+    "POST_CUTOFF_TRUTH_REVISION",
+    "FORECAST_MISSING",
+    "TRUTH_MISSING"
+  ],
+  "rules": {
+    "forecast_availability_source": "actual forecast retrieved_at_utc only",
+    "truth_availability_source": "actual DWD truth revision retrieved_at_utc only",
+    "fabricated_availability_timestamps": false,
+    "late_data_deleted": false,
+    "corpus_history_mutated": false,
+    "automatic_ranking_or_weighting": false,
+    "runtime_live_authority": false
+  }
+}
