@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Iterable
 
+from .weather_conditions import SUPPORTED_WMO_CODES
+
 SEMANTIC_CONTRACT_VERSION = "forecast-semantic-v1"
 PRECIP_EVENT_VERSION = "precip-occurrence-v1"
 DEFAULT_PRECIP_EVENT_THRESHOLD_MM = 0.1
@@ -18,6 +20,8 @@ VARIABLES: dict[str, dict[str, Any]] = {
     "wind_speed_10m": {"unit": "m/s", "kind": "instantaneous"},
     "wind_gust_10m": {"unit": "m/s", "kind": "instantaneous"},
     "cloud_cover": {"unit": "%", "kind": "instantaneous"},
+    "weather_code": {"unit": "wmo_code", "kind": "instantaneous"},
+    "is_day": {"unit": "1", "kind": "instantaneous"},
     "precipitation_1h": {"unit": "mm", "kind": "accumulation", "window_minutes": 60},
     "precipitation_probability_1h": {
         "unit": "%",
@@ -29,7 +33,7 @@ VARIABLES: dict[str, dict[str, Any]] = {
 
 PROVIDER_NATIVE_MAPS = {
     "dwd_mosmix_l": {"TTT": "temperature_2m", "Td": "dew_point_2m", "FF": "wind_speed_10m", "FX1": "wind_gust_10m", "PPPP": "pressure_msl", "N": "cloud_cover", "RR1c": "precipitation_1h"},
-    "open_meteo": {"temperature_2m": "temperature_2m", "dew_point_2m": "dew_point_2m", "wind_speed_10m": "wind_speed_10m", "wind_gusts_10m": "wind_gust_10m", "pressure_msl": "pressure_msl", "cloud_cover": "cloud_cover", "precipitation": "precipitation_1h", "precipitation_probability": "precipitation_probability_1h"},
+    "open_meteo": {"temperature_2m": "temperature_2m", "dew_point_2m": "dew_point_2m", "wind_speed_10m": "wind_speed_10m", "wind_gusts_10m": "wind_gust_10m", "pressure_msl": "pressure_msl", "cloud_cover": "cloud_cover", "weather_code": "weather_code", "is_day": "is_day", "precipitation": "precipitation_1h", "precipitation_probability": "precipitation_probability_1h"},
     "weathernext3": {"station_head_temperature_2m": "temperature_2m", "station_head_dewpoint_temperature_2m": "dew_point_2m", "wind_speed_10m": "wind_speed_10m", "mean_sea_level_pressure": "pressure_msl", "total_cloud_cover": "cloud_cover", "total_precipitation_1hr": "precipitation_1h"},
 }
 
@@ -128,6 +132,14 @@ def validate_semantics(
 
     if definition["kind"] == "probability" and not 0.0 <= value <= 100.0:
         errors.append(f"invalid_probability:{variable}")
+
+    numeric = float(value)
+    if variable == "weather_code":
+        if not numeric.is_integer() or int(numeric) not in SUPPORTED_WMO_CODES:
+            errors.append("invalid_weather_code")
+    elif variable == "is_day" and numeric not in {0.0, 1.0}:
+        errors.append("invalid_is_day")
+
     return errors
 
 

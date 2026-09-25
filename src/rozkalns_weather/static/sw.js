@@ -1,1 +1,30 @@
-const CACHE='rozkalns-weather-v3';const ASSETS=['/','/static/app.css','/static/app.js','/static/time_semantics.js','/static/manifest.webmanifest','/static/icon.svg'];self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS))));self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(fetch(e.request).catch(()=>caches.match(e.request))) });
+const CACHE = "rozkalns-weather-v4";
+const CACHE_PREFIX = "rozkalns-weather-";
+const ASSETS=[
+  "/",
+  "/static/app.css",
+  "/static/app.js",
+  "/static/weather_ui.js",
+  "/static/time_semantics.js",
+  "/static/manifest.webmanifest",
+  "/static/icon.svg",
+];
+
+self.addEventListener("install", (event) => {
+  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(ASSETS)));
+});
+
+self.addEventListener("activate", (event) => {
+  event.waitUntil(
+    caches.keys().then((names) => Promise.all(
+      names
+        .filter((name) => name.startsWith(CACHE_PREFIX) && name !== CACHE)
+        .map((name) => caches.delete(name))
+    )).then(() => self.clients.claim())
+  );
+});
+
+self.addEventListener("fetch", (event) => {
+  if (event.request.method !== "GET") return;
+  event.respondWith(fetch(event.request).catch(() => caches.match(event.request)));
+});

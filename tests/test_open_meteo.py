@@ -25,6 +25,8 @@ PAYLOAD = {
         "cloud_cover": "%",
         "wind_speed_10m": "m/s",
         "wind_gusts_10m": "m/s",
+        "weather_code": "wmo code",
+        "is_day": "",
     },
     "hourly": {
         "time": ["2026-09-07T06:00", "2026-09-07T07:00"],
@@ -35,6 +37,8 @@ PAYLOAD = {
         "cloud_cover": [20.0, 30.0],
         "wind_speed_10m": [2.0, 3.0],
         "wind_gusts_10m": [4.0, 5.0],
+        "weather_code": [1, 61],
+        "is_day": [1, 1],
     },
 }
 
@@ -59,7 +63,7 @@ def test_metadata_preserves_init_and_availability_separately() -> None:
     assert meta.temporal_resolution_seconds == 3600
 
 
-def test_single_run_request_has_exact_run_and_no_probability_field() -> None:
+def test_single_run_request_has_exact_run_and_condition_fields_without_probability() -> None:
     seen = []
 
     def fetcher(url, params):
@@ -79,11 +83,23 @@ def test_single_run_request_has_exact_run_and_no_probability_field() -> None:
     params = seen[0][1]
     assert params["run"] == "2026-09-07T06:00"
     assert "precipitation_probability" not in params["hourly"]
+    assert "weather_code" in params["hourly"]
+    assert "is_day" in params["hourly"]
     assert run.init_time_utc == init
     assert run.upstream_available_at_utc == available
     assert run.init_time_quality == "single_runs_explicit"
     assert run.source_metadata["probability_fields_included"] is False
+    assert run.source_metadata["condition_fields_included"] == {
+        "weather_code": True,
+        "is_day": True,
+    }
     assert run.source_metadata["provider_contract_drift"]["status"] == "COMPATIBLE"
+    weather_codes = [value for value in run.values if value.variable == "weather_code"]
+    daylight = [value for value in run.values if value.variable == "is_day"]
+    assert [value.value for value in weather_codes] == [1.0, 61.0]
+    assert all(value.unit == "wmo_code" for value in weather_codes)
+    assert [value.value for value in daylight] == [1.0, 1.0]
+    assert all(value.unit == "1" for value in daylight)
 
 
 def test_http_200_non_json_model_run_unavailable_has_stable_reason_code() -> None:
