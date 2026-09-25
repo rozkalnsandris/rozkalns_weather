@@ -139,4 +139,15 @@ Shared contract: `rozkalnsandris/ops-workflows/docs/AGENT_WORK_CYCLE_V1.md`; loc
 - FULL uses only its freshly activated frozen issue envelope.
 - LIVE/deploy/runtime/credential/permission/production-data mutations require separate exact authority unless current stricter contract explicitly froze that class/target.
 - Every terminal response ends with exactly one command: real owner gate => exact ACTION REQUIRED; waiting mutable state => `SYNC rozkalns_weather`; safe continuation => `turpini`; completed outcome => `START rozkalns_weather`.
+
+### GitHub API access canary
+
+Local adoption manifest: `.github/github-api-access-v1.json`. Accepted shared contract pin: `rozkalnsandris/ops-workflows@3bb0740b5f0a8ce631d2ff79f1acc4999ff6ed2c` (`docs/GITHUB_API_ACCESS_V1.md` + `policy/github-api-access-v1.json`).
+
+- Normal START/SYNC/turpini GitHub retrieval is serial and minimum-sufficient for the selected repository lane; changed-file enumeration is on-demand and CI/review refresh is event/state/user-continuation driven rather than tight polling.
+- Rate-limit handling may pause bounded reads before mutation, but it never creates source/merge/LIVE/retry authority and must not fan out through alternate tokens/accounts/endpoints.
+- Immediately before an authorized merge/write, use `FINAL_PREMERGE_COMPACT` evidence and bind the exact PR head when the active GitHub operation supports it.
+- After a mutation is dispatched, `403`, `429`, timeout, transport failure, malformed/partial response or uncertain completion never triggers a duplicate merge/write. Preserve only minimum read-only reconciliation evidence and STOP under the local fail-closed rule.
+- A later SYNC must freshly reconstruct canonical state. Confirmed success reconciles with `EXACT_MAIN_MINIMAL`; proof that the mutation did not apply does not silently revive consumed authority.
+- Weather's stricter FAST merge gate, explicit AUTO-RUN FULL activation, LIVE/STRICT boundary, production SQLite/corpus gate, privacy/provenance rules and DWD warning authority remain unchanged.
 <!-- END AGENT-WORK-CYCLE-V1-MANAGED -->
