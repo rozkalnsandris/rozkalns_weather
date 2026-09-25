@@ -1,0 +1,105 @@
+{
+  "contract": "verification-report-schema-compatibility-v1",
+  "schema_version": 1,
+  "compatibility_direction": "previous producer schema to current reader/producer schema",
+  "classifications": {
+    "additive-compatible": "Only optional fields were added; current readers can consume historical artifacts and tolerant historical readers can ignore new fields.",
+    "reader-compatible": "The current reader can consume supported historical artifacts without source rewrite, but older readers are not guaranteed to accept every newly produced value.",
+    "breaking": "Historical or downstream interpretation is not safely preserved; the transition must fail closed."
+  },
+  "artifact_schemas": {
+    "verification_summary": {
+      "contract": "verification-summary-v1",
+      "version": 1,
+      "required_fields": [
+        "n",
+        "sample_confidence",
+        "sample_sufficiency_state",
+        "missingness",
+        "mae",
+        "rmse",
+        "bias",
+        "p10_p90_coverage",
+        "coverage_n"
+      ]
+    },
+    "monthly_report": {
+      "contract": "public-monthly-benchmark-report-v1",
+      "version": 1,
+      "required_fields": [
+        "schema_version",
+        "contract",
+        "state",
+        "source_sha",
+        "month",
+        "window",
+        "deterministic_common_sample",
+        "ensemble",
+        "privacy"
+      ]
+    },
+    "benchmark_export": {
+      "contract": "public-benchmark-export-v1",
+      "version": 1,
+      "required_fields": [
+        "schema_version",
+        "contract"
+      ]
+    },
+    "reproducibility_receipt": {
+      "contract": "verification-report-lineage-v1",
+      "version": 1,
+      "required_fields": [
+        "schema_version",
+        "contract",
+        "source_sha",
+        "report_schema",
+        "artifact",
+        "lineage_identity_sha256"
+      ]
+    }
+  },
+  "registered_historical_identities": {
+    "station_benchmark_monthly_v3": {
+      "name": "station_benchmark_monthly",
+      "version": 3,
+      "identity_source": "report_type",
+      "read_only_upgrade_only": true
+    }
+  },
+  "stable_reason_codes": [
+    "SCHEMA_IDENTICAL",
+    "SCHEMA_FAMILY_CHANGED",
+    "SCHEMA_VERSION_REGRESSION",
+    "OPTIONAL_FIELD_ADDED:<field>",
+    "OPTIONAL_FIELD_REMOVED:<field>",
+    "REQUIRED_FIELD_ADDED:<field>",
+    "REQUIRED_FIELD_REMOVED:<field>",
+    "FIELD_TYPE_CHANGED:<field>",
+    "FIELD_REQUIREDNESS_CHANGED:<field>",
+    "FIELD_NULLABILITY_CHANGED:<field>",
+    "ENUM_VALUE_ADDED:<field>",
+    "ENUM_VALUE_REMOVED:<field>",
+    "MIXED_BUNDLE_SCHEMA_VERSION",
+    "MISSING_ARTIFACT_SCHEMA_IDENTITY",
+    "ARTIFACT_CONTRACT_VERSION_MISMATCH",
+    "REPORT_SCHEMA_MISMATCH"
+  ],
+  "historical_read_rules": {
+    "source_artifact_rewrite": false,
+    "upgrade_mode": "deterministic in-memory reader view only",
+    "optional_default_rule": "A newly added optional field may be supplied only from a schema-declared deterministic default.",
+    "required_field_rule": "A missing required current field without a declared deterministic default blocks the read.",
+    "mixed_version_bundle_rule": "A bundle containing more than one schema name/version identity is BLOCKED."
+  },
+  "human_readable_output": {
+    "compatibility_gate_scope": false,
+    "rule": "Markdown/text presentation may change independently; only machine-readable artifacts and lineage receipts are schema-gated."
+  },
+  "authority": {
+    "production_artifact_rewrite_granted": false,
+    "publication_or_deploy_granted": false,
+    "production_sqlite_schema_migration_granted": false,
+    "runtime_live_authority_granted": false
+  }
+}
