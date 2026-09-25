@@ -1,0 +1,70 @@
+{
+  "contract": "sqlite-concurrency-wal-v1",
+  "schema_version": 1,
+  "status": "ACTIVE_SOURCE_GATE",
+  "scope": {
+    "synthetic_disposable_sqlite_only": true,
+    "production_sqlite_access": false,
+    "host_performance_benchmark": false
+  },
+  "sqlite_contract": {
+    "journal_mode": "wal",
+    "busy_timeout_ms": 100,
+    "write_transaction": "BEGIN IMMEDIATE",
+    "reader_count": 3,
+    "transaction_visibility": "readers must not observe uncommitted writes",
+    "long_reader_semantics": "WAL reader snapshot must not block an independent writer commit",
+    "contention_semantics": "a competing writer must hit the bounded busy timeout and become clean-retry eligible only after lock release"
+  },
+  "scenarios": [
+    "one_writer_many_readers",
+    "competing_writers",
+    "long_reader_writer",
+    "failed_and_contended_writes_are_atomic",
+    "missing_schema_fails_closed"
+  ],
+  "stable_reason_codes": [
+    "JOURNAL_MODE_NOT_WAL",
+    "BUSY_TIMEOUT_MISMATCH",
+    "REQUIRED_SCHEMA_MISSING",
+    "UNSAFE_IMPLICIT_SCHEMA_INIT_REQUIRED",
+    "PARTIAL_TRANSACTION_VISIBLE",
+    "COMMITTED_WRITE_NOT_VISIBLE",
+    "WRITE_LOCK_TIMEOUT",
+    "BOUNDED_LOCK_TIMEOUT_NOT_PROVEN",
+    "WRITER_STARVATION",
+    "LONG_READER_BLOCKED_WRITER",
+    "READER_SNAPSHOT_CHANGED_MID_TRANSACTION",
+    "CONTENDED_WRITE_CHANGED_IMMUTABLE_IDENTITY",
+    "TRANSACTION_CONSTRAINT_FAILURE",
+    "FAILED_WRITE_CHANGED_IMMUTABLE_IDENTITY",
+    "IMPLICIT_SCHEMA_MUTATION_DETECTED",
+    "CONCURRENCY_SCENARIO_FAILED"
+  ],
+  "retry_policy": {
+    "WRITE_LOCK_TIMEOUT": {
+      "retryable": true,
+      "precondition": "the conflicting write lock has been released; start a fresh transaction"
+    },
+    "unexpected_operational_error": {
+      "retryable": false,
+      "precondition": "classify the failure before deciding on a retry"
+    }
+  },
+  "atomicity": {
+    "immutable_forecast_identity_must_survive_contention": true,
+    "failed_multi_statement_transaction_must_rollback_fully": true
+  },
+  "readiness_evidence": {
+    "source_only": true,
+    "wall_clock_performance_is_gate": false,
+    "host_specific_runtime_performance_assessed": false
+  },
+  "authority": {
+    "production_sqlite_access_granted": false,
+    "production_pragma_or_wal_mutation_granted": false,
+    "host_or_filesystem_tuning_granted": false,
+    "service_restart_granted": false,
+    "runtime_live_authority_granted": false
+  }
+}
