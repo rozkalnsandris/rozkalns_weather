@@ -47,6 +47,20 @@ def test_first_fixture_has_stable_versioned_byte_representation() -> None:
     ).encode("utf-8")
 
 
+def test_utc_named_schema_metadata_tokens_remain_plain_strings() -> None:
+    payload = {
+        "tables": {
+            "forecast_runs": {
+                "init_time_utc": "TEXT",
+                "retrieved_at_utc": "TEXT",
+            }
+        }
+    }
+    assert canonical_json_bytes(payload) == (
+        '{"tables":{"forecast_runs":{"init_time_utc":"TEXT","retrieved_at_utc":"TEXT"}}}\n'
+    ).encode("utf-8")
+
+
 def test_materially_different_fixture_payloads_change_identity() -> None:
     fixture = _fixture()
     for case in fixture["different_pairs"]:
