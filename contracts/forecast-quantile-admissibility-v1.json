@@ -1,0 +1,57 @@
+{
+  "schema": "forecast-quantile-admissibility-v1",
+  "representation": "summary_quantiles",
+  "supported_statistics": ["p10", "p25", "p50", "p75", "p90"],
+  "ordering_rule": "p10 <= p25 <= p50 <= p75 <= p90",
+  "equality_allowed": true,
+  "required_shared_identity": [
+    "provider",
+    "model_name",
+    "model_version",
+    "init_time_utc",
+    "retrieved_at_utc",
+    "valid_time_utc",
+    "lead_hours",
+    "variable",
+    "unit",
+    "location_id",
+    "source_surface",
+    "resolution"
+  ],
+  "blocking_reason_codes": [
+    "EMPTY_QUANTILE_SET",
+    "INVALID_EXPECTED_QUANTILE_SET",
+    "NON_SUMMARY_QUANTILE",
+    "DUPLICATE_QUANTILE_STATISTIC",
+    "INCOMPLETE_QUANTILE_SET",
+    "UNEXPECTED_QUANTILE_STATISTIC",
+    "INVALID_QUANTILE_VALUE",
+    "QUANTILE_CROSSING",
+    "MIXED_PROVIDER",
+    "MIXED_MODEL",
+    "MIXED_MODEL_VERSION",
+    "MIXED_INIT_TIME",
+    "MIXED_RETRIEVAL_TIME",
+    "MIXED_VALID_TIME",
+    "MIXED_LEAD",
+    "MIXED_VARIABLE",
+    "MIXED_UNIT",
+    "MIXED_LOCATION",
+    "MIXED_SOURCE_SURFACE",
+    "MIXED_RESOLUTION"
+  ],
+  "metric_eligibility": {
+    "interval_coverage": "PASS only",
+    "summary_interval": "PASS only",
+    "crps": false,
+    "brier": false,
+    "reliability": false
+  },
+  "invariants": [
+    "Missing quantiles are never fabricated.",
+    "Summary quantiles are never converted to synthetic ensemble members.",
+    "Summary quantiles are never converted to event probabilities.",
+    "Interval coverage consumes only an admissible quantile set.",
+    "Real WeatherNext access is outside this contract."
+  ]
+}
