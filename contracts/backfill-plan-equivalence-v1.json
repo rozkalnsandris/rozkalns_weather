@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "contract": "backfill-plan-equivalence-v1",
+  "plan_identity_fields": [
+    "source_sha",
+    "start_date",
+    "end_date",
+    "providers_models",
+    "run_hours_utc",
+    "truth_chunks",
+    "rate_limits",
+    "checkpoint_namespace",
+    "recovery_decision"
+  ],
+  "execution_block_conditions": [
+    "plan digest mismatch",
+    "date window drift",
+    "provider/model scope drift",
+    "run-hour drift",
+    "truth chunking drift",
+    "rate-limit drift",
+    "checkpoint namespace drift",
+    "reordered or expanded checkpoint prefix",
+    "recovery decision drift",
+    "material field hidden in progress metadata",
+    "private evidence"
+  ],
+  "harmless_progress_metadata": [
+    "started_at_utc",
+    "updated_at_utc",
+    "completed_count",
+    "attempt",
+    "note"
+  ],
+  "authority": {
+    "pass_verifies_scope_equivalence_only": true,
+    "production_corpus_write_authorized": false,
+    "runtime_live_authorized": false,
+    "automatic_retry_authorized": false
+  }
+}
