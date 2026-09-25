@@ -48,9 +48,15 @@ def test_home_forecast_trace_is_deterministic_and_privacy_safe() -> None:
     assert first["time"]["lead_hours"] == 12.0
     assert first["normalized_value"]["statistic"] == "deterministic"
     assert len(first["trace_identity_sha256"]) == 64
+    assert first["privacy"] == {
+        "coordinates_exposed": False,
+        "database_path_exposed": False,
+        "credentials_exposed": False,
+        "raw_logs_exposed": False,
+    }
 
     serialized = _text(first).lower()
-    for forbidden in ("home_lat", "home_lon", "latitude", "longitude", "database_path", "password", "credential", "raw_log"):
+    for forbidden in ("home_lat", "home_lon", '"latitude"', '"longitude"', "sqlite:///", "/private/", '"password"'):
         assert forbidden not in serialized
 
 
