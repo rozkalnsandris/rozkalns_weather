@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from datetime import datetime, timedelta, timezone
-import hashlib
-import json
+
+from .canonical_serialization import CanonicalSerializationError, canonical_sha256
 
 WATERMARK_CONTRACT = "verification-data-watermark-v1"
 WATERMARK_SCHEMA_VERSION = 1
@@ -22,25 +22,14 @@ class VerificationWatermarkError(ValueError):
         self.reason_code = reason_code
 
 
-def _canonical_json(value: object) -> bytes:
+def _sha256(value: object) -> str:
     try:
-        text = json.dumps(
-            value,
-            sort_keys=True,
-            separators=(",", ":"),
-            ensure_ascii=False,
-            allow_nan=False,
-        )
-    except (TypeError, ValueError) as exc:
+        return canonical_sha256(value)
+    except CanonicalSerializationError as exc:
         raise VerificationWatermarkError(
             "NON_CANONICAL_WATERMARK_INPUT",
-            "watermark inputs must be finite JSON-compatible values",
+            "watermark inputs must be canonical finite JSON-compatible values",
         ) from exc
-    return (text + "\n").encode("utf-8")
-
-
-def _sha256(value: object) -> str:
-    return hashlib.sha256(_canonical_json(value)).hexdigest()
 
 
 def _utc(value: object, *, field: str) -> datetime:
