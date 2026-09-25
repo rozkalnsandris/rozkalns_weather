@@ -5,6 +5,11 @@ from datetime import datetime, timezone
 from math import ceil
 from typing import Mapping, Sequence
 
+from .timestamp_sanity import (
+    provider_health_timestamp_sanity_summary,
+    provider_timestamp_sanity_report,
+)
+
 
 LATENCY_CONTRACT = "provider-availability-latency-v1"
 PUBLIC_FORECAST_PROVIDERS = (
@@ -159,11 +164,22 @@ def _normalize(raw: Mapping[str, object]) -> dict[str, object]:
     }
 
 
-def provider_latency_report(evidence: Sequence[Mapping[str, object]] | None) -> dict[str, object]:
+def provider_latency_report(
+    evidence: Sequence[Mapping[str, object]] | None,
+    *,
+    reference_time_utc: object | None = None,
+    runtime_clock_evidence: Mapping[str, object] | None = None,
+) -> dict[str, object]:
     """Build a deterministic read-only latency benchmark from explicit provenance evidence."""
 
     if evidence is None or len(evidence) == 0:
         return _blocked("LATENCY_EVIDENCE_UNAVAILABLE")
+
+    timing_report = provider_timestamp_sanity_report(
+        evidence,
+        reference_time_utc=reference_time_utc,
+        runtime_clock_evidence=runtime_clock_evidence,
+    )
 
     try:
         samples = [_normalize(raw) for raw in evidence]
@@ -216,11 +232,14 @@ def provider_latency_report(evidence: Sequence[Mapping[str, object]] | None) -> 
     states = [str(group["state"]) for group in groups]
     state = max(states, key=lambda item: _STATE_SEVERITY[item])
     reasons = sorted({reason for group in groups for reason in group["reason_codes"]})
+    timing_eligible = timing_report["state"] != "BLOCKED"
     return {
         "contract": LATENCY_CONTRACT,
         "state": state,
         "reason_codes": reasons,
         "read_only": True,
+        "latency_eligible": timing_eligible,
+        "timestamp_sanity": timing_report,
         "thresholds": {
             "upstream_late_after_minutes": UPSTREAM_LATE_AFTER_MINUTES,
             "local_attempt_late_after_minutes": LOCAL_ATTEMPT_LATE_AFTER_MINUTES,
@@ -235,6 +254,8 @@ def provider_latency_report(evidence: Sequence[Mapping[str, object]] | None) -> 
         "health_integration": {
             "affects_provider_freshness_state": False,
             "outage_claimed": False,
+            "timestamp_sanity_state": timing_report["state"],
+            "latency_eligible": timing_eligible,
         },
     }
 
@@ -247,8 +268,14 @@ def provider_health_latency_summary(report: Mapping[str, object], provider: str)
         for group in report.get("groups", [])
         if isinstance(group, Mapping) and group.get("provider") == provider
     ]
+    timing_report = report.get("timestamp_sanity")
+    timing_summary = (
+        provider_health_timestamp_sanity_summary(timing_report, provider)
+        if isinstance(timing_report, Mapping)
+        else None
+    )
     if not groups:
-        return {
+        result: dict[str, object] = {
             "contract": LATENCY_CONTRACT,
             "state": "BLOCKED",
             "reason_codes": ["PROVIDER_LATENCY_EVIDENCE_UNAVAILABLE"],
@@ -256,8 +283,12 @@ def provider_health_latency_summary(report: Mapping[str, object], provider: str)
             "affects_provider_freshness_state": False,
             "outage_claimed": False,
         }
+        if timing_summary is not None:
+            result["timestamp_sanity"] = timing_summary
+            result["latency_eligible"] = timing_summary["state"] != "BLOCKED"
+        return result
     states = [str(group.get("state") or "BLOCKED") for group in groups]
-    return {
+    result = {
         "contract": LATENCY_CONTRACT,
         "state": max(states, key=lambda item: _STATE_SEVERITY[item]),
         "reason_codes": sorted({reason for group in groups for reason in group.get("reason_codes", [])}),
@@ -265,3 +296,7 @@ def provider_health_latency_summary(report: Mapping[str, object], provider: str)
         "affects_provider_freshness_state": False,
         "outage_claimed": False,
     }
+    if timing_summary is not None:
+        result["timestamp_sanity"] = timing_summary
+        result["latency_eligible"] = timing_summary["state"] != "BLOCKED"
+    return result
