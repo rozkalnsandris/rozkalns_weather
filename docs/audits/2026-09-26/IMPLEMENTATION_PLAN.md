@@ -6,6 +6,27 @@ Mērķis: `weather.rozkalns.net` padarīt par ātri nolasāmu, modernu un prakti
 
 Darbu uzskaite: https://github.com/rozkalnsandris/rozkalns_weather/issues/237. Pilns pamatojums: [28 punktu audits](REPORT.md). Vizuālais salīdzinājums un interaktīvā koncepcija: [web dokuments](report.html) — lejupielādēt un atvērt pārlūkā; GitHub HTML priekšskatījumu neizpilda. Koncepcijas laikapstākļi ir ilustratīvi, nevis reāli provider dati.
 
+## Darbu sadalījums — īpašnieka lēmums 2026-09-26
+
+**UI izskatu veidojam kopā ar Andri sākotnējā Codex sarunā. Pārējo tehnisko un funkcionālo ieviešanu turpinām Plus chat.** Šis sadalījums ir noteicošs pār agrāko S1–S6 posmu jaukto formulējumu.
+
+- **Šeit / vizuālais darbs:** [UI_VISUAL_PLAN.md](UI_VISUAL_PLAN.md) — izkārtojums, informācijas vizuālā hierarhija, krāsas, fonti, atstarpes, kartes, ikonas, fonu/animācijas izvēle, mobile/desktop maketi un grafiku/radara vadīklu vizuālais noformējums. Dizaina varianti un to pieņemšana notiek šajā sarunā.
+- **Plus chat / tehniskais darbs:** datu korektums, DWD warning lifecycle, API pieprasījumi, laiku salīdzināšana, provenance, interakciju loģika, lokāciju izvēle, i18n, semantiskā pieejamība, radar datu apstrāde, accuracy, PWA, moduļi un veiktspēja. Plus chat neveido patstāvīgu vizuālu pārbūvi.
+- **Saskarne starp darbiem:** tehnisko loģiku var īstenot esošajā UI vai minimālā testu skatā, saglabājot esošo izskatu. Ja funkcijai vajadzīgs jauns komponents, Plus chat sagatavo datu/stāvokļu un pieejamības līgumu; izskatu izstrādājam šeit. Pieņemtā dizaina HTML/CSS integrāciju Plus chat var veikt pēc handoff, nemainot dizaina lēmumus.
+- Drošības un pieejamības labojumi (piemēram, unknown nedrīkst būt zaļš clear, nepieciešams redzams focus) nav jāatliek līdz pilnam redesign; Plus chat veic minimālo korekto labojumu esošajā stilā un dokumentē izmaiņu.
+- Vizuālā koncepcija auditā ir apspriešanas materiāls, ne jau apstiprināts dizaina uzdevums Plus chat. Nekāda automātiska sarunas nosūtīšana vai jauna uzdevuma aktivizēšana ar šo dokumentu nenotiek.
+
+| Audita ID | Šeit: izskats | Plus chat: funkcija / dati |
+|---|---|---|
+| 01, 02, 04, 07 | Warning kartes gala noformējums | State model, automātiska ielāde, saturs, hidden regresija; minimālais safety fix |
+| 03 | Radara kartes un vadīklu kompozīcija | Rastra ģeoreference/dekodēšana, player, laiks, observed/nowcast, lazy load |
+| 05, 06, 08, 09, 10, 11 | Header/hero/hour/day/detail vizuālā hierarhija | Lokācija, observation/forecast, provenance, expand/select, missing/horizon |
+| 12, 14, 15 | Grafiku/kartīšu izkārtojums un vizuālā valoda | Filtri, axes/units dati, keyboard/tabula, readiness/n/common sample |
+| 13, 18, 19, 22, 23, 24, 25, 26, 28 | Tikai ja tehniskā prasība skar redzamo dizainu | Galvenā atbildība: matching, i18n, routes/focus, DST, loading, PWA, moduļi, docs, performance |
+| 16, 17, 20, 21, 27 | Galvenā atbildība: fonts, fons, kontrasta palete, responsive kompozīcija, tokens | Mērījumi, a11y validācija un pieņemtā dizaina integrācija |
+
+S1–S6 turpmāk apraksta produkta atkarības, ne vienas sarunas kopējo uzdevumu. Plus chat tehniskajam darbam **nav jāgaida viss S2 dizains**: S1 → tehniskie S2/S3 līgumi; S4/S5 pēc vajadzīgajiem datu līgumiem; S6 baseline un loading/PWA var sākt agrāk. Gala vizuālā integrācija un kopīgā pieņemšana seko pēc šeit pieņemtā dizaina handoff. 14–25 dienu vēsturiskais novērtējums aptvēra abus darba virzienus kopā; tas nav Plus chat tehniskā darba atsevišķs novērtējums.
+
 ## 1. Sākuma stāvoklis un jau paveiktais
 
 Audita koda bāze: `d396b3dfdbc8680b7e28e7606096ae204746ee04`. Audita live ekrānattēlu atbilstība šim commit nav pierādīta. Plāna sagatavošanas laikā pārbaudītais `main`: `48dd2cd8967375ebf7b0f09880e37d78771c9d88`.
@@ -31,27 +52,9 @@ Saglabājam [esošo apstiprināto UI virzienu](../../UI.md): piecas sadaļas, we
 6. Datu laiks ir UTC; attēlojums `Europe/Berlin`. Salīdzinām vienu lokāciju, quantity un valid timestamp; init/lead atšķirības ir redzamas. Nepilni dati paliek nepilni.
 7. Saglabājam Python/FastAPI + SQLite un vieglu web/PWA. Framework migrācija nav nepieciešama šā plāna izpildei.
 
-## 3. Mērķa UI un komponenti
+## 3. UI izskats — atsevišķs darbs šajā sarunā
 
-**Overview secība:** vieta un atjauninājums → aktīvs DWD brīdinājums → pašreizējais novērojums → nākamās stundas → tuvākās dienas → Model Snapshot → papildu rādītāji. Ja brīdinājumu nav, kompakts DWD statusa bloks. Sarežģītās provenance detaļas atveras pēc pieprasījuma.
-
-**Desktop:** apmēram 1200–1280 px satura maksimums; 12 kolonnu režģis, galvenais saturs 8 un sekundārā informācija 4 kolonnās, augšējā navigācija. **Mobile:** viena kolonna, piecas skaidri marķētas navigācijas saites; horizontāli ritināma tikai stundu josla, ne visa lapa. Pārejas punktu izvēlas pēc satura, pārbaudot arī 320 px.
-
-| Komponents | Pienākums un robeža |
-|---|---|
-| `LocationHeader` | Lietotājam saprotams nosaukums, izvēle, timezone; tehniskais station ID detaļās. Vietas maiņa atceļ iepriekšējos pieprasījumus. |
-| `WarningSummary` / `WarningList` | Viens DWD state model abos skatos; severity, area, issued/valid/checked, saite uz avotu. |
-| `CurrentConditions` | Observation temperatūra un laiks; atsevišķi marķēta forecast condition/high-low; null nav 0. |
-| `HourlyStrip` / `HourDetails` | Stundas laikapstākļi pirms provenance; tastatūras izvēle un mobilais scroll. |
-| `DailyList` / `DayDetails` | Izvēršami rādītāji un izvēlētais provider; faktiskais horizonts, bez slepenas provider maiņas. |
-| `ModelSnapshot` / `ModelChart` | Vienādam valid time salīdzinātas vērtības; pending WeatherNext; izskaidrots spread. |
-| `RadarPlayer` | Karšu slānis, derīgs ģeogrāfiskais novietojums, kadru laiks, leģenda, play/pause, observed/nowcast robeža. |
-| `AccuracySummary` | Readiness, periods, n, coverage, metric skaidrojums, common-sample salīdzinājums. |
-| `SourceDetails` / `Status` | Pilnā provenance un tehniskā diagnostika; cilvēkam saprotami error/pending paskaidrojumi. |
-
-Šie ir loģiski moduļu nosaukumi, nevis prasība izmantot konkrētu komponentu bibliotēku. Izstrādātājs piemeklē failu sadalījumu, saglabājot vienu renderētāju katram blokam.
-
-**Dizaina tokenu sākuma specifikācija:** body 16 px; metadata 14 px; navigācija 12–13 px; line-height vismaz 1.4; spacing 4/8/12/16/24/32; divi konsekventi karšu radius līmeņi. Light/dark režīmā lietot semantiskus background/text/border/status tokenus un vienotu SVG ikonu komplektu. Ikona, teksts un forma papildina krāsu. 44 px ir mūsu praktiskais vadīklu mērķis; WCAG 2.2 AA 2.5.8 minimums ir 24 px ar izņēmumiem.
+Vizuālā specifikācija un iepriekšējās koncepcijas sākuma priekšlikumi pārcelti uz [UI_VISUAL_PLAN.md](UI_VISUAL_PLAN.md). Plus chat tos neuzskata par patstāvīgi īstenojamu redesign. Komponentu datu un uzvedības līgumi paliek tehniskās ieviešanas sastāvā.
 
 ## 4. Darbu secība un atkarības
 
