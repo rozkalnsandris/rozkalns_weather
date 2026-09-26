@@ -28,7 +28,7 @@ def test_pwa_uses_explicit_berlin_timezone_and_offset_bearing_labels() -> None:
 
 def test_dst_helper_is_part_of_offline_pwa_cache() -> None:
     worker = SERVICE_WORKER.read_text()
-    assert "rozkalns-weather-v7" in worker
+    assert "rozkalns-weather-v8" in worker
     assert '"/static/time_semantics.js"' in worker
 
 
