@@ -23,7 +23,7 @@ Pirmais reāli lietojamais public-only Weather Web UI milestone (#136) ir pabeig
 - DWD paliek official warning authority;
 - private home un WeatherNext private access nav pirmā public-only UI prerequisite.
 
-Mutable runtime SHA/digest/provider-health stāvokli neglabā šajā README kā authority. Fresh continuity/runtime receipts ir controller issue #9 un attiecīgajos completed LIVE/source issues.
+Mutable runtime SHA/digest/provider-health stāvokli neglabā šajā README kā authority. Jauns explicit AUTO-RUN FULL run savu mutable state glabā target issue saskaņā ar `.github/auto-run-full-v2.json`; legacy controller issue #9 historical payload nav current mutable run authority.
 
 ## Canonical benchmark
 
@@ -58,12 +58,13 @@ WeatherNext 3 paliek first-class `primary_research`, bet real private access vē
 
 Current sequence:
 
-1. #168 — source-only migrēt first-access canary no legacy `station_10416` uz canonical `station_05480`;
-2. #122 — tikai pēc #168 un fresh preflight veikt explicit owner-authorized private read-only BigQuery first-access gate;
-3. first real WeatherNext snapshot write — atsevišķa production-data authorization;
-4. sustained private collection — tikai pēc proven access/provenance/cost/runtime contracts.
+1. #168 — **completed**: first-access canary source contract migrēts no legacy `station_10416` uz canonical `station_05480`;
+2. #224 — pabeigt one-time private WeatherNext runtime/linked-dataset prerequisites un trusted-runtime reconciliation; pats issue nedod BigQuery query vai production-data authority;
+3. #122 — tikai pēc #224 un fresh preflight veikt explicit owner-authorized bounded private read-only BigQuery first-access gate;
+4. first real WeatherNext snapshot write — atsevišķa production-data authorization;
+5. sustained private collection — tikai pēc proven access/provenance/cost/runtime contracts.
 
-Current `deploy/weathernext-first-access.json` legacy v1 binding uz 10416 nedrīkst tikt izmantots private query, kamēr #168 nav pabeigts. WeatherNext real values nekad netiek fabricētas.
+Current first-access source binding ir aligned ar canonical `station_05480`, bet tas pats par sevi neautorizē private query. WeatherNext real values nekad netiek fabricētas.
 
 ## Deployment — SIMPLE-DEPLOY v1
 
@@ -138,7 +139,7 @@ rozkalns-weather verification-drilldown --month YYYY-MM
 
 Svarīgākie historical source/rollout receipts paliek discoverable closed issues/PRs un Git history. Historical 10416, pre-SIMPLE-DEPLOY un first-rollout operator/JIT statements nav current runtime authority.
 
-Canonical current continuity: issue #9.
+Issue #9 ir legacy/historical AUTO-RUN controller evidence. Saskaņā ar normalized-state contract jaunam explicit run mutable state pieder target issue; controller uztur tikai lock/active-run pointer. Fresh `main`, target issue, exact-head CI/reviews un vajadzīgais live evidence ir current authority.
 
 ## Dokumentācija
 
