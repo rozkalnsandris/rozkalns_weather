@@ -25,7 +25,8 @@ def test_public_only_ui_defaults_to_canonical_station_05480(tmp_path) -> None:
     assert 'station_05480: {' in script
     assert 'station_10416: {' in script
     assert 'DWD 10416 · legacy MOSMIX' in script
-    assert 'DWD CDC 05480 reference observation' in html
+    assert 'Werl · official DWD observation source' in html
+    assert 'DWD CDC 05480 reference observation' not in html
     assert 'DWD CDC 05480 station benchmark · deterministic' in html
     assert 'measured skill uses DWD CDC 05480 reference truth' in html
     assert 'DWD 10416 station benchmark · deterministic' not in html
