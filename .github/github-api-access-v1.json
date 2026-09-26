@@ -70,5 +70,17 @@
     "live_runtime_requires_exact_authority": true,
     "production_sqlite_or_corpus_write_requires_exact_authority": true,
     "weather_privacy_provider_provenance_and_dwd_warning_authority_unchanged": true
+  },
+  "write_preflight": {
+    "contract": "WRITE_PREFLIGHT_COMPACT_V1",
+    "shared_revision": "274d58f2d9d3cb86feded2751b8f9009a4501f6b",
+    "document": "docs/WRITE_PREFLIGHT_COMPACT_V1.md",
+    "policy": "policy/github-api-access-write-preflight-v1.json",
+    "pre_dispatch_required_for_deterministic_object_writes": true,
+    "exact_existing_intent": "RECONCILE_OR_NOOP",
+    "conflicting_intent": "STOP",
+    "stale_writer": "STOP",
+    "duplicate_recovery_write_allowed": false,
+    "local_framework_implementation": false
   }
 }
