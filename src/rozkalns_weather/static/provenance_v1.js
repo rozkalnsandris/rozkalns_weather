@@ -43,6 +43,28 @@
       || [...temperatureProviders][0]
       || null;
   }
+  function setSourceData(element, key, value) {
+    if (value == null || value === "") {
+      delete element.dataset[key];
+      return;
+    }
+    element.dataset[key] = String(value);
+  }
+  function applyHeroSourceProvenance(current) {
+    const source = el("heroSource");
+    if (!source) return;
+    source.textContent = "Official DWD observation source";
+    setSourceData(source, "truthSource", current?.truth_source);
+    setSourceData(source, "sourceLocationId", current?.location?.id);
+    setSourceData(source, "sourceLocationLabel", current?.location?.label);
+  }
+  const baseRenderCurrent = globalThis.renderCurrent;
+  if (typeof baseRenderCurrent === "function") {
+    globalThis.renderCurrent = function renderCurrentWithHeroSourceProvenance(result, healthMap) {
+      baseRenderCurrent(result, healthMap);
+      applyHeroSourceProvenance(result?.payload);
+    };
+  }
   function detailsHost() {
     const strip = el("hourlyStrip");
     if (!strip) return null;
