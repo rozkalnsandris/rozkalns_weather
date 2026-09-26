@@ -9,6 +9,10 @@ def _consumer_source() -> str:
     return (STATIC / "consumer_ui.js").read_text()
 
 
+def _provenance_source() -> str:
+    return (STATIC / "provenance_v1.js").read_text()
+
+
 def test_consumer_overlay_keeps_current_temperature_explicitly_observational() -> None:
     source = _consumer_source()
     index = (STATIC / "index.html").read_text()
@@ -48,6 +52,22 @@ def test_fresh_hero_state_is_non_rendered_and_source_identity_is_single() -> Non
     assert '<span id="heroSource">Werl · official DWD observation source</span>' in index
     assert 'DWD CDC 05480 reference observation</span>' not in index
     assert '.hero-source-row #heroSource{text-align:left}' in index
+
+
+def test_runtime_hero_source_is_concise_and_preserves_machine_provenance() -> None:
+    source = _provenance_source()
+    index = (STATIC / "index.html").read_text()
+
+    assert index.index('/static/consumer_ui.js') < index.index('/static/provenance_v1.js')
+    assert 'const baseRenderCurrent = globalThis.renderCurrent' in source
+    assert 'baseRenderCurrent(result, healthMap);' in source
+    assert 'applyHeroSourceProvenance(result?.payload);' in source
+    assert 'source.textContent = "Official DWD observation source";' in source
+    assert 'setSourceData(source, "truthSource", current?.truth_source);' in source
+    assert 'setSourceData(source, "sourceLocationId", current?.location?.id);' in source
+    assert 'setSourceData(source, "sourceLocationLabel", current?.location?.label);' in source
+    assert 'source.setAttribute("aria-label"' not in source
+    assert '`${current.truth_source' not in source
 
 
 def test_forecast_condition_fallback_reuses_the_canonical_now_card_and_stays_labelled() -> None:
@@ -90,5 +110,6 @@ def test_unknown_observation_is_not_relabelled_without_a_valid_now_forecast_cond
 def test_overview_static_change_advances_the_pwa_shell_cache() -> None:
     service_worker = (STATIC / "sw.js").read_text()
 
-    assert 'const CACHE = "rozkalns-weather-v9"' in service_worker
+    assert 'const CACHE = "rozkalns-weather-v10"' in service_worker
     assert '"/static/consumer_ui.js"' in service_worker
+    assert '"/static/provenance_v1.js"' in service_worker
