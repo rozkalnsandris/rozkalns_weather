@@ -142,6 +142,8 @@ Canonical current continuity: issue #9.
 
 ## Dokumentācija
 
+- [2026-09-26 UI audits un ieviešanas plāns](docs/audits/2026-09-26/README.md) — 28 ieteikumi, web salīdzinājums un seši ieviešanas posmi; plānots darbs.
+
 - `docs/BENCHMARK_METHODOLOGY.md`
 - `docs/RPI5_PUBLIC_RUNTIME_HANDOFF.md`
 - `docs/ROADMAP.md`
