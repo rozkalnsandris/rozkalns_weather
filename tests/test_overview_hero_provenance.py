@@ -40,6 +40,16 @@ def test_normal_observation_age_is_visible_once_and_degraded_state_keeps_warning
     assert 'observed_at_utc}' not in source
 
 
+def test_fresh_hero_state_is_non_rendered_and_source_identity_is_single() -> None:
+    index = (STATIC / "index.html").read_text()
+
+    assert '.hero-state[hidden]{display:none}' in index
+    assert index.count('id="heroSource"') == 1
+    assert '<span id="heroSource">Werl · official DWD observation source</span>' in index
+    assert 'DWD CDC 05480 reference observation</span>' not in index
+    assert '.hero-source-row #heroSource{text-align:left}' in index
+
+
 def test_forecast_condition_fallback_reuses_the_canonical_now_card_and_stays_labelled() -> None:
     source = _consumer_source()
 
@@ -80,5 +90,5 @@ def test_unknown_observation_is_not_relabelled_without_a_valid_now_forecast_cond
 def test_overview_static_change_advances_the_pwa_shell_cache() -> None:
     service_worker = (STATIC / "sw.js").read_text()
 
-    assert 'const CACHE = "rozkalns-weather-v8"' in service_worker
+    assert 'const CACHE = "rozkalns-weather-v9"' in service_worker
     assert '"/static/consumer_ui.js"' in service_worker
