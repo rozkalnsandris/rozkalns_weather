@@ -8,6 +8,10 @@
   <link rel="manifest" href="/static/manifest.webmanifest">
   <link rel="icon" href="/static/icon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/static/app.css">
+  <style id="overview-hero-state-contract">
+    .hero-state[hidden]{display:none}
+    .hero-source-row #heroSource{text-align:left}
+  </style>
 </head>
 <body>
   <main class="app-shell">
@@ -36,7 +40,6 @@
 
         <div id="currentState" class="surface-state state-loading hero-state" role="status" aria-live="polite" aria-atomic="true">LOADING · DWD station truth</div>
         <div class="hero-source-row">
-          <span>DWD CDC 05480 reference observation</span>
           <span id="heroSource">Werl · official DWD observation source</span>
         </div>
       </section>
