@@ -1,5 +1,7 @@
 # UI / UX
 
+> **2026-09-26 plānotā attīstība:** [audits un ieviešanas plāns](audits/2026-09-26/README.md) sasaista 28 uzlabojumus ar sešiem izpildes posmiem. Zemāk saglabāta esošā #170 reference un sākotnējā specifikācija. Tās 10416/Combined/kvantiļu piemēri nav pierādījums pašreizējiem runtime datiem; aktuālās robežas un plānotā specifikācijas sakārtošana ir plānā. Šī saite pati par sevi nemaina apstiprināto vizuālo reference.
+
 ## Mērķis
 
 Mobile-first privāts weather dashboard, kas informācijas ziņā ir tikpat ātri nolasāms kā tradicionāla weather app, bet papildus ļauj redzēt **modeļu atšķirības un WeatherNext 3 uncertainty/accuracy**.
