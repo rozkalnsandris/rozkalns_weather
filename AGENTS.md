@@ -65,6 +65,10 @@ Pirms mode izvēles nolasi `.github/start-mode-routing.json`.
 - `AUTO-RUN FULL` aktivizējas tikai ar exact explicit `AUTO-RUN FULL rozkalns_weather #<issue>` un pēc tam jālasa `.github/auto-run-full-v2.json` + `docs/AUTO_RUN_FULL_V2.md`.
 - Neinferē režīmu no issue nosaukuma, controller state, deploy queue, historical chat, executor availability vai veca receipt.
 
+### AUTO-RUN normalized-state precedence
+
+`.github/auto-run-full-v2.json` `normalized_state` ir repo-local machine authority jaunajiem explicit AUTO-RUN FULL run. Issue `#9` ir legacy/historical controller evidence; target issue glabā mutable run state, bet controller glabā tikai lock/active-run pointer. Zemāk esošo managed tekstu par durable controller/return-to-IDLE interpretē caur šo normalized-state amendment un legacy `#9` payload nepārraksta in place.
+
 <!-- BEGIN FAST-LANE-V2.2-MANAGED -->
 ## FAST-LANE v2.2 Composite
 
@@ -145,7 +149,7 @@ Shared contract: `rozkalnsandris/ops-workflows/docs/AGENT_WORK_CYCLE_V1.md`; loc
 Local adoption manifest: `.github/github-api-access-v1.json`. Accepted shared contract pin: `rozkalnsandris/ops-workflows@3bb0740b5f0a8ce631d2ff79f1acc4999ff6ed2c` (`docs/GITHUB_API_ACCESS_V1.md` + `policy/github-api-access-v1.json`).
 
 - Normal START/SYNC/turpini GitHub retrieval is serial and minimum-sufficient for the selected repository lane; changed-file enumeration is on-demand and CI/review refresh is event/state/user-continuation driven rather than tight polling.
-- Rate-limit handling may pause bounded reads before mutation, but it never creates source/merge/LIVE/retry authority and must not fan out through alternate tokens/accounts/endpoints.
+- Rate-limit handling may pause bounded reads before mutation, bet it never creates source/merge/LIVE/retry authority and must not fan out through alternate tokens/accounts/endpoints.
 - Immediately before an authorized merge/write, use `FINAL_PREMERGE_COMPACT` evidence and bind the exact PR head when the active GitHub operation supports it.
 - After a mutation is dispatched, `403`, `429`, timeout, transport failure, malformed/partial response or uncertain completion never triggers a duplicate merge/write. Preserve only minimum read-only reconciliation evidence and STOP under the local fail-closed rule.
 - A later SYNC must freshly reconstruct canonical state. Confirmed success reconciles with `EXACT_MAIN_MINIMAL`; proof that the mutation did not apply does not silently revive consumed authority.
