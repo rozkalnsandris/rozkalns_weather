@@ -59,8 +59,9 @@ WeatherNext 3 remains the primary research model. Real private access is intenti
 - [x] BigQuery schema/query/cost/provenance source contracts.
 - [x] Summary statistics `mean/p10/p25/p50/p75/p90` contract.
 - [x] Hourly interim + synoptic run-class contracts.
-- [ ] **#168** migrate first-access canary source contract from legacy `station_10416` to canonical `station_05480`.
-- [ ] **#122** execute bounded private read-only BigQuery first-access gate only after #168 and a fresh exact owner authorization.
+- [x] **#168** migrate first-access canary source contract from legacy `station_10416` to canonical `station_05480`.
+- [ ] **#224** complete one-time private WeatherNext runtime/linked-dataset prerequisites and trusted-runtime reconciliation; no private query or production-data write is authorized by this issue alone.
+- [ ] **#122** execute bounded private read-only BigQuery first-access gate only after #224 and a fresh exact owner authorization.
 - [ ] Persist first real WeatherNext snapshot under a separate production-data authorization.
 - [ ] Enable sustained private WeatherNext collection only after access/provenance/cost/runtime proof.
 
@@ -141,4 +142,4 @@ Until enough real verification corpus exists:
 - publication-oriented WeatherNext analytics;
 - private-home enhancements not required for the public benchmark.
 
-Canonical current work selection lives in controller issue #9. Mutable runtime state must be freshly read rather than inferred from this roadmap.
+Issue #9 is legacy/historical AUTO-RUN controller evidence, not current mutable run truth. New explicit AUTO-RUN FULL runs keep mutable state on the target issue under `.github/auto-run-full-v2.json`; fresh `main`, target issue and exact-head CI/reviews determine current source work state.
