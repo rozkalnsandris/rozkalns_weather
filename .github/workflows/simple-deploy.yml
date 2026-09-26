@@ -3,6 +3,10 @@ name: SIMPLE-DEPLOY Weather
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - '.github/**'
+      - 'docs/**'
+      - 'tests/**'
 
 permissions:
   contents: read

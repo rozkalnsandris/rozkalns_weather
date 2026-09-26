@@ -104,6 +104,13 @@ class WorkCycleV23CanaryTests(unittest.TestCase):
         self.assertTrue(normalized["exact_replay_is_idempotent"])
         self.assertFalse(normalized["queue_vnext_96_activated"])
 
+    def test_governance_only_merge_cannot_trigger_simple_deploy(self):
+        workflow = (ROOT / ".github/workflows/simple-deploy.yml").read_text(encoding="utf-8")
+        self.assertIn("paths-ignore:", workflow)
+        self.assertIn("- '.github/**'", workflow)
+        self.assertIn("- 'docs/**'", workflow)
+        self.assertIn("- 'tests/**'", workflow)
+
     def test_local_merge_live_and_deploy_boundaries_are_unchanged(self):
         full = self.load_json(".github/auto-run-full-v2.json")
         doc = (ROOT / "docs/WORK_CYCLE_V23_ADOPTION.md").read_text(encoding="utf-8")
