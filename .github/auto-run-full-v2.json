@@ -44,15 +44,67 @@
     "native_stacked_prs_allowed_under_current_no_history_rewrite_policy": false
   },
   "activation": {
-    "fresh_reads_required": ["AGENTS.md", ".github/start-mode-routing.json", ".github/auto-run-full-v2.json", ".github/outcome-delivery-v1.json", "target_issue", "current_main", "active_pr_ci_review_state", "relevant_dependencies", "controller_issue_9"],
+    "fresh_reads_required": [
+      "AGENTS.md",
+      ".github/start-mode-routing.json",
+      ".github/auto-run-full-v2.json",
+      ".github/outcome-delivery-v1.json",
+      "target_issue",
+      "current_main",
+      "active_pr_ci_review_state",
+      "relevant_dependencies",
+      "controller_issue_9"
+    ],
     "materialize_owner_auth_on_target_issue": true,
     "activation_comment_schema": "rozkalns.auto-run-full-authorization.v2",
-    "activation_must_freeze": ["repository", "issue_number", "issue_definition_of_done", "allowed_source_actions", "merge_authority", "allowed_runtime_mutation_classes_if_any", "allowed_targets_if_any", "retry_and_rollback_semantics", "explicit_exclusions"],
+    "activation_must_freeze": [
+      "repository",
+      "issue_number",
+      "issue_definition_of_done",
+      "allowed_source_actions",
+      "merge_authority",
+      "allowed_runtime_mutation_classes_if_any",
+      "allowed_targets_if_any",
+      "retry_and_rollback_semantics",
+      "explicit_exclusions"
+    ],
     "later_issue_edits_do_not_expand_authority": true,
     "new_scope_requires_stop": true
   },
-  "allowed_without_further_owner_nudge": ["FRESH_GITHUB_READS", "SOURCE_ANALYSIS", "OUTCOME_SCOPE_AND_DELIVERY_SLICE_RECONCILIATION", "SOURCE_DOC_TEST_POLICY_CHANGES", "BRANCH_CREATE", "EXACT_PATH_COMMITS", "PUSH", "PR_CREATE_OR_UPDATE", "CI_WAIT_AND_INSPECTION", "REVIEW_INGESTION", "SCOPE_PRESERVING_CORRECTIVE_COMMITS", "MERGE_CONFLICT_RESOLUTION_WITHOUT_HISTORY_REWRITE", "FINAL_EXACT_HEAD_REVIEW", "ENABLE_GITHUB_AUTO_MERGE_FOR_EXACT_CANONICAL_PR_WHEN_READY", "DIRECT_MERGE_FALLBACK_WHEN_AUTO_MERGE_IS_UNAVAILABLE_AND_FROZEN_AUTHORITY_PERMITS", "POST_MERGE_READ_ONLY_REVALIDATION", "POST_OPERATION_VERIFICATION_AND_RECEIPTS"],
-  "never_implied": ["UNRELATED_ISSUE_OR_REPOSITORY_WORK", "NEW_SECRET_OR_CREDENTIAL_SCOPE", "NEW_PERMISSION_OR_TRUST_BOUNDARY", "NEW_DATABASE_OR_CORPUS_WRITE_OR_MIGRATION_CLASS", "NEW_CLOUDFLARE_OR_INFRASTRUCTURE_MUTATION_CLASS", "ARBITRARY_SSH_SUDO_ROOT_OR_SHELL_AUTHORITY", "RESET_REBASE_FORCE_OR_HISTORY_REWRITE", "NATIVE_STACK_REBASE_OR_FORCE_WITH_LEASE_UNDER_CURRENT_POLICY", "UNDECLARED_CLEANUP", "UNDECLARED_RETRY_OR_ROLLBACK", "PROVIDER_LLM_API_KEY", "TOKEN_BILLED_LLM_FALLBACK", "AUTOMATIC_PAID_CREDIT_PURCHASE"],
+  "allowed_without_further_owner_nudge": [
+    "FRESH_GITHUB_READS",
+    "SOURCE_ANALYSIS",
+    "OUTCOME_SCOPE_AND_DELIVERY_SLICE_RECONCILIATION",
+    "SOURCE_DOC_TEST_POLICY_CHANGES",
+    "BRANCH_CREATE",
+    "EXACT_PATH_COMMITS",
+    "PUSH",
+    "PR_CREATE_OR_UPDATE",
+    "CI_WAIT_AND_INSPECTION",
+    "REVIEW_INGESTION",
+    "SCOPE_PRESERVING_CORRECTIVE_COMMITS",
+    "MERGE_CONFLICT_RESOLUTION_WITHOUT_HISTORY_REWRITE",
+    "FINAL_EXACT_HEAD_REVIEW",
+    "ENABLE_GITHUB_AUTO_MERGE_FOR_EXACT_CANONICAL_PR_WHEN_READY",
+    "DIRECT_MERGE_FALLBACK_WHEN_AUTO_MERGE_IS_UNAVAILABLE_AND_FROZEN_AUTHORITY_PERMITS",
+    "POST_MERGE_READ_ONLY_REVALIDATION",
+    "POST_OPERATION_VERIFICATION_AND_RECEIPTS"
+  ],
+  "never_implied": [
+    "UNRELATED_ISSUE_OR_REPOSITORY_WORK",
+    "NEW_SECRET_OR_CREDENTIAL_SCOPE",
+    "NEW_PERMISSION_OR_TRUST_BOUNDARY",
+    "NEW_DATABASE_OR_CORPUS_WRITE_OR_MIGRATION_CLASS",
+    "NEW_CLOUDFLARE_OR_INFRASTRUCTURE_MUTATION_CLASS",
+    "ARBITRARY_SSH_SUDO_ROOT_OR_SHELL_AUTHORITY",
+    "RESET_REBASE_FORCE_OR_HISTORY_REWRITE",
+    "NATIVE_STACK_REBASE_OR_FORCE_WITH_LEASE_UNDER_CURRENT_POLICY",
+    "UNDECLARED_CLEANUP",
+    "UNDECLARED_RETRY_OR_ROLLBACK",
+    "PROVIDER_LLM_API_KEY",
+    "TOKEN_BILLED_LLM_FALLBACK",
+    "AUTOMATIC_PAID_CREDIT_PURCHASE"
+  ],
   "merge": {
     "auto_run_full_command_is_explicit_owner_merge_authority_for_the_frozen_issue": true,
     "preferred_merge_mechanism": "GITHUB_AUTO_MERGE",
@@ -95,7 +147,23 @@
     "provider_provenance_must_be_preserved": true,
     "forecast_snapshot_history_must_remain_reproducible": true
   },
-  "states": ["IDLE", "ACTIVATING", "WORKING", "WAITING_CI", "WAITING_REVIEW", "CORRECTING", "WAITING_EVENT_RESUME", "WAITING_WATCHDOG_RESUME", "PAUSED_USAGE", "PAUSED_PLATFORM_APPROVAL", "PAUSED_EXTERNAL", "VERIFYING", "DONE", "STOP_SCOPE_OR_RISK", "STOP_ERROR"],
+  "states": [
+    "IDLE",
+    "ACTIVATING",
+    "WORKING",
+    "WAITING_CI",
+    "WAITING_REVIEW",
+    "CORRECTING",
+    "WAITING_EVENT_RESUME",
+    "WAITING_WATCHDOG_RESUME",
+    "PAUSED_USAGE",
+    "PAUSED_PLATFORM_APPROVAL",
+    "PAUSED_EXTERNAL",
+    "VERIFYING",
+    "DONE",
+    "STOP_SCOPE_OR_RISK",
+    "STOP_ERROR"
+  ],
   "continuation": {
     "routine_ci_failure_is_owner_gate": false,
     "review_finding_is_owner_gate": false,
@@ -108,7 +176,12 @@
     "external_wait": "PAUSED_EXTERNAL",
     "identical_failure_retry_ceiling": 3,
     "retry_requires_materially_new_hypothesis_after_repeat": true,
-    "current_state_fields": ["GOAL", "DONE", "REMAINING", "EXACT_NEXT_GATE"]
+    "current_state_fields": [
+      "GOAL",
+      "DONE",
+      "REMAINING",
+      "EXACT_NEXT_GATE"
+    ]
   },
   "completion": {
     "normal_terminal_state": "DONE",
@@ -118,7 +191,42 @@
     "controller_returns_to_idle": true,
     "notify_owner_on_done": true
   },
-  "billing": {"primary_product": "CHATGPT_PLUS", "provider_api_keys_allowed": false, "automatic_paid_credits_allowed": false, "codex_required": false, "copilot_required": false},
+  "normalized_state": {
+    "contract": "AUTO_RUN_FULL_SINGLE_ISSUE_STATE_V2",
+    "shared_revision": "274d58f2d9d3cb86feded2751b8f9009a4501f6b",
+    "document": "docs/AUTO_RUN_FULL_SINGLE_ISSUE_STATE_V2.md",
+    "policy": "policy/auto-run-full-single-issue-state-v2.json",
+    "target_schema": "rozkalns.auto-run-full-single-issue-run-state.v2",
+    "controller_schema": "rozkalns.auto-run-full-single-issue-controller.v2",
+    "activation_mode": "NEW_EXPLICIT_RUNS_ONLY",
+    "legacy_controller_issue": 9,
+    "legacy_active_or_historical_state_read_only": true,
+    "rewrite_legacy_state_in_place": false,
+    "legacy_idle_transition_requires_fresh_explicit_full_activation": true,
+    "historical_receipts_preserved": true,
+    "target_issue_owns_mutable_run_state": true,
+    "controller_owns_only_lock_and_active_run_pointer": true,
+    "receipts_are_evidence_only": true,
+    "fresh_github_only": [
+      "CI_STATUS",
+      "REVIEWS",
+      "UNRESOLVED_THREADS",
+      "MERGEABILITY"
+    ],
+    "stale_writer_disposition": "STOP",
+    "transition_collision_disposition": "STOP",
+    "exact_replay_is_idempotent": true,
+    "write_preflight_contract": "WRITE_PREFLIGHT_COMPACT_V1",
+    "authority_unchanged": true,
+    "queue_vnext_96_activated": false
+  },
+  "billing": {
+    "primary_product": "CHATGPT_PLUS",
+    "provider_api_keys_allowed": false,
+    "automatic_paid_credits_allowed": false,
+    "codex_required": false,
+    "copilot_required": false
+  },
   "platform_constraints": {
     "scheduled_tasks_paid_plan_max_frequency": "PT1H",
     "event_triggered_tasks_max_runs_per_hour": 30,
