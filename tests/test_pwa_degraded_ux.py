@@ -49,6 +49,27 @@ def test_pwa_has_accessible_explicit_degraded_state_regions(tmp_path) -> None:
     assert ".provider-grid{grid-template-columns:1fr}" in css
 
 
+def test_pwa_declares_existing_svg_favicon_and_keeps_it_in_shell_cache(tmp_path) -> None:
+    client, _ = _client(tmp_path)
+    root = client.get("/").text
+    icon = client.get("/static/icon.svg")
+    manifest = client.get("/static/manifest.webmanifest").json()
+    service_worker = client.get("/static/sw.js").text
+
+    assert '<link rel="icon" href="/static/icon.svg" type="image/svg+xml">' in root
+    assert icon.status_code == 200
+    assert icon.headers["content-type"].startswith("image/svg+xml")
+    assert manifest["icons"] == [
+        {
+            "src": "/static/icon.svg",
+            "sizes": "any",
+            "type": "image/svg+xml",
+            "purpose": "any maskable",
+        }
+    ]
+    assert '"/static/icon.svg"' in service_worker
+
+
 def test_pwa_cached_api_fallback_is_explicitly_timestamped_and_not_current(tmp_path) -> None:
     client, _ = _client(tmp_path)
     script = client.get("/static/app.js").text
