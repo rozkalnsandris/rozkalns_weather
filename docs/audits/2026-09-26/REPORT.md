@@ -342,4 +342,4 @@ Kopā orientējoši 14–25 darba dienas vienam izstrādātājam; atkarīgs no r
 - [WCAG 2.2](https://www.w3.org/TR/WCAG22/)
 - [Web Vitals](https://web.dev/articles/vitals)
 
-Pilnais vizuālais dokuments: [weather-ui-audits.html](weather-ui-audits.html).
+Pilnais vizuālais dokuments: [weather-ui-audits.html](report.html).
