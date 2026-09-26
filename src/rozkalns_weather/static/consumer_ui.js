@@ -123,12 +123,21 @@
 
   function compactCurrentObservation(result) {
     const observed = latestObservationTime(result);
-    const heroFeels = document.querySelector("#heroFeels");
-    if (heroFeels) {
-      heroFeels.textContent = observed
-        ? `DWD observation · ${berlinLocalTime(observed)} · Europe/Berlin`
+    const state = document.querySelector("#currentState");
+    const localTime = observed ? berlinLocalTime(observed) : "—";
+    const stamp = parseTimestamp(observed);
+    const ageMinutes = stamp == null ? null : Math.max(0, Math.round((Date.now() - stamp) / 60000));
+    const ageLabel = ageMinutes == null ? "age unknown" : ageMinutes <= 1 ? "just now" : `${ageMinutes} min ago`;
+
+    const heroUpdated = document.querySelector("#heroUpdated");
+    if (heroUpdated && state?.dataset.state === "fresh") {
+      heroUpdated.textContent = observed
+        ? `Observed ${localTime} · ${ageLabel}`
         : "DWD observation unavailable";
     }
+
+    const heroFeels = document.querySelector("#heroFeels");
+    if (heroFeels) heroFeels.textContent = "DWD observation";
 
     const heroIcon = document.querySelector("#heroIcon");
     if (heroIcon) {
@@ -141,27 +150,28 @@
       delete heroIcon.dataset.forecastRetrievedAtUtc;
     }
 
-    const state = document.querySelector("#currentState");
     if (!state) return;
     state.classList.add("compact-state");
-    const localTime = observed ? berlinLocalTime(observed) : "—";
-    const stamp = parseTimestamp(observed);
-    const ageMinutes = stamp == null ? null : Math.max(0, Math.round((Date.now() - stamp) / 60000));
 
     if (state.dataset.state === "fresh") {
-      const ageLabel = ageMinutes == null ? "age unknown" : ageMinutes <= 5 ? "just updated" : `${ageMinutes} min`;
-      state.textContent = `FRESH · DWD observation · ${ageLabel}`;
+      state.textContent = "DWD observation current";
+      state.hidden = true;
+      state.dataset.dedupHidden = "true";
+      state.setAttribute("aria-hidden", "true");
+      state.removeAttribute("role");
+      state.removeAttribute("aria-live");
+      state.removeAttribute("aria-atomic");
     } else if (state.dataset.state === "stale") {
       state.textContent = observed
-        ? `STALE · DWD observation ${localTime} · not current`
+        ? "STALE · DWD observation is not current"
         : "STALE · DWD observation unavailable";
     } else if (state.dataset.state === "error") {
       state.textContent = observed
-        ? `ERROR · DWD observation ${localTime} · provider degraded`
+        ? "ERROR · DWD observation provider degraded"
         : "ERROR · DWD observation unavailable";
     } else if (state.dataset.state === "offline") {
       state.textContent = observed
-        ? `OFFLINE · last DWD observation ${localTime} · not current`
+        ? "OFFLINE · showing last DWD observation · not current"
         : "OFFLINE · DWD observation unavailable";
     }
   }
