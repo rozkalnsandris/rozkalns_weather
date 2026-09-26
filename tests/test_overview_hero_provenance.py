@@ -14,12 +14,30 @@ def test_consumer_overlay_keeps_current_temperature_explicitly_observational() -
     index = (STATIC / "index.html").read_text()
 
     assert index.index('/static/weather_ui.js') < index.index('/static/consumer_ui.js')
-    assert 'DWD observation · ${berlinLocalTime(observed)} · Europe/Berlin' in source
-    assert 'state.classList.add("compact-state")' in source
-    assert 'FRESH · DWD observation · ${ageLabel}' in source
-    assert 'STALE · DWD observation ${localTime} · not current' in source
-    assert 'OFFLINE · last DWD observation ${localTime} · not current' in source
+    assert 'heroUpdated.textContent = observed' in source
+    assert 'Observed ${localTime} · ${ageLabel}' in source
+    assert 'heroFeels.textContent = "DWD observation"' in source
+    assert 'state.textContent = "DWD observation current"' in source
+    assert 'state.hidden = true' in source
+    assert 'state.setAttribute("aria-hidden", "true")' in source
+    assert 'FRESH · DWD observation' not in source
+    assert 'STALE · DWD observation is not current' in source
+    assert 'ERROR · DWD observation provider degraded' in source
+    assert 'OFFLINE · showing last DWD observation · not current' in source
     assert 'document.querySelector("#heroTemperature")' not in source
+
+
+def test_normal_observation_age_is_visible_once_and_degraded_state_keeps_warning_surface() -> None:
+    source = _consumer_source()
+
+    assert source.count('Observed ${localTime} · ${ageLabel}') == 1
+    assert 'const ageLabel = ageMinutes == null ? "age unknown"' in source
+    assert '`${ageMinutes} min ago`' in source
+    assert 'if (heroUpdated && state?.dataset.state === "fresh")' in source
+    assert 'else if (state.dataset.state === "stale")' in source
+    assert 'else if (state.dataset.state === "error")' in source
+    assert 'else if (state.dataset.state === "offline")' in source
+    assert 'observed_at_utc}' not in source
 
 
 def test_forecast_condition_fallback_reuses_the_canonical_now_card_and_stays_labelled() -> None:
@@ -57,3 +75,10 @@ def test_unknown_observation_is_not_relabelled_without_a_valid_now_forecast_cond
     assert 'condition === "unknown"' in source
     assert 'conditionEvidence = heroIcon.dataset.condition === "unknown"' in source
     assert '"observation-unavailable"' in source
+
+
+def test_overview_static_change_advances_the_pwa_shell_cache() -> None:
+    service_worker = (STATIC / "sw.js").read_text()
+
+    assert 'const CACHE = "rozkalns-weather-v8"' in service_worker
+    assert '"/static/consumer_ui.js"' in service_worker
