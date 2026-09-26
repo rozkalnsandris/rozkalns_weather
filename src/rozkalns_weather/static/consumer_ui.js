@@ -2,6 +2,14 @@
   "use strict";
 
   const NOW_WINDOW_MS = 45 * 60 * 1000;
+  const PROVIDER_LABELS = Object.freeze({
+    weathernext3: "WeatherNext 3",
+    icon_d2: "ICON-D2",
+    ecmwf_ifs: "ECMWF IFS",
+    ecmwf_aifs: "AIFS",
+    dwd_mosmix_l: "DWD MOSMIX-L",
+  });
+  let heroForecastObserver = null;
 
   function parseTimestamp(value) {
     const stamp = new Date(value).getTime();
@@ -105,11 +113,141 @@
     return true;
   }
 
+  function latestObservationTime(result) {
+    return (result?.payload?.observations || [])
+      .map((item) => item.observed_at_utc)
+      .filter(Boolean)
+      .sort()
+      .at(-1) || null;
+  }
+
+  function compactCurrentObservation(result) {
+    const observed = latestObservationTime(result);
+    const heroFeels = document.querySelector("#heroFeels");
+    if (heroFeels) {
+      heroFeels.textContent = observed
+        ? `DWD observation · ${berlinLocalTime(observed)} · Europe/Berlin`
+        : "DWD observation unavailable";
+    }
+
+    const heroIcon = document.querySelector("#heroIcon");
+    if (heroIcon) {
+      heroIcon.dataset.conditionEvidence = heroIcon.dataset.condition === "unknown"
+        ? "observation-unavailable"
+        : "observation";
+      delete heroIcon.dataset.forecastProvider;
+      delete heroIcon.dataset.forecastValidTimeUtc;
+      delete heroIcon.dataset.forecastInitTimeUtc;
+      delete heroIcon.dataset.forecastRetrievedAtUtc;
+    }
+
+    const state = document.querySelector("#currentState");
+    if (!state) return;
+    state.classList.add("compact-state");
+    const localTime = observed ? berlinLocalTime(observed) : "—";
+    const stamp = parseTimestamp(observed);
+    const ageMinutes = stamp == null ? null : Math.max(0, Math.round((Date.now() - stamp) / 60000));
+
+    if (state.dataset.state === "fresh") {
+      const ageLabel = ageMinutes == null ? "age unknown" : ageMinutes <= 5 ? "just updated" : `${ageMinutes} min`;
+      state.textContent = `FRESH · DWD observation · ${ageLabel}`;
+    } else if (state.dataset.state === "stale") {
+      state.textContent = observed
+        ? `STALE · DWD observation ${localTime} · not current`
+        : "STALE · DWD observation unavailable";
+    } else if (state.dataset.state === "error") {
+      state.textContent = observed
+        ? `ERROR · DWD observation ${localTime} · provider degraded`
+        : "ERROR · DWD observation unavailable";
+    } else if (state.dataset.state === "offline") {
+      state.textContent = observed
+        ? `OFFLINE · last DWD observation ${localTime} · not current`
+        : "OFFLINE · DWD observation unavailable";
+    }
+  }
+
+  function providerLabel(provider, row) {
+    return row?.model_name || PROVIDER_LABELS[provider] || provider || "Forecast model";
+  }
+
+  function disconnectHeroForecastObserver() {
+    if (!heroForecastObserver) return;
+    heroForecastObserver.disconnect();
+    heroForecastObserver = null;
+  }
+
+  function applyForecastHeroFromNowCard(provider, tempSeries, nowIndex, cards) {
+    const heroIcon = document.querySelector("#heroIcon");
+    const heroCondition = document.querySelector("#heroCondition");
+    if (!heroIcon || !heroCondition) return false;
+
+    // A real aligned DWD observed condition always wins. Forecast evidence is
+    // only a presentation fallback while the observation condition is unknown.
+    if (heroIcon.dataset.condition && heroIcon.dataset.condition !== "unknown") return true;
+    if (nowIndex < 0) return false;
+
+    const row = tempSeries[nowIndex];
+    const card = cards[nowIndex];
+    const condition = card?.dataset.condition;
+    const daylight = card?.dataset.daylight || "unknown";
+    if (!row || !card || !condition || condition === "unknown") return false;
+
+    const hourIcon = card.querySelector(".hour-icon");
+    const conditionSource = hourIcon?.dataset.conditionSource || "same_run_forecast_condition";
+    const visibleCondition = hourIcon?.querySelector("svg[aria-label]")?.getAttribute("aria-label") || "Forecast conditions";
+    const modelName = providerLabel(provider, row);
+    const label = `${visibleCondition} · ${modelName} forecast`;
+    const weatherUi = window.RozkalnsWeatherConditions;
+    if (!weatherUi?.weatherIcon) return false;
+
+    heroCondition.textContent = label;
+    heroCondition.title = `Forecast condition at ${berlinLocalTime(row.valid_time_utc)} because the current DWD observation has no aligned condition evidence.`;
+    heroIcon.innerHTML = weatherUi.weatherIcon(condition, daylight, { label, decorative: true });
+    heroIcon.dataset.condition = condition;
+    heroIcon.dataset.daylight = daylight;
+    heroIcon.dataset.conditionEvidence = "forecast";
+    heroIcon.dataset.conditionSource = conditionSource;
+    heroIcon.dataset.forecastProvider = provider || "unknown";
+    heroIcon.dataset.forecastValidTimeUtc = row.valid_time_utc || "";
+    heroIcon.dataset.forecastInitTimeUtc = row.init_time_utc || "";
+    heroIcon.dataset.forecastRetrievedAtUtc = row.retrieved_at_utc || "";
+    return true;
+  }
+
+  function watchForForecastHeroFallback(provider, tempSeries, nowIndex, cards) {
+    disconnectHeroForecastObserver();
+    if (applyForecastHeroFromNowCard(provider, tempSeries, nowIndex, cards)) return;
+    if (nowIndex < 0 || typeof MutationObserver === "undefined") return;
+
+    const strip = document.querySelector("#hourlyStrip");
+    if (!strip) return;
+    heroForecastObserver = new MutationObserver(() => {
+      if (applyForecastHeroFromNowCard(provider, tempSeries, nowIndex, cards)) {
+        disconnectHeroForecastObserver();
+      }
+    });
+    heroForecastObserver.observe(strip, {
+      subtree: true,
+      childList: true,
+      attributes: true,
+      attributeFilter: ["data-condition", "data-daylight", "data-condition-source"],
+    });
+  }
+
   const baseSetSurfaceState = window.setSurfaceState;
   if (typeof baseSetSurfaceState === "function") {
     window.setSurfaceState = function setSurfaceStateWithDedupReset(id, ...args) {
       restoreSurface(id);
       return baseSetSurfaceState(id, ...args);
+    };
+  }
+
+  const baseRenderCurrent = window.renderCurrent;
+  if (typeof baseRenderCurrent === "function") {
+    window.renderCurrent = function renderCurrentWithConsumerProvenance(result, healthMap) {
+      disconnectHeroForecastObserver();
+      baseRenderCurrent(result, healthMap);
+      compactCurrentObservation(result);
     };
   }
 
@@ -142,7 +280,19 @@
         if (label) label.textContent = isNow ? "Now" : berlinLocalTime(row.valid_time_utc);
       });
 
+      watchForForecastHeroFallback(provider, tempSeries, nowIndex, cards);
       dedupeSurfacePair("overviewTempState", "overviewPrecipState");
+    };
+  }
+
+  const baseRenderDaily = window.renderDaily;
+  if (typeof baseRenderDaily === "function") {
+    window.renderDaily = function renderDailyWithForecastLabel(result, healthMap) {
+      baseRenderDaily(result, healthMap);
+      const highLow = document.querySelector("#heroHighLow");
+      if (highLow && !highLow.textContent.startsWith("Today forecast ·")) {
+        highLow.textContent = `Today forecast · ${highLow.textContent}`;
+      }
     };
   }
 
@@ -161,5 +311,7 @@
     selectNowIndex,
     normalizedProviderUiState,
     dedupeSurfacePair,
+    compactCurrentObservation,
+    applyForecastHeroFromNowCard,
   });
 })();
