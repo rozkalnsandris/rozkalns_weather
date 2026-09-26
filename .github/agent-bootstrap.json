@@ -1,0 +1,27 @@
+{
+  "schema": "rozkalns.agent-bootstrap.v1",
+  "repository": "rozkalnsandris/rozkalns_weather",
+  "shared_policy": {
+    "work_cycle": "docs/WORK_CYCLE_V23_ADOPTION.md",
+    "github_api_access": ".github/github-api-access-v1.json"
+  },
+  "rules": {
+    "primary": "AGENTS.md",
+    "local_strict_rules": [
+      "AGENTS.md#github-runtime-authority",
+      "AGENTS.md#simple-deploy-consumer-boundary",
+      "AGENTS.md#auto-run-full-v2",
+      "AGENTS.md#agent-work-cycle-v1"
+    ]
+  },
+  "continuation": {
+    "kind": "issue",
+    "locator": "9"
+  },
+  "automation": {
+    "fast_lane": true,
+    "auto_run_full": true,
+    "queue_mode": "inactive"
+  },
+  "deployment_profile": "simple-deploy"
+}

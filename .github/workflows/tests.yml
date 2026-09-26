@@ -31,6 +31,32 @@ jobs:
       - name: Test
         run: pytest
 
+  work-cycle-v23-canary:
+    name: FAST-LANE v2.3 work-cycle canary
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout Weather source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Checkout accepted shared work-cycle contract
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: rozkalnsandris/ops-workflows
+          ref: 274d58f2d9d3cb86feded2751b8f9009a4501f6b
+          path: .work-cycle-shared
+          persist-credentials: false
+
+      - name: Validate bootstrap manifest with shared validator
+        run: >-
+          python3 .work-cycle-shared/scripts/agent_bootstrap_manifest.py
+          .github/agent-bootstrap.json
+          --repo-root .
+
+      - name: Validate Weather work-cycle canary
+        run: python3 -m unittest discover -s tests -p 'test_work_cycle_v23_canary.py' -v
+
   simple-deploy-contract:
     name: SIMPLE-DEPLOY consumer contract
     runs-on: ubuntu-24.04

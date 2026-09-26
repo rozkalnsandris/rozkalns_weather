@@ -1,0 +1,38 @@
+[
+  {
+    "object": "branch",
+    "observed": "exact-existing-intent",
+    "expected": "RECONCILE_OR_NOOP",
+    "dispatch_duplicate_write": false
+  },
+  {
+    "object": "branch",
+    "observed": "same-ref-different-intent",
+    "expected": "STOP",
+    "dispatch_duplicate_write": false
+  },
+  {
+    "object": "pull_request",
+    "observed": "exact-head-base-scope",
+    "expected": "RECONCILE_OR_NOOP",
+    "dispatch_duplicate_write": false
+  },
+  {
+    "object": "pull_request",
+    "observed": "same-head-conflicting-base-or-scope",
+    "expected": "STOP",
+    "dispatch_duplicate_write": false
+  },
+  {
+    "object": "controller",
+    "observed": "exact-active-run-digest",
+    "expected": "RECONCILE_OR_NOOP",
+    "dispatch_duplicate_write": false
+  },
+  {
+    "object": "controller",
+    "observed": "different-live-run-or-stale-writer",
+    "expected": "STOP",
+    "dispatch_duplicate_write": false
+  }
+]
