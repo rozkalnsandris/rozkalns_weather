@@ -65,6 +65,10 @@ Pirms mode izvēles nolasi `.github/start-mode-routing.json`.
 - `AUTO-RUN FULL` aktivizējas tikai ar exact explicit `AUTO-RUN FULL rozkalns_weather #<issue>` un pēc tam jālasa `.github/auto-run-full-v2.json` + `docs/AUTO_RUN_FULL_V2.md`.
 - Neinferē režīmu no issue nosaukuma, controller state, deploy queue, historical chat, executor availability vai veca receipt.
 
+### AUTO-RUN normalized-state precedence
+
+`.github/auto-run-full-v2.json` `normalized_state` ir repo-local machine authority jaunajiem explicit AUTO-RUN FULL run. Issue `#9` ir legacy/historical controller evidence; target issue glabā mutable run state, bet controller glabā tikai lock/active-run pointer. Zemāk esošo managed tekstu par durable controller/return-to-IDLE interpretē caur šo normalized-state amendment un legacy `#9` payload nepārraksta in place.
+
 <!-- BEGIN FAST-LANE-V2.2-MANAGED -->
 ## FAST-LANE v2.2 Composite
 
