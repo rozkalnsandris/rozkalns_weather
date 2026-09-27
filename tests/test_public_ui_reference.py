@@ -51,7 +51,7 @@ def test_forecast_location_api_whitelist_and_privacy_are_preserved(tmp_path) -> 
 
     for location_id in ("home", "station_05480", "station_10416"):
         hourly = client.get(f"/api/hourly?location_id={location_id}")
-        daily = client.get(f"/api/daily?location_id={location_id}")
+        daily = client.get(f"/api/daily?days=14&location_id={location_id}")
         assert hourly.status_code == 200
         assert daily.status_code == 200
         assert hourly.json()["location"]["id"] == location_id
@@ -72,5 +72,5 @@ def test_overview_models_queries_remain_selected_location_driven(tmp_path) -> No
     assert 'location_id=${locationId}' in script
     assert '`hourly-temperature-48-${locationId}`' in script
     assert '`hourly-precipitation-48-${locationId}`' in script
-    assert '`daily-10-${locationId}`' in script
+    assert '`daily-14-${locationId}`' in script
     assert 'const locationMeta = FORECAST_LOCATION_META[locationId]' in script
