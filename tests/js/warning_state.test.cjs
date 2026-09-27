@@ -13,6 +13,8 @@ const {
 const payload = (alerts = []) => ({
   authority: 'DWD',
   official: true,
+  kind: 'official_warning',
+  state: alerts.length ? 'alerts_present' : 'no_active_alerts',
   source_attribution: 'DWD warning data via Bright Sky',
   retrieved_at_utc: '2026-09-27T08:00:00Z',
   reference_location: { id: 'station_05480', label: 'Werl reference', kind: 'public_reference' },
@@ -29,6 +31,20 @@ test('fresh DWD evidence distinguishes clear from non-expired warnings', () => {
   ]));
   assert.equal(active.state, 'active');
   assert.equal(active.alerts.length, 2);
+});
+
+test('clear requires a complete and internally consistent warning response contract', () => {
+  const clear = payload();
+  assert.equal(warningEvidence(clear).state, 'clear');
+  assert.equal(warningEvidence({ ...clear, state: undefined }), null);
+  assert.equal(warningEvidence({ ...clear, state: 'alerts_present' }), null);
+  assert.equal(warningEvidence({ ...clear, kind: 'other' }), null);
+  assert.equal(warningEvidence({ ...clear, retrieved_at_utc: 'not-a-time' }), null);
+  assert.equal(warningEvidence({ ...clear, reference_location: null }), null);
+
+  const active = payload([{ lifecycle: 'active', headline: 'Storm' }]);
+  assert.equal(warningEvidence({ ...active, state: 'no_active_alerts' }), null);
+  assert.equal(warningEvidence({ ...active, alerts: [{ headline: 'Missing lifecycle' }] }), null);
 });
 
 test('loading and failure preserve last-known warning evidence without claiming freshness', () => {
@@ -57,13 +73,29 @@ test('fresh clear replaces prior active evidence while failure without evidence 
   assert.equal(reduceWarningState(undefined, { type: 'failure' }).state, 'error');
 });
 
-test('malformed or non-DWD success cannot erase valid last-known evidence', () => {
+test('malformed or inconsistent success cannot erase valid last-known evidence', () => {
   const active = reduceWarningState(undefined, {
     type: 'success', payload: payload([{ lifecycle: 'active', headline: 'Storm' }]),
   });
-  const malformed = reduceWarningState(active, { type: 'success', payload: { authority: 'other', official: true, alerts: [] } });
+  const malformed = reduceWarningState(active, {
+    type: 'success',
+    payload: { ...payload([]), state: undefined },
+  });
   assert.equal(malformed.state, 'stale');
   assert.equal(malformed.evidence.alerts[0].headline, 'Storm');
+
+  const inconsistent = reduceWarningState(active, {
+    type: 'success',
+    payload: { ...payload([]), state: 'alerts_present' },
+  });
+  assert.equal(inconsistent.state, 'stale');
+  assert.equal(inconsistent.evidence.alerts[0].headline, 'Storm');
+
+  const nonDwd = reduceWarningState(active, {
+    type: 'success',
+    payload: { ...payload([]), authority: 'other' },
+  });
+  assert.equal(nonDwd.state, 'stale');
 });
 
 test('warning checked age is display-only and derived from retrieval time', () => {

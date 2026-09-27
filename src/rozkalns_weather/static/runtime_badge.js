@@ -6,13 +6,28 @@ function deriveRuntimeBadge({ online = true, readinessOk = false, healthState = 
 }
 
 function warningEvidence(payload) {
-  if (!payload || payload.authority !== "DWD" || payload.official !== true || !Array.isArray(payload.alerts)) return null;
-  const alerts = payload.alerts.filter((alert) => alert && typeof alert === "object" && alert.lifecycle !== "expired");
+  const validStates = new Set(["alerts_present", "no_active_alerts"]);
+  if (
+    !payload ||
+    payload.authority !== "DWD" ||
+    payload.official !== true ||
+    payload.kind !== "official_warning" ||
+    !validStates.has(payload.state) ||
+    !Array.isArray(payload.alerts) ||
+    typeof payload.retrieved_at_utc !== "string" ||
+    !Number.isFinite(Date.parse(payload.retrieved_at_utc)) ||
+    !payload.reference_location ||
+    typeof payload.reference_location !== "object"
+  ) return null;
+  if (payload.state === "no_active_alerts" && payload.alerts.length !== 0) return null;
+  if (payload.state === "alerts_present" && payload.alerts.length === 0) return null;
+  if (payload.alerts.some((alert) => !alert || typeof alert !== "object" || !["active", "upcoming", "expired"].includes(alert.lifecycle))) return null;
+  const alerts = payload.alerts.filter((alert) => alert.lifecycle !== "expired");
   return {
     state: alerts.length ? "active" : "clear",
     alerts,
     payload,
-    retrievedAtUtc: typeof payload.retrieved_at_utc === "string" ? payload.retrieved_at_utc : null,
+    retrievedAtUtc: payload.retrieved_at_utc,
   };
 }
 
