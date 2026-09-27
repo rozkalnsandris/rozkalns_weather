@@ -16,6 +16,7 @@
   </style>
 </head>
 <body>
+  <a class="skip-link" href="#overview">Skip to weather content</a>
   <main class="app-shell">
     <section id="overview" class="view active" aria-label="Weather overview">
       <div class="overview-toolbar"><span class="overview-brand">Rozkalns Weather</span><label class="sr-only" for="appearanceMode">Appearance · Auto is dark 20:00–07:00 Europe/Berlin</label><select id="appearanceMode" class="appearance-select" aria-label="Appearance: automatic night mode 20:00–07:00 Europe/Berlin"><option value="auto">Auto theme</option><option value="light">Light theme</option><option value="dark">Dark theme</option></select></div>
@@ -25,7 +26,7 @@
           <strong id="warningSummaryTitle">DWD Warnings</strong>
           <span id="overviewWarningState">Official warning status not loaded</span>
         </div>
-        <button id="overviewWarningsButton" class="warning-open" type="button" aria-label="Open DWD warnings">›</button>
+        <button id="overviewWarningsButton" class="warning-open" type="button" data-open-view="safety" aria-label="Open DWD warnings">›</button>
       </section>
       <section class="weather-hero" aria-labelledby="heroLocation">
         <div class="hero-topline">
@@ -200,7 +201,7 @@
   </main>
 
   <nav class="tabs bottom-nav" aria-label="Primary views">
-    <button data-view="overview" class="active"><span aria-hidden="true">⌂</span><small>Overview</small></button>
+    <button data-view="overview" class="active" aria-current="page"><span aria-hidden="true">⌂</span><small>Overview</small></button>
     <button data-view="models"><span aria-hidden="true">▥</span><small>Models</small></button>
     <button data-view="safety"><span aria-hidden="true">◉</span><small>Radar</small></button>
     <button data-view="accuracy"><span aria-hidden="true">◎</span><small>Accuracy</small></button>
@@ -210,6 +211,7 @@
   <footer>WeatherNext 3 benchmark · measured skill uses DWD CDC 05480 reference truth</footer>
   <script src="/static/daily_trend.js" defer></script>
   <script src="/static/app.js" defer></script>
+  <script src="/static/navigation_v1.js" defer></script>
   <script src="/static/model_snapshot_alignment.js" defer></script>
   <script src="/static/weather_ui.js" defer></script>
   <script src="/static/consumer_ui.js" defer></script>
