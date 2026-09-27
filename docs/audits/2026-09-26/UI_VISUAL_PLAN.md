@@ -1,6 +1,6 @@
 # UI izskata plāns — veidojam šajā Codex sarunā
 
-Statuss 2026-09-27: **Andris apstiprinājis kompakto zilo Overview A ar light/dark un dienu min/max/lietus grafiku; autorizējis tā ieviešanu šajā sarunā.** Citu lapu gala maketi un pilna vizuālā pieņemšana vēl nav pabeigti.
+Statuss 2026-09-27: **Andris apstiprinājis kompakto zilo Overview A ar light/dark un dienu min/max/lietus grafiku; autorizējis tā ieviešanu šajā sarunā.** Vēlāk tajā pašā dienā Andris apstiprināja V2 komponentus un Models/Radar/Accuracy/Status maketus kā pamatu ieviešanai, izceļot WeatherNext 3. Pilna renderējuma un a11y validācija vēl nav pabeigta.
 
 Precīza ieviestā Overview specifikācija un robežas: [docs/UI.md](../../UI.md#approved-overview-a--2026-09-27). Auto dark 20.00–7.00 Europe/Berlin; mobilās prioritātes Galaxy A55 un S25+. Tehniskā plāna pārējie darbi paliek Plus chat.
 
@@ -25,7 +25,13 @@ Darbu uzskaite: [#237](https://github.com/rozkalnsandris/rozkalns_weather/issues
 5. Pārbaudīt pieejamību, kontrastu, tekstu ietilpību un visu stāvokļu dizainu.
 6. Sagatavot konkrētu handoff Plus chat: pieņemtie maketi, tokeni, komponentu stāvokļi un atļautās implementācijas robežas.
 
-Overview virziens pieņemts; pārējo lapu un pilnas pieņemšanas posmi paliek plānoti. Agrākā audita koncepcija nav gala dizains.
+Overview virziens un V2/V3 dizaina pamats pieņemts; pilna renderējuma/a11y validācija un tehniskā integrācija paliek nepabeigta. Agrākā audita koncepcija nav gala dizains.
+
+## Pieņemtā V2/V3 versija un handoff
+
+Andra apstiprinājums: “Jā, pieņemam un gatavojam ieviešanu”. [Maketi un pierādījumu robežas](../../design/2026-09-27-approved-ui/README.md). [Ieviešanas secība](../../design/2026-09-27-approved-ui/weather-ui-preview/IMPLEMENTATION_HANDOFF.md).
+
+WeatherNext 3 izcelts Overview, Models, Accuracy un Status; Radar paliek atsevišķa novērojumu/nowcast virsma. Demo dati nav production datu līgums. Avotu neveiksmes un verification readiness ir atsevišķi.
 
 ## Ko sagaidām no Plus chat
 
