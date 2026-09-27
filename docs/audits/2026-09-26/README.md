@@ -15,3 +15,7 @@ Audita avots: `d396b3dfdbc8680b7e28e7606096ae204746ee04`. Plāna pārbaudītais 
 Audits aptvēra piecus live skatus, desktop un 390/320 px pārbaudi, publiskās references un frontend avotu. Tas neietver Lighthouse/CrUX rezultātu, pilnu WCAG/ekrānlasītāja pārbaudi, offline restartēšanas pierādījumu vai security audit. Koncepcijas laikapstākļi ir demonstrācijas dati.
 
 Dokumentu statuss: **plānots**, izņemot skaidri norādītos jau merged avota labojumus. Dokumentācijas PR nepabeidz UI ieviešanu un neaktivizē deploy vai private access.
+
+## Pieņemtais dizaina handoff — 2026-09-27
+
+[V2 komponenti un piecu skatu mobilais priekšskatījums](../../design/2026-09-27-approved-ui/README.md). Andris apstiprināja dizaina pamatu ieviešanai ar izceltu WeatherNext 3. Renderējuma/a11y validācija un tehniskā integrācija vēl nav pabeigta; #237 paliek atvērts.

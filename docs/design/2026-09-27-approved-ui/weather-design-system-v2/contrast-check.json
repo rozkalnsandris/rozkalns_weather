@@ -1,0 +1,62 @@
+[
+  {
+    "pair": "Light text",
+    "ratio": 11.57,
+    "AA_normal_text": true
+  },
+  {
+    "pair": "Light metadata",
+    "ratio": 5.24,
+    "AA_normal_text": true
+  },
+  {
+    "pair": "Light metadata soft",
+    "ratio": 4.63,
+    "AA_normal_text": true
+  },
+  {
+    "pair": "Light accent soft",
+    "ratio": 4.82,
+    "AA_normal_text": true
+  },
+  {
+    "pair": "Dark text",
+    "ratio": 12.84,
+    "AA_normal_text": true
+  },
+  {
+    "pair": "Dark metadata",
+    "ratio": 7.72,
+    "AA_normal_text": true
+  },
+  {
+    "pair": "Dark metadata soft",
+    "ratio": 6.02,
+    "AA_normal_text": true
+  },
+  {
+    "pair": "Dark accent soft",
+    "ratio": 6.08,
+    "AA_normal_text": true
+  },
+  {
+    "pair": "Light stale",
+    "ratio": 6.56,
+    "AA_normal_text": true
+  },
+  {
+    "pair": "Dark stale",
+    "ratio": 8.81,
+    "AA_normal_text": true
+  },
+  {
+    "pair": "Light error",
+    "ratio": 6.37,
+    "AA_normal_text": true
+  },
+  {
+    "pair": "Dark error",
+    "ratio": 8.03,
+    "AA_normal_text": true
+  }
+]
