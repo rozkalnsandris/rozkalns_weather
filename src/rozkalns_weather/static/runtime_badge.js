@@ -53,6 +53,71 @@ function warningCheckedAge(retrievedAtUtc, nowMs = Date.now()) {
   return `checked ${Math.floor(hours / 24)}d ago`;
 }
 
+function warningDisplayTime(value) {
+  if (typeof value !== "string" || !value) return "";
+  const parsed = new Date(value);
+  if (!Number.isFinite(parsed.getTime())) return "";
+  return new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Europe/Berlin",
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZoneName: "short",
+  }).format(parsed);
+}
+
+function warningReferenceLabel(payload) {
+  const reference = payload && payload.reference_location;
+  if (!reference || typeof reference !== "object") return "public DWD reference location";
+  return reference.label || reference.id || "public DWD reference location";
+}
+
+function warningReadableText(model, error = null) {
+  if (!model || !model.evidence) {
+    if (error) return `DWD warning status unavailable\n${String(error.message || error)}`;
+    return warningSummary(model || { state: "unknown", evidence: null });
+  }
+
+  const evidence = model.evidence;
+  const payload = evidence.payload || {};
+  const lines = [
+    "DWD official warnings",
+    `Reference location: ${warningReferenceLabel(payload)}`,
+  ];
+
+  if (model.state === "stale") {
+    lines.push("Current DWD status unavailable; showing last known official warning evidence.");
+  } else if (model.state === "loading") {
+    lines.push("Checking current DWD status; showing last known official warning evidence.");
+  }
+
+  if (!evidence.alerts.length) {
+    lines.push("No active warnings in the latest valid DWD response.");
+  } else {
+    evidence.alerts.forEach((alert, index) => {
+      const headline = typeof alert.headline === "string" && alert.headline.trim() ? alert.headline.trim() : "DWD warning";
+      const severity = typeof alert.severity === "string" && alert.severity.trim() ? alert.severity.trim().toUpperCase() : "UNKNOWN";
+      const lifecycle = typeof alert.lifecycle === "string" && alert.lifecycle.trim() ? alert.lifecycle.trim() : "active";
+      const starts = warningDisplayTime(alert.effective || alert.onset);
+      const ends = warningDisplayTime(alert.expires);
+      lines.push("", `${index + 1}. ${headline}`, `Severity: ${severity}`, `Status: ${lifecycle}`);
+      if (starts) lines.push(`Starts: ${starts}`);
+      if (ends) lines.push(`Ends: ${ends}`);
+      if (typeof alert.description === "string" && alert.description.trim()) lines.push(`Details: ${alert.description.trim()}`);
+      if (typeof alert.instruction === "string" && alert.instruction.trim()) lines.push(`Instructions: ${alert.instruction.trim()}`);
+    });
+  }
+
+  const attribution = typeof payload.source_attribution === "string" && payload.source_attribution.trim()
+    ? ` · ${payload.source_attribution.trim()}`
+    : "";
+  lines.push("", `Authority: DWD${attribution}`);
+  const checkedAge = warningCheckedAge(evidence.retrievedAtUtc);
+  if (checkedAge) lines.push(`Last checked: ${checkedAge}`);
+  return lines.join("\n");
+}
+
 function createSingleFlight(task) {
   let inFlight = null;
   return (...args) => {
@@ -71,6 +136,9 @@ if (typeof module !== "undefined" && module.exports) {
     reduceWarningState,
     warningSummary,
     warningCheckedAge,
+    warningDisplayTime,
+    warningReferenceLabel,
+    warningReadableText,
     createSingleFlight,
   };
 }
@@ -150,6 +218,29 @@ if (typeof window !== "undefined" && typeof document !== "undefined") {
     return "fresh";
   }
 
+  function renderWarningDiagnostics(output, payload) {
+    let details = document.querySelector("#warningsDiagnostics");
+    if (!details) {
+      details = document.createElement("details");
+      details.id = "warningsDiagnostics";
+      const summary = document.createElement("summary");
+      summary.textContent = "Technical warning JSON";
+      const raw = document.createElement("pre");
+      raw.id = "warningsDiagnosticsJson";
+      details.append(summary, raw);
+      if (output.parentNode) output.parentNode.insertBefore(details, output.nextSibling);
+    }
+    const raw = details.querySelector("#warningsDiagnosticsJson");
+    if (payload) {
+      if (raw) raw.textContent = JSON.stringify(payload, null, 2);
+      details.hidden = false;
+    } else {
+      if (raw) raw.textContent = "";
+      details.hidden = true;
+      details.open = false;
+    }
+  }
+
   function renderWarnings(model, error = null) {
     const baseSummary = warningSummary(model);
     const checkedAge = warningCheckedAge(model && model.evidence ? model.evidence.retrievedAtUtc : null);
@@ -169,8 +260,8 @@ if (typeof window !== "undefined" && typeof document !== "undefined") {
       state.textContent = `${surfaceState.toUpperCase()} · ${summary}`;
     }
     if (output) {
-      if (model.evidence) output.textContent = JSON.stringify(model.evidence.payload, null, 2);
-      else if (error) output.textContent = JSON.stringify({ error: String(error.message || error) }, null, 2);
+      output.textContent = warningReadableText(model, error);
+      renderWarningDiagnostics(output, model.evidence ? model.evidence.payload : null);
     }
   }
 

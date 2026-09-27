@@ -1,4 +1,4 @@
-const CACHE = "rozkalns-weather-v13";
+const CACHE = "rozkalns-weather-v14";
 const CACHE_PREFIX = "rozkalns-weather-";
 const ASSETS=[
   "/",

@@ -5,13 +5,17 @@ const {
   reduceWarningState,
   warningSummary,
   warningCheckedAge,
+  warningDisplayTime,
+  warningReadableText,
   createSingleFlight,
 } = require('../../src/rozkalns_weather/static/runtime_badge.js');
 
 const payload = (alerts = []) => ({
   authority: 'DWD',
   official: true,
+  source_attribution: 'DWD warning data via Bright Sky',
   retrieved_at_utc: '2026-09-27T08:00:00Z',
+  reference_location: { id: 'station_05480', label: 'Werl reference', kind: 'public_reference' },
   alerts,
 });
 
@@ -38,6 +42,7 @@ test('loading and failure preserve last-known warning evidence without claiming 
   assert.equal(stale.state, 'stale');
   assert.equal(stale.evidence.alerts[0].headline, 'Storm');
   assert.match(warningSummary(stale), /Last known: 1 DWD warning/);
+  assert.match(warningReadableText(stale), /Current DWD status unavailable; showing last known official warning evidence/);
 });
 
 test('fresh clear replaces prior active evidence while failure without evidence is error', () => {
@@ -48,6 +53,7 @@ test('fresh clear replaces prior active evidence while failure without evidence 
   assert.equal(clear.state, 'clear');
   assert.equal(clear.evidence.alerts.length, 0);
   assert.equal(warningSummary(clear), 'No active warnings · current DWD response');
+  assert.match(warningReadableText(clear), /No active warnings in the latest valid DWD response/);
   assert.equal(reduceWarningState(undefined, { type: 'failure' }).state, 'error');
 });
 
@@ -66,6 +72,39 @@ test('warning checked age is display-only and derived from retrieval time', () =
   assert.equal(warningCheckedAge('2026-09-27T09:53:00Z', now), 'checked 7m ago');
   assert.equal(warningCheckedAge('2026-09-27T07:30:00Z', now), 'checked 2h ago');
   assert.equal(warningCheckedAge('not-a-time', now), '');
+});
+
+test('warning readable text exposes normalized official fields without raw JSON or fabricated area', () => {
+  const current = reduceWarningState(undefined, {
+    type: 'success',
+    payload: payload([{
+      lifecycle: 'active',
+      headline: 'Severe wind',
+      severity: 'severe',
+      effective: '2026-09-27T08:00:00Z',
+      expires: '2026-09-27T12:00:00Z',
+      description: 'Strong gusts are possible.',
+      instruction: 'Secure loose objects.',
+    }]),
+  });
+  const text = warningReadableText(current);
+  assert.match(text, /DWD official warnings/);
+  assert.match(text, /Reference location: Werl reference/);
+  assert.match(text, /1\. Severe wind/);
+  assert.match(text, /Severity: SEVERE/);
+  assert.match(text, /Status: active/);
+  assert.match(text, /Details: Strong gusts are possible\./);
+  assert.match(text, /Instructions: Secure loose objects\./);
+  assert.match(text, /Authority: DWD · DWD warning data via Bright Sky/);
+  assert.doesNotMatch(text, /"authority"\s*:/);
+  assert.doesNotMatch(text, /Affected area:/);
+});
+
+test('warning display time uses Berlin local time and omits invalid timestamps', () => {
+  const formatted = warningDisplayTime('2026-09-27T08:00:00Z');
+  assert.match(formatted, /27/);
+  assert.match(formatted, /10:00/);
+  assert.equal(warningDisplayTime('not-a-time'), '');
 });
 
 test('single-flight warning refresh deduplicates concurrent requests and resets after completion', async () => {
