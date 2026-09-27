@@ -428,7 +428,7 @@ function dayLabel(dateString) {
 function renderDaily(result, healthMap) {
   const rows = result.payload.days_by_provider || [];
   const provider = chooseProvider(rows);
-  const selected = provider ? rows.filter((row) => row.provider === provider).sort((a, b) => String(a.date).localeCompare(String(b.date))).slice(0, 5) : [];
+  const selected = provider ? window.RozkalnsDailyTrend.select(rows, provider) : [];
   const modelName = selected[0]?.model_name || MODEL_LABELS[provider] || provider || "Provider unavailable";
   qs("#dailyProvider").textContent = provider ? `${modelName} · min/max and precipitation total` : "No daily provider";
 
@@ -441,32 +441,12 @@ function renderDaily(result, healthMap) {
     return;
   }
 
-  const numericMins = selected.map((row) => Number(row.temperature_min_c)).filter(Number.isFinite);
-  const numericMaxs = selected.map((row) => Number(row.temperature_max_c)).filter(Number.isFinite);
-  const globalMin = Math.min(...numericMins);
-  const globalMax = Math.max(...numericMaxs);
-  const globalRange = Math.max(1, globalMax - globalMin);
-  qs("#dailyGrid").innerHTML = selected.map((row) => {
-    const min = Number(row.temperature_min_c);
-    const max = Number(row.temperature_max_c);
-    const rain = Number(row.precipitation_total_mm || 0);
-    const hasTemps = Number.isFinite(min) && Number.isFinite(max);
-    const start = hasTemps ? ((min - globalMin) / globalRange) * 70 : 0;
-    const span = hasTemps ? Math.max(8, ((max - min) / globalRange) * 70 + 8) : 0;
-    return `<div class="daily-row" data-provider="${escapeHtml(provider)}">
-      <span class="day-name">${escapeHtml(dayLabel(row.date))}</span>
-      <span class="day-icon">${rainIcon(rain)}</span>
-      <span class="temp-min">${hasTemps ? `${Math.round(min)}°` : "—"}</span>
-      <span class="range-track"><span class="range-fill" style="left:${start.toFixed(1)}%;width:${Math.min(100 - start, span).toFixed(1)}%"></span></span>
-      <span class="temp-max">${hasTemps ? `${Math.round(max)}°` : "—"}</span>
-      <span class="rain-total">${rain.toFixed(1)} mm</span>
-    </div>`;
-  }).join("");
-
-  const today = selected.find((row) => row.date === localDateKey()) || selected[0];
-  if (today && Number.isFinite(Number(today.temperature_min_c)) && Number.isFinite(Number(today.temperature_max_c))) {
-    qs("#heroHighLow").textContent = `H ${Math.round(Number(today.temperature_max_c))}° · L ${Math.round(Number(today.temperature_min_c))}° · ${modelName}`;
-  }
+  window.RozkalnsDailyTrend.render(qs("#dailyGrid"), selected, provider);
+  const today = selected.find((row) => row.date === localDateKey());
+  const numeric = window.RozkalnsDailyTrend.number;
+  qs("#heroHighLow").textContent = today && numeric(today.temperature_min_c) !== null && numeric(today.temperature_max_c) !== null
+    ? `H ${Math.round(today.temperature_max_c)}° · L ${Math.round(today.temperature_min_c)}° · ${modelName}`
+    : "H —° · L —°";
 }
 
 function temperatureChart(series) {
@@ -617,7 +597,7 @@ async function refresh() {
     apiWithFallback("/api/current", "current"),
     apiWithFallback(`/api/hourly?hours=48&variable=temperature_2m&location_id=${locationId}`, `hourly-temperature-48-${locationId}`),
     apiWithFallback(`/api/hourly?hours=48&variable=precipitation_1h&location_id=${locationId}`, `hourly-precipitation-48-${locationId}`),
-    apiWithFallback(`/api/daily?days=10&location_id=${locationId}`, `daily-10-${locationId}`),
+    apiWithFallback(`/api/daily?days=14&location_id=${locationId}`, `daily-14-${locationId}`),
   ]);
   if (sequence !== refreshSequence) return;
   const [current, temperature, precipitation, daily] = requests;
@@ -653,6 +633,7 @@ async function refresh() {
   if (daily.status === "fulfilled") renderDaily(daily.value, healthMap);
   else {
     qs("#dailyGrid").textContent = "Daily forecast unavailable.";
+    qs("#heroHighLow").textContent = "H —° · L —°";
     setSurfaceState("dailyState", navigator.onLine ? "error" : "offline", `Daily forecast unavailable: ${daily.reason}`, { alert: true });
   }
 }
@@ -749,3 +730,4 @@ window.addEventListener("online", () => {
 
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("/static/sw.js");
 refresh();
+

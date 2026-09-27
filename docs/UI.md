@@ -1,6 +1,6 @@
 # UI / UX
 
-> **2026-09-26 plānotā attīstība:** [audits un ieviešanas plāns](audits/2026-09-26/README.md) sasaista 28 uzlabojumus ar sešiem izpildes posmiem. Zemāk saglabāta esošā #170 reference un sākotnējā specifikācija. Tās 10416/Combined/kvantiļu piemēri nav pierādījums pašreizējiem runtime datiem; aktuālās robežas un plānotā specifikācijas sakārtošana ir plānā. Šī saite pati par sevi nemaina apstiprināto vizuālo reference.
+> **2026-09-26 plānotā attīstība:** [audits un ieviešanas plāns](audits/2026-09-26/README.md) sasaista 28 uzlabojumus ar sešiem izpildes posmiem. Zemāk saglabāta esošā #170 reference un sākotnējā specifikācija. Tās 10416/Combined/kvantiļu piemēri nav pierādījums pašreizējiem runtime datiem; aktuālās robežas un plānotā specifikācijas sakārtošana ir plānā. Overview izskata aktuālais lēmums: zemāk “Approved Overview A — 2026-09-27”; vecā #170 reference saglabāta vēsturei.
 
 ## Mērķis
 
@@ -13,7 +13,7 @@ Nav mērķa kopēt Meteo & Radar vizuālo dizainu. No tā izmantojam tikai ideju
 - daily cards;
 - ātri nolasāmiem precipitation/temperature indikatoriem.
 
-## Canonical consumer Overview visual reference — #170
+## Historical consumer Overview visual reference — #170
 
 Issue #170 consumer-weather implementation follows this approved mobile-first visual direction:
 
@@ -217,3 +217,21 @@ MVP mērķis:
 - tooltip/legend modeļu līnijām;
 - local time vienmēr `Europe/Berlin`;
 - “AI forecast” un “official warning” semantiski nošķirti.
+
+
+## Approved Overview A — 2026-09-27
+
+The owner approved the compact blue A variant for implementation, prioritizing Galaxy A55 and S25+ mobile layouts. This supersedes the #170 reference **for Overview appearance**; its source attribution and weather-first intent remain applicable. The #170 image above is historical evidence, not the current color/layout specification.
+
+Implementation: `static/accepted_ui.css`, `static/ui_preferences.js`, `static/daily_trend.js` plus the existing API renderers. No backend, database or provider changes are required.
+
+- Blue light/dark tokens, compact 14px cards, 70px mobile hero temperature, 54px hourly columns and 44px or larger primary controls. Model cards use two columns on mobile, four on desktop.
+- Appearance selector: Auto / Light / Dark, persisted when browser storage is available. Auto uses **20:00–07:00 Europe/Berlin**, reevaluated each minute and on return to the tab. This is a fixed local-time schedule, not astronomical sunset. Provider daylight continues to govern weather icons independently.
+- Daily min/max plot uses only one existing chosen provider's API aggregates, up to 14 returned days. Default is seven; 14-day control is disabled for shorter horizons. The actual available count is visible. Unknown values show `—`; temperature lines break on missing values and date gaps. Precipitation is mm, never probability.
+- Day buttons expose the values to keyboard/screen-reader users; the expandable table includes init time/quality and retrieval timestamps. The daily provider/freshness surface remains visible. Hero high/low is today's forecast only, with no substitution from a later date.
+- DWD warning summary is placed above the observation card. Its neutral unknown state makes no all-clear claim. Automatic loading, alert content and lifecycle remain technical-plan work.
+- Service-worker shell cache advances to v11 and contains the new assets and previously omitted runtime/accuracy scripts.
+
+Validation: dependency-free Node behavior tests cover theme boundaries including DST, provider separation, missing data, line gaps, source escaping and short horizons. Existing UI source contract tests remain. Local browser verification uses explicitly synthetic fixtures at 412px and 384px layout widths; this is not physical-device or production/RPi verification. The daily source table scrolls within the mobile card.
+
+Follow-up stays with #237: full i18n, other-view redesign, radar, warning lifecycle, provenance expansion, API/loading and complete accessibility/performance acceptance. This Overview delivery does not close that epic or authorize deployment.

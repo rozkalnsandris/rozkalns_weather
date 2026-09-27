@@ -8,6 +8,8 @@
   <link rel="manifest" href="/static/manifest.webmanifest">
   <link rel="icon" href="/static/icon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/static/app.css">
+  <link rel="stylesheet" href="/static/accepted_ui.css">
+  <script src="/static/ui_preferences.js"></script>
   <style id="overview-hero-state-contract">
     .hero-state[hidden]{display:none}
     .hero-source-row #heroSource{text-align:left}
@@ -16,6 +18,15 @@
 <body>
   <main class="app-shell">
     <section id="overview" class="view active" aria-label="Weather overview">
+      <div class="overview-toolbar"><span class="overview-brand">Rozkalns Weather</span><label class="sr-only" for="appearanceMode">Appearance · Auto is dark 20:00–07:00 Europe/Berlin</label><select id="appearanceMode" class="appearance-select" aria-label="Appearance: automatic night mode 20:00–07:00 Europe/Berlin"><option value="auto">Auto theme</option><option value="light">Light theme</option><option value="dark">Dark theme</option></select></div>
+      <section class="warning-summary" data-warning-authority="DWD" aria-labelledby="warningSummaryTitle">
+        <span class="warning-shield" aria-hidden="true">◯</span>
+        <div class="warning-summary-copy">
+          <strong id="warningSummaryTitle">DWD Warnings</strong>
+          <span id="overviewWarningState">Official warning status not loaded</span>
+        </div>
+        <button id="overviewWarningsButton" class="warning-open" type="button" aria-label="Open DWD warnings">›</button>
+      </section>
       <section class="weather-hero" aria-labelledby="heroLocation">
         <div class="hero-topline">
           <div class="hero-place">
@@ -90,14 +101,7 @@
         <div id="modelSpread" class="model-spread">Model spread —</div>
       </section>
 
-      <section class="warning-summary" data-warning-authority="DWD" aria-labelledby="warningSummaryTitle">
-        <span class="warning-shield" aria-hidden="true">✓</span>
-        <div class="warning-summary-copy">
-          <strong id="warningSummaryTitle">DWD Warnings</strong>
-          <span id="overviewWarningState">Official warning status not loaded</span>
-        </div>
-        <button id="overviewWarningsButton" class="warning-open" type="button" aria-label="Open DWD warnings">›</button>
-      </section>
+
     </section>
 
     <section id="models" class="view" aria-label="Models">
@@ -204,6 +208,7 @@
   </nav>
 
   <footer>WeatherNext 3 benchmark · measured skill uses DWD CDC 05480 reference truth</footer>
+  <script src="/static/daily_trend.js" defer></script>
   <script src="/static/app.js" defer></script>
   <script src="/static/weather_ui.js" defer></script>
   <script src="/static/consumer_ui.js" defer></script>

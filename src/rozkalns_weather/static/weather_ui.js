@@ -284,7 +284,7 @@
     document.body.classList.add(`weather-theme-${resolved}`, overlayClass(condition));
     document.documentElement.dataset.weatherDaylight = resolved;
     const themeMeta = document.querySelector('meta[name="theme-color"]');
-    if (themeMeta) themeMeta.setAttribute("content", resolved === "day" ? "#1686c9" : "#061424");
+    if (themeMeta && !document.documentElement.dataset.uiTheme) themeMeta.setAttribute("content", resolved === "day" ? "#1686c9" : "#061424");
     const hero = document.querySelector(".weather-hero");
     if (hero) {
       hero.classList.remove("theme-day", "theme-night");

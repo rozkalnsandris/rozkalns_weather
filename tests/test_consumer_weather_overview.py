@@ -82,7 +82,7 @@ def test_next_hours_and_days_use_attributed_provider_values_without_combined() -
     assert 'min/max and precipitation total' in script
     assert 'chooseProvider(tempRows, precipRows)' in script
     assert 'chooseProvider(rows)' in script
-    assert 'data-provider="${escapeHtml(provider)}"' in script
+    assert 'window.RozkalnsDailyTrend.render' in script
     assert "Combined" not in html
     assert "fabricated Combined" not in script
 
@@ -130,3 +130,4 @@ def test_dwd_warning_summary_only_claims_no_active_warnings_from_fresh_official_
     assert 'payload.state === "no_active_alerts"' in script
     assert "No active warnings · current DWD response" in script
     assert "Cached warning response · not current official status" in script
+

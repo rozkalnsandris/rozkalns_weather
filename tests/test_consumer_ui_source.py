@@ -16,7 +16,7 @@ def test_consumer_ui_helper_loads_after_native_weather_ui_and_is_cached() -> Non
     assert html.index('/static/weather_ui.js') < html.index('/static/consumer_ui.js')
     assert html.index('/static/consumer_ui.js') < html.index('/static/runtime_badge.js')
     assert '"/static/consumer_ui.js"' in worker
-    assert 'const CACHE = "rozkalns-weather-v10"' in worker
+    assert 'const CACHE = "rozkalns-weather-v11"' in worker
 
 
 def test_next_hours_has_one_deterministic_now_slot_and_keeps_local_labels() -> None:
@@ -92,3 +92,4 @@ def test_provider_ui_semantics_keep_pending_inactive_lagging_and_error_distinct(
     # WeatherNext remains first-class without inventing a value while access is pending.
     assert 'provider === "weathernext3" ? "No genuine data · pending"' in app
     assert 'const value = row && Number.isFinite(Number(row.value)) ? `${Number(row.value).toFixed(1)}°` : "—";' in app
+

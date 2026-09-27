@@ -71,7 +71,7 @@ def test_public_reference_identity_and_unknown_observation_semantics_are_explici
 
 def test_pwa_cache_is_versioned_and_old_weather_caches_are_deleted_on_activate() -> None:
     source = (STATIC / "sw.js").read_text()
-    assert 'const CACHE = "rozkalns-weather-v10"' in source
+    assert 'const CACHE = "rozkalns-weather-v11"' in source
     assert '"/static/weather_ui.js"' in source
     assert '"/static/consumer_ui.js"' in source
     assert '"/static/provenance_v1.js"' in source
@@ -89,3 +89,4 @@ def test_visual_acceptance_fixture_declares_required_states_and_viewports() -> N
     assert '"night"' in fixture
     assert "1440x900" in docs
     assert "412x892" in docs
+
