@@ -4,13 +4,27 @@
   const VIEW_IDS = new Set(["overview", "models", "safety", "accuracy", "status"]);
   const navButtons = [...document.querySelectorAll(".tabs button[data-view]")];
   const originalHandlers = new Map(navButtons.map((button) => [button, button.onclick]));
+  const skipLink = document.querySelector(".skip-link");
+
+  if (skipLink) {
+    Object.assign(skipLink.style, {
+      position: "fixed",
+      top: "8px",
+      left: "8px",
+      zIndex: "100",
+      padding: "10px 12px",
+      borderRadius: "10px",
+      background: "#ffffff",
+      color: "#12324a",
+      transform: "translateY(-160%)",
+      transition: "transform .12s ease",
+    });
+    skipLink.addEventListener("focus", () => { skipLink.style.transform = "translateY(0)"; });
+    skipLink.addEventListener("blur", () => { skipLink.style.transform = "translateY(-160%)"; });
+  }
 
   function normalizedView(value) {
     return VIEW_IDS.has(value) ? value : "overview";
-  }
-
-  function viewFromHash() {
-    return normalizedView(window.location.hash.replace(/^#/, ""));
   }
 
   function syncCurrent(viewId) {
@@ -73,7 +87,7 @@
     });
   });
 
-  document.querySelector(".skip-link")?.addEventListener("click", (event) => {
+  skipLink?.addEventListener("click", (event) => {
     event.preventDefault();
     if (window.location.hash === "#overview") focusView("overview");
     else window.location.hash = "overview";
