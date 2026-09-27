@@ -1,4 +1,4 @@
-const CACHE = "rozkalns-weather-v11";
+const CACHE = "rozkalns-weather-v12";
 const CACHE_PREFIX = "rozkalns-weather-";
 const ASSETS=[
   "/",
@@ -35,4 +35,3 @@ self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
   event.respondWith(fetch(event.request).catch(() => caches.match(event.request)));
 });
-
