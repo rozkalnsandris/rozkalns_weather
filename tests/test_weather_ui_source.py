@@ -55,7 +55,8 @@ def test_public_reference_identity_and_unknown_observation_semantics_are_explici
     source = (STATIC / "weather_ui.js").read_text()
     observed = source.split("function observedCondition(items)", 1)[1].split("function renderObservedIcon", 1)[0]
 
-    assert 'station_05480: "DWD CDC Werl 05480 · reference"' in source
+    assert 'station_05480: "Dortmund-Wickede · reference"' in source
+    assert 'station_05480: "DWD CDC Werl 05480 · reference"' not in source
     assert "PUBLIC_REFERENCE_PRESENTATION[selector.value]" in source
     assert "applyForecastLocationIdentity()" in source
     assert "MutationObserver" in source
