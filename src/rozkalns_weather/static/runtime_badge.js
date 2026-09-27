@@ -41,8 +41,38 @@ function warningSummary(model) {
   return "Official warning status unknown";
 }
 
+function warningCheckedAge(retrievedAtUtc, nowMs = Date.now()) {
+  if (typeof retrievedAtUtc !== "string" || !retrievedAtUtc) return "";
+  const checkedMs = Date.parse(retrievedAtUtc);
+  if (!Number.isFinite(checkedMs) || !Number.isFinite(nowMs)) return "";
+  const minutes = Math.floor(Math.max(0, nowMs - checkedMs) / 60000);
+  if (minutes < 1) return "checked just now";
+  if (minutes < 60) return `checked ${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `checked ${hours}h ago`;
+  return `checked ${Math.floor(hours / 24)}d ago`;
+}
+
+function createSingleFlight(task) {
+  let inFlight = null;
+  return (...args) => {
+    if (inFlight) return inFlight;
+    inFlight = Promise.resolve()
+      .then(() => task(...args))
+      .finally(() => { inFlight = null; });
+    return inFlight;
+  };
+}
+
 if (typeof module !== "undefined" && module.exports) {
-  module.exports = { deriveRuntimeBadge, warningEvidence, reduceWarningState, warningSummary };
+  module.exports = {
+    deriveRuntimeBadge,
+    warningEvidence,
+    reduceWarningState,
+    warningSummary,
+    warningCheckedAge,
+    createSingleFlight,
+  };
 }
 
 if (typeof window !== "undefined" && typeof document !== "undefined") {
@@ -97,7 +127,6 @@ if (typeof window !== "undefined" && typeof document !== "undefined") {
 
   const WARNING_CACHE_KEY = "rozkalns-weather-warning-evidence-v1";
   let warningModel = { state: "unknown", evidence: null };
-  let warningRequest = 0;
 
   function cachedWarningEvidence() {
     try {
@@ -122,7 +151,9 @@ if (typeof window !== "undefined" && typeof document !== "undefined") {
   }
 
   function renderWarnings(model, error = null) {
-    const summary = warningSummary(model);
+    const baseSummary = warningSummary(model);
+    const checkedAge = warningCheckedAge(model && model.evidence ? model.evidence.retrievedAtUtc : null);
+    const summary = checkedAge ? `${baseSummary} · ${checkedAge}` : baseSummary;
     const overview = document.querySelector("#overviewWarningState");
     const state = document.querySelector("#warningsState");
     const output = document.querySelector("#warningsOutput");
@@ -143,24 +174,23 @@ if (typeof window !== "undefined" && typeof document !== "undefined") {
     }
   }
 
-  async function refreshWarnings() {
-    const request = ++warningRequest;
+  async function runWarningRefresh() {
     warningModel = reduceWarningState(warningModel, { type: "loading" });
     renderWarnings(warningModel);
     try {
       const response = await fetch("/api/warnings", { cache: "no-store" });
       if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
       const payload = await response.json();
-      if (request !== warningRequest) return;
       warningModel = reduceWarningState(warningModel, { type: "success", payload });
       persistWarningEvidence(warningModel);
       renderWarnings(warningModel);
     } catch (error) {
-      if (request !== warningRequest) return;
       warningModel = reduceWarningState(warningModel, { type: "failure" });
       renderWarnings(warningModel, error);
     }
   }
+
+  const refreshWarnings = createSingleFlight(runWarningRefresh);
 
   function installWarningController() {
     const cached = cachedWarningEvidence();
@@ -182,6 +212,9 @@ if (typeof window !== "undefined" && typeof document !== "undefined") {
     window.addEventListener("offline", () => {
       warningModel = reduceWarningState(warningModel, { type: "failure" });
       renderWarnings(warningModel, new Error("offline"));
+    });
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible" && navigator.onLine) void refreshWarnings();
     });
     void refreshWarnings();
   }
