@@ -10,7 +10,7 @@
   const RAIN_MIN_MM = 0.2;
   const HEAVY_RAIN_MIN_MM = 2.0;
   const PUBLIC_REFERENCE_PRESENTATION = Object.freeze({
-    station_05480: "DWD CDC Werl 05480 · reference",
+    station_05480: "Dortmund-Wickede · reference",
   });
 
   const WMO = new Map([
