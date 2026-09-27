@@ -1,6 +1,11 @@
 (() => {
   const PROVIDER_ORDER = ["weathernext3", "icon_d2", "ecmwf_ifs", "ecmwf_aifs", "dwd_mosmix_l"];
   const STAT_ORDER = ["deterministic", "mean", "p50"];
+  const FORECAST_LOCATION_PRESENTATION = Object.freeze({
+    home: "Dortmund-Wickede",
+    station_05480: "Dortmund-Wickede · reference",
+    station_10416: "Dortmund · legacy 10416",
+  });
   let refreshToken = 0;
 
   function el(id) { return document.getElementById(id); }
@@ -50,18 +55,37 @@
     }
     element.dataset[key] = String(value);
   }
+  function replaceLegacyHeroLocationTarget() {
+    const current = el("heroLocation");
+    if (!current || current.dataset.locationIdentityOwner === "provenance-v1") return current;
+    const replacement = current.cloneNode(true);
+    replacement.dataset.locationIdentityOwner = "provenance-v1";
+    current.replaceWith(replacement);
+    return replacement;
+  }
+  function applyDashboardLocationIdentity() {
+    const target = replaceLegacyHeroLocationTarget();
+    if (!target) return;
+    const locationId = el("forecastLocation")?.value || "home";
+    target.textContent = FORECAST_LOCATION_PRESENTATION[locationId] || FORECAST_LOCATION_PRESENTATION.home;
+  }
   function applyHeroSourceProvenance(current) {
     const source = el("heroSource");
     if (!source) return;
-    source.textContent = "Official DWD observation source";
+    const truthSource = current?.truth_source || "DWD CDC 05480";
+    const sourceLocation = current?.location?.label ? ` (${current.location.label})` : "";
+    source.textContent = `Observation source · ${truthSource}${sourceLocation}`;
     setSourceData(source, "truthSource", current?.truth_source);
     setSourceData(source, "sourceLocationId", current?.location?.id);
     setSourceData(source, "sourceLocationLabel", current?.location?.label);
   }
+  replaceLegacyHeroLocationTarget();
+  applyDashboardLocationIdentity();
   const baseRenderCurrent = globalThis.renderCurrent;
   if (typeof baseRenderCurrent === "function") {
     globalThis.renderCurrent = function renderCurrentWithHeroSourceProvenance(result, healthMap) {
       baseRenderCurrent(result, healthMap);
+      applyDashboardLocationIdentity();
       applyHeroSourceProvenance(result?.payload);
     };
   }
@@ -187,8 +211,12 @@
     detailsHost();
     const strip = el("hourlyStrip");
     if (strip) new MutationObserver(() => refreshDrilldown()).observe(strip, { childList: true });
-    el("forecastLocation")?.addEventListener("change", () => refreshDrilldown());
+    el("forecastLocation")?.addEventListener("change", () => {
+      queueMicrotask(applyDashboardLocationIdentity);
+      refreshDrilldown();
+    });
     el("refreshOverview")?.addEventListener("click", () => setTimeout(refreshDrilldown, 0));
+    applyDashboardLocationIdentity();
     refreshDrilldown();
   });
 })();
