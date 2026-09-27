@@ -37,7 +37,7 @@ def test_warning_refresh_lifecycle_is_event_driven_and_cache_safe() -> None:
     assert 'window.addEventListener("online", () => { void refreshWarnings(); });' in source
     assert "warningCheckedAge" in source
     assert "No fixed client-side freshness TTL" not in source
-    assert 'const CACHE = "rozkalns-weather-v14"' in worker
+    assert 'const CACHE = "rozkalns-weather-v15"' in worker
 
 
 def test_warning_primary_surface_is_readable_and_raw_json_is_diagnostics_only() -> None:
