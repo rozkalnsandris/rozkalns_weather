@@ -1,6 +1,8 @@
 # UI izskata plāns — veidojam šajā Codex sarunā
 
-Statuss: **dizains vēl tiek veidots kopā ar Andri; nav apstiprināts integrācijai**.
+Statuss 2026-09-27: **Andris apstiprinājis kompakto zilo Overview A ar light/dark un dienu min/max/lietus grafiku; autorizējis tā ieviešanu šajā sarunā.** Citu lapu gala maketi un pilna vizuālā pieņemšana vēl nav pabeigti.
+
+Precīza ieviestā Overview specifikācija un robežas: [docs/UI.md](../../UI.md#approved-overview-a--2026-09-27). Auto dark 20.00–7.00 Europe/Berlin; mobilās prioritātes Galaxy A55 un S25+. Tehniskā plāna pārējie darbi paliek Plus chat.
 
 Īpašnieka lēmums 2026-09-26: “UI izskatu nodali. veidosim šeit ar tevi, bet pārējo no Plus chat.”
 
@@ -23,7 +25,7 @@ Darbu uzskaite: [#237](https://github.com/rozkalnsandris/rozkalns_weather/issues
 5. Pārbaudīt pieejamību, kontrastu, tekstu ietilpību un visu stāvokļu dizainu.
 6. Sagatavot konkrētu handoff Plus chat: pieņemtie maketi, tokeni, komponentu stāvokļi un atļautās implementācijas robežas.
 
-Katrs posms ir plānots. Šis nodalījums neapstiprina agrāko audita koncepciju kā gala dizainu.
+Overview virziens pieņemts; pārējo lapu un pilnas pieņemšanas posmi paliek plānoti. Agrākā audita koncepcija nav gala dizains.
 
 ## Ko sagaidām no Plus chat
 
@@ -31,7 +33,7 @@ Funkcionējošus datu/stāvokļu līgumus un UI loģiku, saglabājot esošo izsk
 
 ## Handoff pieņemšana
 
-- [ ] Andris šajā sarunā izvēlējies vizuālo variantu.
+- [x] Andris šajā sarunā izvēlējies vizuālo variantu: kompakts zils Overview A (2026-09-27).
 - [ ] Ir desktop/mobile maketi un faili vai precīzas saites uz to versiju.
 - [ ] Ir tokenu vērtības un komponentu stāvokļu specifikācija.
 - [ ] DWD authority, provenance, WeatherNext pending un observation/forecast atšķirība dizainā saglabāta.
@@ -64,4 +66,5 @@ Zemāk saglabātā sākuma specifikācija ir priekšlikums. Tās izmēri, kompoz
 Šie ir loģiski moduļu nosaukumi, nevis prasība izmantot konkrētu komponentu bibliotēku. Izstrādātājs piemeklē failu sadalījumu, saglabājot vienu renderētāju katram blokam.
 
 **Dizaina tokenu sākuma specifikācija:** body 16 px; metadata 14 px; navigācija 12–13 px; line-height vismaz 1.4; spacing 4/8/12/16/24/32; divi konsekventi karšu radius līmeņi. Light/dark režīmā lietot semantiskus background/text/border/status tokenus un vienotu SVG ikonu komplektu. Ikona, teksts un forma papildina krāsu. 44 px ir mūsu praktiskais vadīklu mērķis; WCAG 2.2 AA 2.5.8 minimums ir 24 px ar izņēmumiem.
+
 
