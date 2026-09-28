@@ -52,11 +52,148 @@
     return Number.isFinite(init) ? Math.max(0, (nowMs - init) / 3600000) : null;
   }
 
+  function priorityState(row, health) {
+    if (row) {
+      if ([health?.state, health?.freshness_state].includes("error")) return "stale";
+      if (["stale", "lagging", "degraded"].includes(health?.freshness_state)) return "stale";
+      return "fresh";
+    }
+    if ([health?.ingest_state, health?.state, health?.freshness_state].includes("error")) return "error";
+    return "stale";
+  }
+
+  function ensurePriorityStyles() {
+    if (!root.document || root.document.getElementById("weathernext-priority-style")) return;
+    const style = root.document.createElement("style");
+    style.id = "weathernext-priority-style";
+    style.textContent = [
+      ".wn-primary{background:var(--hero);border:1px solid var(--accent);border-radius:14px;padding:14px;margin:12px 0}",
+      ".wn-eyebrow{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);font-weight:700}",
+      ".wn-primary h2{font-size:21px;letter-spacing:-.4px;margin:4px 0 8px}",
+      ".wn-status{display:inline-block;padding:5px 8px;border-radius:7px;background:var(--card);font-size:12px;font-weight:650}",
+      ".wn-primary p{font-size:12px;margin:8px 0 0;color:var(--ink)}",
+      ".wn-primary .wn-note{font-size:11px;color:var(--muted)}",
+      ".wn-value{display:block;font-size:26px;line-height:1.1;margin-top:8px}",
+      ".wn-meta{overflow-wrap:anywhere}",
+    ].join("");
+    root.document.head.appendChild(style);
+  }
+
+  function priorityCard(context) {
+    const section = root.document.createElement("section");
+    section.className = "wn-primary";
+    section.dataset.weathernextPriority = context;
+    section.dataset.state = "loading";
+    section.setAttribute("aria-label", "WeatherNext 3 — primary research model");
+    section.innerHTML = `
+      <div class="wn-eyebrow">Primary research model</div>
+      <h2>WeatherNext 3</h2>
+      <span class="wn-status surface-state state-loading" role="status" aria-live="polite">LOADING · checking forecast availability</span>
+      <strong class="wn-value" hidden>—</strong>
+      <p class="wn-meta">Forecast availability is being checked from current provider evidence.</p>
+      <p class="wn-note">WeatherNext forecast availability is separate from verification readiness and DWD warning authority.</p>`;
+    return section;
+  }
+
+  function ensurePriorityCards() {
+    if (!root.document) return [];
+    ensurePriorityStyles();
+    const overviewAnchor = root.document.querySelector('#overview [aria-labelledby="nextHoursTitle"]');
+    if (overviewAnchor && !root.document.querySelector('[data-weathernext-priority="overview"]')) {
+      overviewAnchor.parentNode.insertBefore(priorityCard("overview"), overviewAnchor);
+    }
+    const modelsView = root.document.querySelector("#models");
+    const modelsAnchor = modelsView?.querySelector(".panel");
+    if (modelsView && modelsAnchor && !root.document.querySelector('[data-weathernext-priority="models"]')) {
+      modelsView.insertBefore(priorityCard("models"), modelsAnchor);
+    }
+    return [...root.document.querySelectorAll("[data-weathernext-priority]")];
+  }
+
+  function provenanceText(row) {
+    if (!row) return "No genuine WeatherNext forecast value is available for this surface.";
+    const parts = [
+      `valid ${row.valid_time_utc || "unknown"}`,
+      row.init_time_utc ? `init ${row.init_time_utc}` : "init unknown",
+      row.lead_hours == null ? "lead unknown" : `lead ${row.lead_hours} h`,
+      row.retrieved_at_utc ? `retrieved ${row.retrieved_at_utc}` : "retrieved unknown",
+      `statistic ${row.statistic || "unknown"}`,
+      `model version ${row.model_version || "unknown"}`,
+    ];
+    return parts.join(" · ");
+  }
+
+  function renderWeatherNextPriority(rows, healthMap) {
+    const cards = ensurePriorityCards();
+    const health = healthMap?.weathernext3 || {};
+    const candidates = typeof root.canonicalProviderRows === "function"
+      ? root.canonicalProviderRows(rows || [], "weathernext3")
+      : (rows || []).filter((row) => row.provider === "weathernext3");
+    const future = typeof root.futureRows === "function" ? root.futureRows(candidates, 48) : candidates;
+    const row = future.find((item) => finiteNumber(item?.value) != null) || null;
+    const state = priorityState(row, health);
+    const healthState = health.ingest_state || health.freshness_state || health.state || "unknown";
+
+    cards.forEach((card) => {
+      card.dataset.state = state;
+      const status = card.querySelector(".wn-status");
+      const value = card.querySelector(".wn-value");
+      const meta = card.querySelector(".wn-meta");
+      status.className = `wn-status surface-state state-${state}`;
+      if (row) {
+        const numeric = finiteNumber(row.value);
+        value.hidden = false;
+        value.textContent = `${numeric.toFixed(1)}°`;
+        status.textContent = state === "fresh"
+          ? "FRESH · genuine WeatherNext forecast available"
+          : `STALE · genuine WeatherNext forecast available; provider state ${healthState}`;
+        meta.textContent = provenanceText(row);
+      } else {
+        value.hidden = true;
+        value.textContent = "—";
+        if (state === "error") {
+          status.textContent = `ERROR · WeatherNext forecast unavailable; provider state ${healthState}`;
+        } else if ([health.ingest_state, health.state, health.freshness_state].includes("access_pending")) {
+          status.textContent = "STALE · WeatherNext access pending; no genuine forecast value available";
+        } else {
+          status.textContent = `STALE · no genuine WeatherNext forecast value available; provider state ${healthState}`;
+        }
+        meta.textContent = provenanceText(null);
+      }
+    });
+  }
+
+  function observeTemperatureSurfaceFailure() {
+    if (!root.document || typeof root.MutationObserver !== "function") return;
+    const state = root.document.querySelector("#modelsTempState");
+    if (!state || state.dataset.weathernextObserver === "true") return;
+    state.dataset.weathernextObserver = "true";
+    const sync = () => {
+      if (!["error", "offline"].includes(state.dataset.state)) return;
+      ensurePriorityCards().forEach((card) => {
+        card.dataset.state = state.dataset.state;
+        const status = card.querySelector(".wn-status");
+        const value = card.querySelector(".wn-value");
+        const meta = card.querySelector(".wn-meta");
+        status.className = `wn-status surface-state state-${state.dataset.state}`;
+        status.textContent = `${state.dataset.state.toUpperCase()} · WeatherNext forecast availability could not be refreshed`;
+        value.hidden = true;
+        value.textContent = "—";
+        meta.textContent = "No WeatherNext value is inferred from another provider when the forecast surface fails.";
+      });
+    };
+    new root.MutationObserver(sync).observe(state, { attributes: true, childList: true, subtree: true });
+    sync();
+  }
+
   function installBrowserOverride() {
     if (typeof root.renderModelSnapshot !== "function"
         || typeof root.canonicalProviderRows !== "function"
         || typeof root.futureRows !== "function"
-        || typeof root.qs !== "function") return false;
+        || !root.document) return false;
+
+    ensurePriorityCards();
+    observeTemperatureSurfaceFailure();
 
     root.renderModelSnapshot = function renderAlignedModelSnapshot(rows, healthMap) {
       const seriesByProvider = Object.fromEntries(PROVIDERS.map((provider) => [
@@ -88,18 +225,27 @@
         return `<div class="model-card${provider === "weathernext3" ? " primary" : ""}"><small>${root.escapeHtml(LABELS[provider])}</small><strong>${root.escapeHtml(value)}</strong><span>${root.escapeHtml(note)}</span></div>`;
       });
 
-      root.qs("#modelSnapshot").innerHTML = cards.join("");
+      root.document.querySelector("#modelSnapshot").innerHTML = cards.join("");
       const values = Object.values(match.rows)
         .map((row) => finiteNumber(row?.value))
         .filter((value) => value != null);
-      root.qs("#modelSpread").textContent = comparisonTime && values.length >= 2
+      root.document.querySelector("#modelSpread").textContent = comparisonTime && values.length >= 2
         ? `Model spread ${(Math.max(...values) - Math.min(...values)).toFixed(1)}° at ${root.formatLocalTime(comparisonTime)} · descriptive provider disagreement`
         : "Model spread — · no common valid time across at least two genuine model values";
+      renderWeatherNextPriority(rows, healthMap);
     };
     return true;
   }
 
-  const api = { finiteNumber, selectCommonValidTime, runAgeHours };
+  const api = {
+    finiteNumber,
+    selectCommonValidTime,
+    runAgeHours,
+    priorityState,
+    provenanceText,
+    ensurePriorityCards,
+    renderWeatherNextPriority,
+  };
   root.RozkalnsModelComparison = api;
   if (typeof window !== "undefined") installBrowserOverride();
   if (typeof module !== "undefined") module.exports = api;
