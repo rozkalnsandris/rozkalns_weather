@@ -3,6 +3,8 @@
 Andris šajā dizaina sarunā apstiprināja: “Jā, pieņemam un gatavojam ieviešanu”. Tas aptver V2 komponentus un Models/Radar/Accuracy/Status maketus ar izceltu WeatherNext 3 kā galveno pētniecības modeli. Overview A ir agrāk pieņemtais pamats.
 
 - [Vienotais interaktīvais priekšskatījums](weather-ui-preview/index.html)
+- [Integrācijas atlikums pret source — 2026-09-28](weather-ui-preview/INTEGRATION_GAPS.md)
+- [Mobilā maketa pārbaudes un atlikušās robežas](weather-ui-preview/MOBILE_VALIDATION.md)
 - [Ieviešanas handoff un secība](weather-ui-preview/IMPLEMENTATION_HANDOFF.md)
 - [Pārskatīšanas saraksts](weather-ui-preview/review.md)
 - [V2 tokeni un komponenti](weather-design-system-v2/handoff.md)
