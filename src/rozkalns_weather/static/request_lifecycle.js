@@ -78,7 +78,6 @@
     }
   }
 
-  window.apiWithFallback = apiWithTimeoutFallback;
   window.RozkalnsRequestLifecycle = Object.freeze({
     DEFAULT_TIMEOUT_MS,
     apiWithTimeoutFallback,
