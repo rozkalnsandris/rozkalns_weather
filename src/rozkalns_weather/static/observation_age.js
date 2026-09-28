@@ -3,8 +3,11 @@
 
   const OBSERVATION_FRESH_MINUTES = 180;
   const TICK_MS = 60 * 1000;
+  const CURRENT_BOOTSTRAP_DELAY_MS = 200;
   let timer = null;
   let latestResult = null;
+  let currentBootstrapTimer = null;
+  let currentBootstrapSequence = 0;
 
   function latestObservationTime(result) {
     return (result?.payload?.observations || [])
@@ -103,6 +106,53 @@
     timer = setInterval(() => updateObservationAge(latestResult), TICK_MS);
   }
 
+  function currentStateIsLoading() {
+    return document.querySelector("#currentState")?.dataset.state === "loading";
+  }
+
+  function markCurrentUnavailable(error) {
+    const state = document.querySelector("#currentState");
+    if (!state || state.dataset.state !== "loading") return;
+    const heroUpdated = document.querySelector("#heroUpdated");
+    const heroTemperature = document.querySelector("#heroTemperature");
+    const heroCondition = document.querySelector("#heroCondition");
+    if (heroUpdated) heroUpdated.textContent = "Current observation unavailable";
+    if (heroTemperature) heroTemperature.textContent = "—°";
+    if (heroCondition) heroCondition.textContent = "Observation unavailable";
+    if (typeof window.setSurfaceState === "function") {
+      window.setSurfaceState(
+        "currentState",
+        navigator.onLine ? "error" : "offline",
+        `DWD current observation unavailable: ${error}`,
+        { alert: true },
+      );
+    }
+  }
+
+  async function loadCurrentIfHealthBlocked() {
+    if (!currentStateIsLoading()) return false;
+    if (typeof window.apiWithFallback !== "function" || typeof window.renderCurrent !== "function") return false;
+    const sequence = ++currentBootstrapSequence;
+    try {
+      const result = await window.apiWithFallback("/api/current", "current");
+      if (sequence !== currentBootstrapSequence || !currentStateIsLoading()) return false;
+      window.renderCurrent(result, {});
+      return true;
+    } catch (error) {
+      if (sequence !== currentBootstrapSequence || !currentStateIsLoading()) return false;
+      markCurrentUnavailable(error);
+      return false;
+    }
+  }
+
+  function scheduleCurrentBootstrap() {
+    if (currentBootstrapTimer) clearTimeout(currentBootstrapTimer);
+    currentBootstrapTimer = setTimeout(() => {
+      currentBootstrapTimer = null;
+      void loadCurrentIfHealthBlocked();
+    }, CURRENT_BOOTSTRAP_DELAY_MS);
+  }
+
   const baseRenderCurrent = window.renderCurrent;
   if (typeof baseRenderCurrent === "function") {
     window.renderCurrent = function renderCurrentWithObservationAge(result, healthMap) {
@@ -115,14 +165,20 @@
     if (document.visibilityState === "visible") updateObservationAge(latestResult);
   });
 
+  scheduleCurrentBootstrap();
+
   window.RozkalnsObservationAge = Object.freeze({
     OBSERVATION_FRESH_MINUTES,
     TICK_MS,
+    CURRENT_BOOTSTRAP_DELAY_MS,
     latestObservationTime,
     ageParts,
     ageLabel,
     staleLabel,
     updateObservationAge,
     startObservationAgeTicker,
+    currentStateIsLoading,
+    loadCurrentIfHealthBlocked,
+    scheduleCurrentBootstrap,
   });
 })();
