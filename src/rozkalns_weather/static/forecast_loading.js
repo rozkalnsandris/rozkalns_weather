@@ -3,9 +3,11 @@
 
   const PUBLIC_DEFAULT_LOCATION = "station_05480";
   const FORECAST_LOCATIONS = new Set(["home", "station_05480", "station_10416"]);
+  const FORECAST_SCRIPT_URL = document.currentScript?.src || "";
   let forecastSequence = 0;
   let activeTemperature = null;
   let activePrecipitation = null;
+  let activeForecastController = null;
 
   function locationSelector() {
     return document.querySelector("#forecastLocation");
@@ -60,6 +62,32 @@
     };
   }
 
+  function requestApi() {
+    return window.RozkalnsRequestLifecycle?.apiWithTimeoutFallback || window.apiWithFallback;
+  }
+
+  function loadRequestLifecycleModule() {
+    if (window.RozkalnsRequestLifecycle?.apiWithTimeoutFallback) return Promise.resolve(true);
+    const existing = document.querySelector('script[data-rozkalns-request-lifecycle="true"]');
+    if (existing) {
+      return new Promise((resolve) => {
+        existing.addEventListener("load", () => resolve(true), { once: true });
+        existing.addEventListener("error", () => resolve(false), { once: true });
+      });
+    }
+    return new Promise((resolve) => {
+      const script = document.createElement("script");
+      script.dataset.rozkalnsRequestLifecycle = "true";
+      script.async = false;
+      script.src = FORECAST_SCRIPT_URL
+        ? new URL("request_lifecycle.js", FORECAST_SCRIPT_URL).href
+        : "/static/request_lifecycle.js";
+      script.addEventListener("load", () => resolve(true), { once: true });
+      script.addEventListener("error", () => resolve(false), { once: true });
+      document.head.appendChild(script);
+    });
+  }
+
   function stillCurrent(sequence, locationId) {
     return sequence === forecastSequence && selectedLocation() === locationId;
   }
@@ -84,11 +112,14 @@
     }
   }
 
-  async function loadTemperature(sequence, locationId) {
+  async function loadTemperature(sequence, locationId, options) {
     try {
-      const result = await window.apiWithFallback(
+      const api = requestApi();
+      if (typeof api !== "function") return false;
+      const result = await api(
         `/api/hourly?hours=48&variable=temperature_2m&location_id=${locationId}`,
         `hourly-temperature-48-${locationId}`,
+        options,
       );
       if (!stillCurrent(sequence, locationId)) return false;
       activeTemperature = result;
@@ -104,11 +135,14 @@
     }
   }
 
-  async function loadPrecipitation(sequence, locationId) {
+  async function loadPrecipitation(sequence, locationId, options) {
     try {
-      const result = await window.apiWithFallback(
+      const api = requestApi();
+      if (typeof api !== "function") return false;
+      const result = await api(
         `/api/hourly?hours=48&variable=precipitation_1h&location_id=${locationId}`,
         `hourly-precipitation-48-${locationId}`,
+        options,
       );
       if (!stillCurrent(sequence, locationId)) return false;
       activePrecipitation = result;
@@ -123,11 +157,14 @@
     }
   }
 
-  async function loadDaily(sequence, locationId) {
+  async function loadDaily(sequence, locationId, options) {
     try {
-      const result = await window.apiWithFallback(
+      const api = requestApi();
+      if (typeof api !== "function") return false;
+      const result = await api(
         `/api/daily?days=14&location_id=${locationId}`,
         `daily-14-${locationId}`,
+        options,
       );
       if (!stillCurrent(sequence, locationId)) return false;
       if (typeof window.renderDaily === "function") window.renderDaily(result, {});
@@ -143,15 +180,23 @@
     }
   }
 
+  function newForecastRequestOptions() {
+    if (activeForecastController) activeForecastController.abort();
+    activeForecastController = typeof AbortController === "function" ? new AbortController() : null;
+    return activeForecastController ? { signal: activeForecastController.signal } : {};
+  }
+
   function loadForecastSurfaces(locationId = selectedLocation()) {
-    if (typeof window.apiWithFallback !== "function") return 0;
+    const api = requestApi();
+    if (typeof api !== "function") return 0;
     const normalized = normalizeLocation(locationId);
     const sequence = ++forecastSequence;
+    const options = newForecastRequestOptions();
     activeTemperature = null;
     activePrecipitation = null;
-    void loadTemperature(sequence, normalized);
-    void loadPrecipitation(sequence, normalized);
-    void loadDaily(sequence, normalized);
+    void loadTemperature(sequence, normalized, options);
+    void loadPrecipitation(sequence, normalized, options);
+    void loadDaily(sequence, normalized, options);
     return sequence;
   }
 
@@ -169,8 +214,9 @@
     normalizeLocation,
     selectedLocation,
     establishPrivacySafeBootstrapLocation,
+    loadRequestLifecycleModule,
     loadForecastSurfaces,
   });
 
-  setTimeout(start, 0);
+  void loadRequestLifecycleModule().finally(start);
 })();
