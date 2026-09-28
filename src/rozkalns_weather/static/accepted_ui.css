@@ -98,3 +98,25 @@ html[data-ui-theme] :focus-visible { outline:2px solid var(--accent); outline-of
 .daily-list, .daily-list>* { min-width:0; }
 .trend-table .table-wrap { max-width:100%; }
 .trend-rain svg { width:11px; height:15px; margin:1px auto; fill:currentColor; }
+
+/* Accepted Status hierarchy: WeatherNext availability/readiness stay separate; technical provider detail is progressive disclosure. */
+html[data-ui-theme] body .status-primary { background:var(--hero); border-color:var(--accent); }
+.status-primary h2 { margin:4px 0 9px; font-size:21px; letter-spacing:-.4px; }
+.status-eyebrow { color:var(--accent); font-size:10px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; }
+.status-key-row { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; padding:11px 0 5px; border-bottom:1px solid var(--border); }
+.status-key-row span { color:var(--muted); font-size:12px; }
+.status-key-row strong { max-width:62%; text-align:right; overflow-wrap:anywhere; font-size:13px; }
+.status-meta { padding:6px 0 3px; font-size:11px; overflow-wrap:anywhere; }
+.status-note { margin:10px 0 0; font-size:11px; }
+.status-source-list { display:grid; gap:0; }
+.status-source-row { padding:11px 0; border-bottom:1px solid var(--border); min-width:0; }
+.status-source-row:last-child { border-bottom:0; }
+.status-source-heading { display:flex; justify-content:space-between; align-items:center; gap:10px; }
+.status-source-heading strong { min-width:0; overflow-wrap:anywhere; font-size:13px; }
+.status-source-summary { margin-top:4px; color:var(--muted); font-size:11px; overflow-wrap:anywhere; }
+.status-source-details summary, .status-technical-details>summary { min-height:44px; display:flex; align-items:center; cursor:pointer; color:var(--muted); font-size:12px; }
+.status-source-details>div { padding:0 0 5px; color:var(--muted); font-size:11px; overflow-wrap:anywhere; }
+.status-technical-details { margin-top:6px; border-top:1px solid var(--border); }
+.status-technical-details #providerState { margin-top:4px; }
+.status-technical-details #providerGrid { margin-top:8px; }
+@media(max-width:420px) { .status-key-row { gap:8px; } .status-key-row strong { max-width:58%; } }
