@@ -28,3 +28,7 @@ Additional in-session checks on the local HTTP prototype:
 - The corrected Overview navigation was visually inspected in both themes at 412 px. Overview error state was inspected in both themes at 384 px with reduced height.
 
 These checks do not establish complete keyboard traversal, scrolling clearance, screen-reader support, physical-device behavior or full V3 acceptance. Screenshots were inspected in-session, not persisted as artifacts.
+
+## Consolidated follow-up — 2026-09-28
+
+See [mobile scroll, disclosure and keyboard validation](MOBILE_VALIDATION.md) for the completed bounded 384/412 px checks and remaining zoom, screen-reader, physical-device and state-matrix gaps. Full V3 acceptance remains pending.
