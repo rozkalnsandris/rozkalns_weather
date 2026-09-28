@@ -11,8 +11,28 @@
   <link rel="stylesheet" href="/static/accepted_ui.css">
   <script src="/static/ui_preferences.js"></script>
   <style id="overview-hero-state-contract">
+    html,body{margin:0;min-height:100%}
+    *{box-sizing:border-box}
     .hero-state[hidden]{display:none}
     .hero-source-row #heroSource{text-align:left}
+    .hero-state-slot{min-height:49px}
+    .compact-state-slot{min-height:36px}
+    .wn-primary{min-height:236px;background:var(--hero);border:1px solid var(--accent);border-radius:14px;padding:14px;margin:12px 0}
+    .wn-eyebrow{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);font-weight:700}
+    .wn-primary h2{font-size:21px;letter-spacing:-.4px;margin:4px 0 8px}
+    .wn-status{display:inline-block;padding:5px 8px;border-radius:7px;background:var(--card);font-size:12px;font-weight:650}
+    .wn-primary p{font-size:12px;margin:8px 0 0;color:var(--ink)}
+    .wn-primary .wn-note{font-size:11px;color:var(--muted)}
+    .wn-value{display:block;font-size:26px;line-height:1.1;margin-top:8px}
+    .wn-meta{overflow-wrap:anywhere}
+    .hourly-detail{margin:2px 1px 9px;padding:10px 11px;border:1px solid rgba(74,132,180,.28);border-radius:12px;background:rgba(11,37,61,.58);color:inherit}
+    .hourly-detail-head{display:flex;justify-content:space-between;gap:10px;align-items:baseline;margin-bottom:7px}
+    .hourly-detail-head span,.hourly-detail-source,.hourly-detail-note{color:#91a9c2;font-size:.68rem;line-height:1.35;overflow-wrap:anywhere}
+    .hourly-detail-values{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-bottom:7px}
+    .hourly-detail-metric{padding:7px 8px;border:1px solid rgba(60,115,160,.2);border-radius:9px;background:rgba(8,29,49,.46)}
+    .hourly-detail-metric small,.hourly-detail-metric strong,.hourly-detail-metric span{display:block}
+    .hourly-detail-metric small{color:#8faac3;font-size:.64rem}.hourly-detail-metric strong{margin-top:2px;font-size:.9rem}.hourly-detail-metric span{margin-top:2px;color:#91a9c2;font-size:.6rem}
+    @media(max-width:420px){.wn-primary[data-weathernext-priority="overview"]{min-height:248px}.hourly-detail{min-height:300px}.hourly-detail-values{grid-template-columns:1fr}.hourly-detail-head{align-items:flex-start;flex-direction:column;gap:2px}}
   </style>
 </head>
 <body>
@@ -50,10 +70,19 @@
           </div>
         </div>
 
-        <div id="currentState" class="surface-state state-loading hero-state" role="status" aria-live="polite" aria-atomic="true">LOADING · DWD station truth</div>
+        <div class="hero-state-slot"><div id="currentState" class="surface-state state-loading hero-state" role="status" aria-live="polite" aria-atomic="true">LOADING · DWD station truth</div></div>
         <div class="hero-source-row">
           <span id="heroSource">Werl · official DWD observation source</span>
         </div>
+      </section>
+
+      <section class="wn-primary" data-weathernext-priority="overview" data-state="loading" aria-label="WeatherNext 3 — primary research model">
+        <div class="wn-eyebrow">Primary research model</div>
+        <h2>WeatherNext 3</h2>
+        <span class="wn-status surface-state state-loading" role="status" aria-live="polite">LOADING · checking forecast availability</span>
+        <strong class="wn-value" hidden>—</strong>
+        <p class="wn-meta">Forecast availability is being checked from current provider evidence.</p>
+        <p class="wn-note">WeatherNext forecast availability is separate from verification readiness and DWD warning authority.</p>
       </section>
 
       <section class="consumer-panel" aria-labelledby="nextHoursTitle">
@@ -62,8 +91,18 @@
           <span class="section-chevron" aria-hidden="true">›</span>
         </div>
         <div id="hourlyStrip" class="hourly-strip" aria-live="polite"><div class="empty-card">Loading forecast…</div></div>
-        <div id="overviewTempState" class="surface-state state-loading compact-state" role="status" aria-live="polite" aria-atomic="true">LOADING · temperature forecast provenance</div>
-        <div id="overviewPrecipState" class="surface-state state-loading compact-state" role="status" aria-live="polite" aria-atomic="true">LOADING · precipitation forecast provenance</div>
+        <div id="hourlyDetail" class="hourly-detail" role="status" aria-live="polite" aria-atomic="true">
+          <div class="hourly-detail-head"><strong>Forecast hour pending</strong><span>Provider pending</span></div>
+          <div class="hourly-detail-values">
+            <div class="hourly-detail-metric"><small>Temperature</small><strong>—</strong><span>forecast</span></div>
+            <div class="hourly-detail-metric"><small>Precipitation</small><strong>—</strong><span>amount, not probability</span></div>
+            <div class="hourly-detail-metric"><small>Wind</small><strong>—</strong><span>loading wind data</span></div>
+          </div>
+          <div class="hourly-detail-source">Forecast provenance loads with the selected hour.</div>
+        </div>
+        <details id="valueProvenanceDrilldown" class="provenance-drilldown"><summary>Value provenance</summary><div id="valueProvenanceBody" class="muted">Select an hourly value to inspect its provider snapshot and verification lineage.</div></details>
+        <div class="compact-state-slot"><div id="overviewTempState" class="surface-state state-loading compact-state" role="status" aria-live="polite" aria-atomic="true">LOADING · temperature forecast provenance</div></div>
+        <div class="compact-state-slot"><div id="overviewPrecipState" class="surface-state state-loading compact-state" role="status" aria-live="polite" aria-atomic="true">LOADING · precipitation forecast provenance</div></div>
         <div id="consumerHourlyChart" class="consumer-chart" aria-label="Next-hours temperature and precipitation chart"></div>
       </section>
 
