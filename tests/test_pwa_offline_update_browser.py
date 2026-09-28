@@ -71,8 +71,8 @@ def _page(mode: str) -> str:
   <main id="shell-marker">shell-{mode}</main>
   <output id="proof" data-build="{mode}"></output>
   <script>
-    // Simulate the legacy app.js registration that existed before the root-scope migration.
-    navigator.serviceWorker.register('/static/sw.js');
+    // Mirror the production app.js canonical root-scope registration.
+    navigator.serviceWorker.register('/sw.js', {{scope:'/'}});
   </script>
   <script src="/static/pwa_lifecycle.js"></script>
   <script>

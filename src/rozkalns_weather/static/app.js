@@ -728,6 +728,5 @@ window.addEventListener("online", () => {
   loadedSafetySurfaces.forEach((kind) => loadSafetySurface(kind));
 });
 
-if ("serviceWorker" in navigator) navigator.serviceWorker.register("/static/sw.js");
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js", { scope: "/" });
 refresh();
-

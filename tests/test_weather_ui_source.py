@@ -74,6 +74,7 @@ def test_public_reference_identity_and_unknown_observation_semantics_are_explici
 def test_pwa_cache_is_versioned_complete_and_atomically_activated() -> None:
     source = (STATIC / "sw.js").read_text()
     index = (STATIC / "index.html").read_text()
+    app = (STATIC / "app.js").read_text()
     observation = (STATIC / "observation_age.js").read_text()
     lifecycle = (STATIC / "pwa_lifecycle.js").read_text()
 
@@ -98,6 +99,8 @@ def test_pwa_cache_is_versioned_complete_and_atomically_activated() -> None:
     ):
         assert asset in shell_assets
 
+    assert 'navigator.serviceWorker.register("/sw.js", { scope: "/" })' in app
+    assert 'navigator.serviceWorker.register("/static/sw.js")' not in app
     assert 'siblingScriptUrl("pwa_lifecycle.js")' in observation
     assert "self.skipWaiting()" in source
     assert "self.clients.claim()" in source
@@ -107,7 +110,8 @@ def test_pwa_cache_is_versioned_complete_and_atomically_activated() -> None:
     assert "caches.keys()" in source
     assert "caches.delete(name)" in source
     assert "name.startsWith(CACHE_PREFIX)" in source
-    assert 'navigator.serviceWorker.addEventListener("controllerchange", reloadForUpdatedWorker)' in lifecycle
+    assert 'navigator.serviceWorker.addEventListener("controllerchange", () =>' in lifecycle
+    assert "void reloadForUpdatedWorker();" in lifecycle
     assert "window.location.reload()" in lifecycle
 
 
