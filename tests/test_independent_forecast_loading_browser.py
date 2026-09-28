@@ -47,7 +47,7 @@ def test_forecast_loader_is_sibling_module_and_part_of_offline_shell() -> None:
     worker = SW.read_text()
 
     assert 'new URL("forecast_loading.js", OBSERVATION_SCRIPT_URL).href' in loader
-    assert 'data-rozkalns-forecast-loading="true"' in loader
+    assert 'script.dataset.rozkalnsForecastLoading = "true"' in loader
     assert 'PUBLIC_DEFAULT_LOCATION = "station_05480"' in forecast
     assert 'selector.value === "home" && providerHealthStillLoading()' in forecast
     assert 'selectedLocation() === locationId' in forecast
@@ -175,4 +175,3 @@ def test_location_change_ignores_late_response_from_previous_location(tmp_path: 
     assert 'data-last-daily-location="station_10416"' in rendered, rendered
     assert 'data-pending-health-state="fresh"' in rendered, rendered
     assert 'provider health is still pending' in rendered, rendered
-"""}
