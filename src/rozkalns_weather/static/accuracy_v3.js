@@ -296,6 +296,18 @@ async function refreshAccuracyV3(days = 30) {
     if (sequence !== accuracyRequestSequence) return;
     accuracyPanelTitle("DWD CDC 05480 verification evidence · unavailable");
     if (accuracyTable) accuracyTable.textContent = "Accuracy evidence unavailable.";
+    accuracySummaryGroups = [];
+    const cohort = summarySurface?.querySelector("#accuracyCohort");
+    if (cohort) {
+      cohort.replaceChildren();
+      cohort.disabled = true;
+    }
+    const summaryMeta = summarySurface?.querySelector("#accuracySummaryMeta");
+    if (summaryMeta) summaryMeta.textContent = "Common-sample cohort metadata unavailable.";
+    const weatherNextReadiness = summarySurface?.querySelector("#accuracyWeatherNextReadiness");
+    if (weatherNextReadiness) {
+      weatherNextReadiness.textContent = "WeatherNext 3 accuracy is unavailable until verification evidence can be loaded.";
+    }
     if (summaryRows) summaryRows.textContent = "Common-sample MAE summary unavailable.";
     if (lead) lead.textContent = "";
     if (calibration) calibration.textContent = "";
