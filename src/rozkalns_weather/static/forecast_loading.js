@@ -105,6 +105,29 @@
     });
   }
 
+  function clearTemperatureVisuals() {
+    const chart = document.querySelector("#modelsChart");
+    if (chart) {
+      chart.classList.add("empty");
+      chart.textContent = "Temperature forecast unavailable for this location.";
+    }
+
+    const uncertainty = document.querySelector("#uncertainty");
+    if (uncertainty) {
+      uncertainty.textContent = "WeatherNext uncertainty unavailable because the temperature forecast failed for this location.";
+    }
+
+    const snapshot = document.querySelector("#modelSnapshot");
+    if (snapshot) {
+      snapshot.textContent = "Model temperature snapshot unavailable for this location.";
+    }
+
+    const spread = document.querySelector("#modelSpread");
+    if (spread) {
+      spread.textContent = "Model spread — · temperature forecast unavailable for this location.";
+    }
+  }
+
   function maybeRenderHourly(sequence, locationId) {
     if (!activeTemperature || !activePrecipitation || !stillCurrent(sequence, locationId)) return;
     if (typeof window.renderConsumerHourly === "function") {
@@ -130,6 +153,7 @@
     } catch (error) {
       if (!stillCurrent(sequence, locationId)) return false;
       activeTemperature = null;
+      clearTemperatureVisuals();
       setFailure(["modelsTempState", "overviewTempState"], "Temperature forecast", error);
       return false;
     }

@@ -92,6 +92,9 @@ def test_real_shell_location_change_does_not_leave_previous_models_chart_after_p
 
             assert page.locator("#modelsChart svg").count() == 0
             assert "Temperature forecast unavailable" in page.locator("#modelsChart").inner_text()
+            assert "uncertainty unavailable" in page.locator("#uncertainty").inner_text().lower()
+            assert "snapshot unavailable" in page.locator("#modelSnapshot").inner_text().lower()
+            assert "temperature forecast unavailable" in page.locator("#modelSpread").inner_text().lower()
 
             assert precip_state.get_attribute("role") == "status"
             assert precip_state.get_attribute("aria-live") == "polite"
