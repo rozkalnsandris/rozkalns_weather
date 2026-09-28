@@ -110,6 +110,6 @@ def test_unknown_observation_is_not_relabelled_without_a_valid_now_forecast_cond
 def test_overview_static_change_advances_the_pwa_shell_cache() -> None:
     service_worker = (STATIC / "sw.js").read_text()
 
-    assert 'const CACHE = "rozkalns-weather-v17"' in service_worker
+    assert 'const CACHE = "rozkalns-weather-v18"' in service_worker
     assert '"/static/consumer_ui.js"' in service_worker
     assert '"/static/provenance_v1.js"' in service_worker

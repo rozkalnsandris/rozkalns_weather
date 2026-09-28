@@ -25,4 +25,4 @@ def test_model_snapshot_alignment_asset_is_loaded_before_ui_overrides_and_cached
     assert (STATIC / "model_snapshot_alignment.js").exists()
     assert html.index('/static/app.js') < html.index(asset)
     assert html.index(asset) < html.index('/static/consumer_ui.js')
-    assert 'const CACHE = "rozkalns-weather-v17"' in worker
+    assert 'const CACHE = "rozkalns-weather-v18"' in worker

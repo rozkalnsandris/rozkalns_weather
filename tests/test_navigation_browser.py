@@ -56,8 +56,9 @@ def test_navigation_source_and_pwa_contract() -> None:
     assert 'window.addEventListener("hashchange"' in navigation
     assert 'setAttribute("aria-current", "page")' in navigation
     assert 'target.focus({ preventScroll: true })' in navigation
-    assert 'const CACHE = "rozkalns-weather-v17"' in sw
+    assert 'const CACHE = "rozkalns-weather-v18"' in sw
     assert '"/static/navigation_v1.js"' in sw
+    assert '"/static/radar_timeline.js"' in sw
 
 
 def test_hash_navigation_direct_link_focus_and_back_forward(tmp_path: Path) -> None:
