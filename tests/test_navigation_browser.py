@@ -207,6 +207,7 @@ def _write_viewport_harness(tmp_path: Path, fixture: Path, width: int) -> Path:
 
 def test_real_shell_responsive_and_200_percent_zoom_equivalent(tmp_path: Path) -> None:
     fixture = _write_real_shell_fixture(tmp_path)
+    # 720 CSS px is the effective layout width of a 1440 px desktop viewport at 200% browser zoom.
     for width in (320, 390, 412, 720, 1440):
         harness = _write_viewport_harness(tmp_path, fixture, width)
         rendered = _run_browser(harness.as_uri(), width=1600, height=1000)
