@@ -7,7 +7,9 @@
   const skipLink = document.querySelector(".skip-link");
   const navigationScriptUrl = document.currentScript?.src || window.location.href;
   const radarTimelineUrl = new URL("radar_timeline.js", navigationScriptUrl).href;
+  const statusModuleUrl = new URL("status_v1.js", navigationScriptUrl).href;
   let radarTimelinePromise = null;
+  let statusModulePromise = null;
 
   function markRadarModuleFailure() {
     const state = document.querySelector("#radarState");
@@ -44,6 +46,42 @@
       document.head.appendChild(script);
     });
     return radarTimelinePromise;
+  }
+
+  function markStatusModuleFailure() {
+    const state = document.querySelector("#statusWeatherNextState");
+    const sources = document.querySelector("#statusSources");
+    if (state) {
+      state.className = "surface-state state-error";
+      state.dataset.state = "error";
+      state.setAttribute("role", "alert");
+      state.setAttribute("aria-live", "assertive");
+      state.textContent = "ERROR · Status readiness module could not be loaded.";
+    }
+    if (sources) sources.textContent = "Independent source status could not be loaded.";
+  }
+
+  function ensureStatusModule() {
+    if (window.rozkalnsStatus) {
+      return Promise.resolve(window.rozkalnsStatus.load?.());
+    }
+    if (statusModulePromise) return statusModulePromise;
+
+    statusModulePromise = new Promise((resolve, reject) => {
+      const script = document.createElement("script");
+      script.src = statusModuleUrl;
+      script.dataset.statusModule = "true";
+      script.onload = () => {
+        Promise.resolve(window.rozkalnsStatus?.load?.()).then(resolve, reject);
+      };
+      script.onerror = () => {
+        statusModulePromise = null;
+        markStatusModuleFailure();
+        reject(new Error("status readiness module failed to load"));
+      };
+      document.head.appendChild(script);
+    });
+    return statusModulePromise;
   }
 
   if (skipLink) {
@@ -97,6 +135,7 @@
     }
     syncCurrent(viewId);
     if (viewId === "safety") ensureRadarTimeline().catch(() => {});
+    if (viewId === "status") ensureStatusModule().catch(() => {});
   }
 
   function activateHash({ focus = false } = {}) {
