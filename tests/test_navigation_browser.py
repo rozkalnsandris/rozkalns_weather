@@ -56,7 +56,7 @@ def test_navigation_source_and_pwa_contract() -> None:
     assert 'window.addEventListener("hashchange"' in navigation
     assert 'setAttribute("aria-current", "page")' in navigation
     assert 'target.focus({ preventScroll: true })' in navigation
-    assert 'const CACHE = "rozkalns-weather-v18"' in sw
+    assert 'const CACHE = "rozkalns-weather-v19"' in sw
     assert '"/static/navigation_v1.js"' in sw
     assert '"/static/radar_timeline.js"' in sw
 
@@ -207,7 +207,6 @@ def _write_viewport_harness(tmp_path: Path, fixture: Path, width: int) -> Path:
 
 def test_real_shell_responsive_and_200_percent_zoom_equivalent(tmp_path: Path) -> None:
     fixture = _write_real_shell_fixture(tmp_path)
-    # 720 CSS px is the effective layout width of a 1440 px desktop viewport at 200% browser zoom.
     for width in (320, 390, 412, 720, 1440):
         harness = _write_viewport_harness(tmp_path, fixture, width)
         rendered = _run_browser(harness.as_uri(), width=1600, height=1000)
