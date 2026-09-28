@@ -74,6 +74,10 @@ def test_real_shell_location_change_does_not_leave_previous_models_chart_after_p
                 "() => document.querySelector('#modelsPrecipState')?.dataset.state === 'fresh'",
                 timeout=7_500,
             )
+            page.wait_for_function(
+                "() => [...document.querySelectorAll('#models .forecast-location-label')].every((node) => node.textContent.includes('10416'))",
+                timeout=7_500,
+            )
 
             page.locator('button[data-view="models"]').click()
             labels = page.locator("#models .forecast-location-label").all_inner_texts()
