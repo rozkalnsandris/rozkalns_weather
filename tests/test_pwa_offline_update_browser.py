@@ -2,10 +2,10 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 import mimetypes
 import shutil
-import subprocess
 import threading
-import time
 from urllib.parse import urlparse
+
+from playwright.sync_api import BrowserContext, Playwright, expect, sync_playwright
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -81,10 +81,11 @@ def _page(mode: str) -> str:
       const proof = document.getElementById('proof');
       try {{
         await navigator.serviceWorker.ready;
-        for (let index = 0; index < 100 && !navigator.serviceWorker.controller; index += 1) {{
-          await new Promise((resolve) => setTimeout(resolve, 25));
+        if (!navigator.serviceWorker.controller) {{
+          await new Promise((resolve) => {{
+            navigator.serviceWorker.addEventListener('controllerchange', resolve, {{ once: true }});
+          }});
         }}
-        await new Promise((resolve) => setTimeout(resolve, 250));
         const registrations = await navigator.serviceWorker.getRegistrations();
         proof.dataset.controller = String(Boolean(navigator.serviceWorker.controller));
         proof.dataset.controllerPath = navigator.serviceWorker.controller ? new URL(navigator.serviceWorker.controller.scriptURL).pathname : '';
@@ -110,50 +111,36 @@ def _browser_binary() -> str:
     raise AssertionError("A Chromium-family browser is required for the PWA lifecycle proof")
 
 
-def _run_browser(url: str, profile: Path, *, budget_ms: int = 4200) -> str:
-    completed = subprocess.run(
-        [
-            _browser_binary(),
-            "--headless=new",
-            "--disable-gpu",
-            "--no-sandbox",
-            "--no-first-run",
-            "--no-default-browser-check",
-            f"--user-data-dir={profile}",
-            "--window-size=900,700",
-            f"--virtual-time-budget={budget_ms}",
-            "--dump-dom",
-            url,
-        ],
-        cwd=ROOT,
-        capture_output=True,
-        text=True,
-        check=False,
-        timeout=35,
+def _launch_context(playwright: Playwright, profile: Path) -> BrowserContext:
+    return playwright.chromium.launch_persistent_context(
+        user_data_dir=profile,
+        executable_path=_browser_binary(),
+        headless=True,
+        args=["--no-sandbox", "--disable-gpu"],
+        viewport={"width": 900, "height": 700},
+        service_workers="allow",
     )
-    assert completed.returncode == 0, completed.stdout + completed.stderr
-    return completed.stdout
 
 
-def _run_browser_until(
+def _assert_snapshot(
+    context: BrowserContext,
     url: str,
-    profile: Path,
-    required_markers: tuple[str, ...],
     *,
-    attempts: int = 4,
-    budget_ms: int = 4200,
-) -> str:
-    outputs: list[str] = []
-    for _attempt in range(attempts):
-        output = _run_browser(url, profile, budget_ms=budget_ms)
-        outputs.append(output)
-        if all(marker in output for marker in required_markers):
-            return output
-        time.sleep(0.25)
-    raise AssertionError(
-        "Headless browser did not reach the required persistent-profile state.\n"
-        + "\n\n--- browser attempt ---\n".join(outputs)
-    )
+    build: str,
+    cache: str,
+    lifecycle: str,
+) -> None:
+    page = context.pages[0] if context.pages else context.new_page()
+    page.goto(url, wait_until="load", timeout=15_000)
+
+    proof = page.locator("#proof")
+    expect(proof).to_have_attribute("data-ready", "true", timeout=15_000)
+    expect(proof).to_have_attribute("data-build", build)
+    expect(proof).to_have_attribute("data-controller", "true")
+    expect(proof).to_have_attribute("data-controller-path", "/sw.js")
+    expect(proof).to_have_attribute("data-registration-scopes", "/")
+    expect(proof).to_have_attribute("data-lifecycle", lifecycle)
+    expect(proof).to_have_attribute("data-caches", cache)
 
 
 def _start_server(mode: str, port: int = 0) -> tuple[_ReusableServer, threading.Thread]:
@@ -175,60 +162,46 @@ def test_clean_install_offline_reopen_and_atomic_worker_update(tmp_path: Path) -
     port = old_server.server_address[1]
     url = f"http://127.0.0.1:{port}/"
 
-    try:
-        installed = _run_browser_until(
-            url,
-            profile,
-            (
-                'data-ready="true"',
-                'data-build="old"',
-                'data-controller="true"',
-                'data-controller-path="/sw.js"',
-                'data-registration-scopes="/"',
-                "rozkalns-weather-v24",
-            ),
-        )
-        assert 'data-ready="true"' in installed, installed
-        assert 'data-build="old"' in installed, installed
-        assert 'data-controller="true"' in installed, installed
-        assert 'data-controller-path="/sw.js"' in installed, installed
-        assert 'data-registration-scopes="/"' in installed, installed
-        assert "rozkalns-weather-v24" in installed, installed
-    finally:
-        _stop_server(old_server, old_thread)
+    with sync_playwright() as playwright:
+        try:
+            initial_context = _launch_context(playwright, profile)
+            try:
+                _assert_snapshot(
+                    initial_context,
+                    url,
+                    build="old",
+                    cache="rozkalns-weather-v24",
+                    lifecycle="ready",
+                )
+            finally:
+                initial_context.close()
+        finally:
+            _stop_server(old_server, old_thread)
 
-    offline = _run_browser(url, profile)
-    assert 'data-ready="true"' in offline, offline
-    assert 'data-build="old"' in offline, offline
-    assert 'data-controller="true"' in offline, offline
-    assert 'data-controller-path="/sw.js"' in offline, offline
-    assert 'data-registration-scopes="/"' in offline, offline
-    assert "rozkalns-weather-v24" in offline, offline
+        offline_context = _launch_context(playwright, profile)
+        try:
+            _assert_snapshot(
+                offline_context,
+                url,
+                build="old",
+                cache="rozkalns-weather-v24",
+                lifecycle="ready",
+            )
+        finally:
+            offline_context.close()
 
-    new_server, new_thread = _start_server("new", port)
-    try:
-        updated = _run_browser_until(
-            url,
-            profile,
-            (
-                'data-ready="true"',
-                'data-build="new"',
-                'data-controller="true"',
-                'data-controller-path="/sw.js"',
-                'data-registration-scopes="/"',
-                'data-lifecycle="updated"',
-                "rozkalns-weather-v25",
-            ),
-            attempts=4,
-            budget_ms=6500,
-        )
-        assert 'data-ready="true"' in updated, updated
-        assert 'data-build="new"' in updated, updated
-        assert 'data-controller="true"' in updated, updated
-        assert 'data-controller-path="/sw.js"' in updated, updated
-        assert 'data-registration-scopes="/"' in updated, updated
-        assert 'data-lifecycle="updated"' in updated, updated
-        assert "rozkalns-weather-v25" in updated, updated
-        assert "rozkalns-weather-v24" not in updated, updated
-    finally:
-        _stop_server(new_server, new_thread)
+        new_server, new_thread = _start_server("new", port)
+        try:
+            updated_context = _launch_context(playwright, profile)
+            try:
+                _assert_snapshot(
+                    updated_context,
+                    url,
+                    build="new",
+                    cache="rozkalns-weather-v25",
+                    lifecycle="updated",
+                )
+            finally:
+                updated_context.close()
+        finally:
+            _stop_server(new_server, new_thread)
