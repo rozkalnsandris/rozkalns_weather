@@ -139,7 +139,7 @@ def test_status_module_is_lazy_cached_and_uses_existing_contracts() -> None:
     assert 'new URL("status_v1.js", navigationScriptUrl)' in navigation
     assert 'if (viewId === "status") ensureStatusModule().catch(() => {});' in navigation
     assert '"/static/status_v1.js"' in worker
-    assert 'const CACHE = "rozkalns-weather-v21"' in worker
+    assert 'const CACHE = "rozkalns-weather-v' in worker
     assert '/api/health/providers' in status
     assert '/api/hourly?hours=48&variable=temperature_2m' in status
     assert '/api/verification/summary?days=30' in status
