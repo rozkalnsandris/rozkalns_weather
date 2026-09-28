@@ -37,7 +37,10 @@ class _Handler(BaseHTTPRequestHandler):
         self.send_header("Cache-Control", cache_control)
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
-        self.wfile.write(body)
+        try:
+            self.wfile.write(body)
+        except BrokenPipeError:
+            pass
 
     def do_GET(self) -> None:
         parsed = urlparse(self.path)
@@ -45,15 +48,12 @@ class _Handler(BaseHTTPRequestHandler):
         if path.startswith("/api/"):
             self._api(path, parse_qs(parsed.query))
             return
-
         if path == "/":
             self._write(200, (STATIC / "index.html").read_bytes(), "text/html; charset=utf-8")
             return
-
         if path == "/sw.js":
             self._write(200, (STATIC / "sw.js").read_bytes(), "application/javascript; charset=utf-8")
             return
-
         if path.startswith("/static/"):
             target = STATIC / path.removeprefix("/static/")
             if not target.is_file():
@@ -68,7 +68,6 @@ class _Handler(BaseHTTPRequestHandler):
                 content_type += "; charset=utf-8"
             self._write(200, target.read_bytes(), content_type, cache_control="public, max-age=3600")
             return
-
         self._write(404, b"not found", "text/plain; charset=utf-8")
 
     def _api(self, path: str, query: dict[str, list[str]]) -> None:
@@ -76,10 +75,8 @@ class _Handler(BaseHTTPRequestHandler):
         if self.server.api_mode == "fail":
             self._write(503, b'{"detail":"controlled lab failure"}', "application/json")
             return
-
         now = datetime.now(timezone.utc).replace(microsecond=0)
-        payload = _api_payload(path, query, now)
-        self._write(200, json.dumps(payload).encode(), "application/json")
+        self._write(200, json.dumps(_api_payload(path, query, now)).encode(), "application/json")
 
 
 def _iso(value: datetime) -> str:
@@ -115,7 +112,6 @@ def _api_payload(path: str, query: dict[str, list[str]], now: datetime) -> dict[
                 },
             ],
         }
-
     if path == "/api/current":
         observed = _iso(now - timedelta(minutes=10))
         values = {
@@ -135,7 +131,6 @@ def _api_payload(path: str, query: dict[str, list[str]], now: datetime) -> dict[
                 for variable, value in values.items()
             ],
         }
-
     if path == "/api/hourly":
         location_id = query.get("location_id", ["station_05480"])[0]
         variable = query.get("variable", ["temperature_2m"])[0]
@@ -165,31 +160,25 @@ def _api_payload(path: str, query: dict[str, list[str]], now: datetime) -> dict[
                 }
             )
         return {"location": {"id": location_id}, "series": rows}
-
     if path == "/api/daily":
         location_id = query.get("location_id", ["station_05480"])[0]
-        today = now.date()
-        rows = []
-        for offset in range(5):
-            rows.append(
-                {
-                    "provider": "icon_d2",
-                    "model_name": "ICON-D2",
-                    "date": (today + timedelta(days=offset)).isoformat(),
-                    "temperature_min_c": 7.0 + offset,
-                    "temperature_max_c": 14.0 + offset,
-                    "precipitation_sum_mm": 0.5 if offset == 2 else 0.0,
-                    "retrieved_at_utc": _iso(now - timedelta(minutes=5)),
-                }
-            )
+        rows = [
+            {
+                "provider": "icon_d2",
+                "model_name": "ICON-D2",
+                "date": (now.date() + timedelta(days=offset)).isoformat(),
+                "temperature_min_c": 7.0 + offset,
+                "temperature_max_c": 14.0 + offset,
+                "precipitation_sum_mm": 0.5 if offset == 2 else 0.0,
+                "retrieved_at_utc": _iso(now - timedelta(minutes=5)),
+            }
+            for offset in range(5)
+        ]
         return {"location": {"id": location_id}, "days_by_provider": rows}
-
     if path == "/api/warnings":
         return {"state": "no_active_alerts", "alerts": []}
-
     if path == "/api/readiness":
         return {"status": "ready", "ready": True}
-
     return {}
 
 
@@ -216,26 +205,63 @@ def _stop_server(server: _LabServer, thread: threading.Thread) -> None:
 
 def _install_metric_observers(page) -> None:
     page.add_init_script(
-        """
+        r"""
         (() => {
-          window.__rozkalnsPerf = {lcp: 0, cls: 0, maxEventDuration: 0, supported: {}};
+          const label = (node) => {
+            if (!node) return null;
+            if (node.id) return `#${node.id}`;
+            const rawClass = typeof node.className === 'string'
+              ? node.className
+              : (node.getAttribute ? node.getAttribute('class') : '');
+            const classes = String(rawClass || '').trim().split(/\s+/).filter(Boolean).slice(0, 3).join('.');
+            return `${String(node.nodeName || 'node').toLowerCase()}${classes ? `.${classes}` : ''}`;
+          };
+          const rect = (value) => value ? {
+            x: value.x,
+            y: value.y,
+            width: value.width,
+            height: value.height,
+          } : null;
+          window.__rozkalnsPerf = {
+            lcp: 0,
+            cls: 0,
+            maxEventDuration: 0,
+            shifts: [],
+            supported: {},
+          };
           const supported = PerformanceObserver.supportedEntryTypes || [];
           window.__rozkalnsPerf.supported.lcp = supported.includes('largest-contentful-paint');
           window.__rozkalnsPerf.supported.cls = supported.includes('layout-shift');
           window.__rozkalnsPerf.supported.event = supported.includes('event');
           if (window.__rozkalnsPerf.supported.lcp) {
             new PerformanceObserver((list) => {
-              for (const entry of list.getEntries()) window.__rozkalnsPerf.lcp = Math.max(window.__rozkalnsPerf.lcp, entry.startTime || 0);
+              for (const entry of list.getEntries()) {
+                window.__rozkalnsPerf.lcp = Math.max(window.__rozkalnsPerf.lcp, entry.startTime || 0);
+              }
             }).observe({type: 'largest-contentful-paint', buffered: true});
           }
           if (window.__rozkalnsPerf.supported.cls) {
             new PerformanceObserver((list) => {
-              for (const entry of list.getEntries()) if (!entry.hadRecentInput) window.__rozkalnsPerf.cls += entry.value || 0;
+              for (const entry of list.getEntries()) {
+                if (entry.hadRecentInput) continue;
+                window.__rozkalnsPerf.cls += entry.value || 0;
+                window.__rozkalnsPerf.shifts.push({
+                  value: entry.value || 0,
+                  startTime: entry.startTime || 0,
+                  sources: (entry.sources || []).map((source) => ({
+                    node: label(source.node),
+                    previousRect: rect(source.previousRect),
+                    currentRect: rect(source.currentRect),
+                  })),
+                });
+              }
             }).observe({type: 'layout-shift', buffered: true});
           }
           if (window.__rozkalnsPerf.supported.event) {
             new PerformanceObserver((list) => {
-              for (const entry of list.getEntries()) window.__rozkalnsPerf.maxEventDuration = Math.max(window.__rozkalnsPerf.maxEventDuration, entry.duration || 0);
+              for (const entry of list.getEntries()) {
+                window.__rozkalnsPerf.maxEventDuration = Math.max(window.__rozkalnsPerf.maxEventDuration, entry.duration || 0);
+              }
             }).observe({type: 'event', buffered: true, durationThreshold: 16});
           }
         })();
