@@ -154,14 +154,28 @@
     }, CURRENT_BOOTSTRAP_DELAY_MS);
   }
 
+  function siblingScriptUrl(filename) {
+    return OBSERVATION_SCRIPT_URL
+      ? new URL(filename, OBSERVATION_SCRIPT_URL).href
+      : `/static/${filename}`;
+  }
+
   function loadForecastLoadingModule() {
     if (document.querySelector('script[data-rozkalns-forecast-loading="true"]')) return false;
     const script = document.createElement("script");
     script.dataset.rozkalnsForecastLoading = "true";
     script.async = false;
-    script.src = OBSERVATION_SCRIPT_URL
-      ? new URL("forecast_loading.js", OBSERVATION_SCRIPT_URL).href
-      : "/static/forecast_loading.js";
+    script.src = siblingScriptUrl("forecast_loading.js");
+    document.head.appendChild(script);
+    return true;
+  }
+
+  function loadPwaLifecycleModule() {
+    if (document.querySelector('script[data-rozkalns-pwa-lifecycle="true"]')) return false;
+    const script = document.createElement("script");
+    script.dataset.rozkalnsPwaLifecycle = "true";
+    script.async = false;
+    script.src = siblingScriptUrl("pwa_lifecycle.js");
     document.head.appendChild(script);
     return true;
   }
@@ -179,6 +193,7 @@
   });
 
   scheduleCurrentBootstrap();
+  loadPwaLifecycleModule();
   loadForecastLoadingModule();
 
   window.RozkalnsObservationAge = Object.freeze({
@@ -194,6 +209,8 @@
     currentStateIsLoading,
     loadCurrentIfHealthBlocked,
     scheduleCurrentBootstrap,
+    siblingScriptUrl,
     loadForecastLoadingModule,
+    loadPwaLifecycleModule,
   });
 })();
