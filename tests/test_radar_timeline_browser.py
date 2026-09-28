@@ -52,7 +52,7 @@ def test_radar_timeline_is_lazy_cached_and_fail_closed_in_source() -> None:
     assert 'frame.kind === "radar_observed" || frame.kind === "radar_nowcast"' in radar
     assert 'This does not mean precipitation is absent.' in radar
     assert 'raster_rendering_available === false' in radar
-    assert 'const CACHE = "rozkalns-weather-v20"' in worker
+    assert 'const CACHE = "rozkalns-weather-v21"' in worker
     assert '"/static/radar_timeline.js"' in worker
 
 

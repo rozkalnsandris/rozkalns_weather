@@ -5,6 +5,17 @@ const accuracyV3Api = async (url) => {
 };
 
 let accuracyRequestSequence = 0;
+let accuracySummaryGroups = [];
+
+const ACCURACY_PROVIDER_ORDER = ["weathernext3", "icon_d2", "ecmwf_ifs", "ecmwf_aifs", "dwd_mosmix_l"];
+const ACCURACY_PROVIDER_LABELS = {
+  weathernext3: "WeatherNext 3",
+  icon_d2: "ICON-D2",
+  ecmwf_ifs: "ECMWF IFS",
+  ecmwf_aifs: "ECMWF AIFS",
+  dwd_mosmix_l: "DWD MOSMIX-L",
+};
+const ACCURACY_VARIABLE_UNITS = { temperature_2m: "°C" };
 
 function providerClassCards(items) {
   const ordered = [...items].sort((a, b) => `${a.role}:${a.model_name}`.localeCompare(`${b.role}:${b.model_name}`));
@@ -133,6 +144,97 @@ function accuracyPanelTitle(text) {
   if (title) title.textContent = text;
 }
 
+function ensureAccuracySummary() {
+  let summary = document.querySelector("#accuracySummary");
+  if (summary) return summary;
+  const table = document.querySelector("#accuracyTable");
+  if (!table?.parentNode) return null;
+  summary = document.createElement("section");
+  summary.id = "accuracySummary";
+  summary.setAttribute("aria-labelledby", "accuracySummaryTitle");
+  summary.innerHTML = `
+    <div class="panel-title" id="accuracySummaryTitle">Common-sample MAE summary</div>
+    <label for="accuracyCohort">Temperature lead / model-version cohort</label>
+    <select id="accuracyCohort" aria-describedby="accuracySummaryMeta"></select>
+    <div id="accuracySummaryMeta" class="muted">Waiting for common-sample evidence.</div>
+    <div id="accuracyWeatherNextReadiness" class="muted"></div>
+    <div id="accuracySummaryRows" class="table-wrap" aria-live="polite"></div>
+    <details><summary>Detailed verification tables</summary><p class="muted">The full common-sample, lead-bucket, drilldown and calibration tables remain below.</p></details>`;
+  table.parentNode.insertBefore(summary, table);
+  summary.querySelector("#accuracyCohort")?.addEventListener("change", (event) => {
+    renderAccuracySummarySelection(Number(event.target.value));
+  });
+  return summary;
+}
+
+function accuracyGroupKey(row) {
+  const cohort = row.matched_set_id || JSON.stringify(row.comparison_cohort || {});
+  return `${row.variable || "unknown"}|${row.lead_bucket || "unknown"}|${cohort}`;
+}
+
+function buildAccuracySummaryGroups(rows) {
+  const groups = new Map();
+  (rows || []).filter((row) => row.variable === "temperature_2m").forEach((row) => {
+    const key = accuracyGroupKey(row);
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(row);
+  });
+  return [...groups.values()].sort((a, b) => `${a[0]?.lead_bucket || ""}:${a[0]?.matched_set_id || ""}`.localeCompare(`${b[0]?.lead_bucket || ""}:${b[0]?.matched_set_id || ""}`));
+}
+
+function providerOrder(row) {
+  const index = ACCURACY_PROVIDER_ORDER.indexOf(row.provider);
+  return index === -1 ? ACCURACY_PROVIDER_ORDER.length : index;
+}
+
+function renderAccuracySummarySelection(index) {
+  const group = accuracySummaryGroups[index] || [];
+  const rowsTarget = document.querySelector("#accuracySummaryRows");
+  const meta = document.querySelector("#accuracySummaryMeta");
+  const wn = document.querySelector("#accuracyWeatherNextReadiness");
+  if (!rowsTarget || !meta || !wn) return;
+  if (!group.length) {
+    meta.textContent = "No temperature common-sample cohort is available.";
+    wn.textContent = "WeatherNext 3 accuracy is not shown without genuine common-sample evidence.";
+    rowsTarget.textContent = "No comparable MAE result is available.";
+    return;
+  }
+  const first = group[0];
+  const commonN = first.missingness?.common_n ?? first.n ?? 0;
+  const unit = ACCURACY_VARIABLE_UNITS[first.variable] || "unit unavailable";
+  meta.textContent = `${first.lead_bucket} · common samples n=${commonN} · DWD CDC 05480 truth · ${first.variable} · ${unit}. Rows remain provider-separated; no overall winner is inferred.`;
+  const hasWeatherNext = group.some((row) => row.provider === "weathernext3");
+  wn.textContent = hasWeatherNext
+    ? "WeatherNext 3 has genuine common-sample evidence in this selected cohort."
+    : "WeatherNext 3 has no genuine common-sample row in this selected cohort; no WeatherNext score is shown.";
+  const ordered = [...group].sort((a, b) => providerOrder(a) - providerOrder(b) || String(a.provider).localeCompare(String(b.provider)));
+  rowsTarget.innerHTML = `<table><caption class="sr-only">Temperature MAE for one exact common-sample cohort</caption><thead><tr><th>Model</th><th>Version</th><th>MAE</th><th>n</th></tr></thead><tbody>${ordered.map((row) => `
+    <tr><td>${ACCURACY_PROVIDER_LABELS[row.provider] || row.provider}</td><td>${row.model_version || "unknown"}</td><td>${row.mae == null ? "—" : `${Number(row.mae).toFixed(2)} ${unit}`}</td><td>${row.n}</td></tr>`).join("")}</tbody></table>`;
+}
+
+function renderAccuracySummary(summary) {
+  const surface = ensureAccuracySummary();
+  if (!surface) return;
+  accuracySummaryGroups = buildAccuracySummaryGroups(summary.common_sample_slices || []);
+  const select = surface.querySelector("#accuracyCohort");
+  if (!select) return;
+  if (!accuracySummaryGroups.length) {
+    select.replaceChildren();
+    select.disabled = true;
+    renderAccuracySummarySelection(-1);
+    return;
+  }
+  select.disabled = false;
+  select.innerHTML = accuracySummaryGroups.map((group, index) => {
+    const row = group[0];
+    const commonN = row.missingness?.common_n ?? row.n ?? 0;
+    const versions = [...new Set(group.map((item) => `${ACCURACY_PROVIDER_LABELS[item.provider] || item.provider} ${item.model_version || "unknown"}`))].join(" · ");
+    return `<option value="${index}">${row.lead_bucket} · n=${commonN} · ${versions}</option>`;
+  }).join("");
+  select.value = "0";
+  renderAccuracySummarySelection(0);
+}
+
 function renderAccuracyTable(summary) {
   const target = document.querySelector("#accuracyTable");
   const rows = summary.common_sample_slices || [];
@@ -159,6 +261,9 @@ async function refreshAccuracyV3(days = 30) {
     accuracyTable.setAttribute("aria-busy", "true");
     accuracyTable.textContent = `Loading ${days}-day verification evidence…`;
   }
+  const summarySurface = ensureAccuracySummary();
+  const summaryRows = summarySurface?.querySelector("#accuracySummaryRows");
+  if (summaryRows) summaryRows.textContent = `Loading ${days}-day common-sample MAE evidence…`;
   if (lead) lead.textContent = "";
   if (calibration) calibration.textContent = "";
   setAccuracyState("loading", `LOADING · ${days}-day verification evidence is being fetched.`);
@@ -174,6 +279,7 @@ async function refreshAccuracyV3(days = 30) {
 
     const classes = document.querySelector("#providerClasses");
     if (classes) classes.innerHTML = providerClassCards(providers.providers || []);
+    renderAccuracySummary(summary);
     renderAccuracyTable(summary);
     renderCalibration(precipitation);
 
@@ -190,6 +296,7 @@ async function refreshAccuracyV3(days = 30) {
     if (sequence !== accuracyRequestSequence) return;
     accuracyPanelTitle("DWD CDC 05480 verification evidence · unavailable");
     if (accuracyTable) accuracyTable.textContent = "Accuracy evidence unavailable.";
+    if (summaryRows) summaryRows.textContent = "Common-sample MAE summary unavailable.";
     if (lead) lead.textContent = "";
     if (calibration) calibration.textContent = "";
     setAccuracyState("error", `ERROR · ${days}-day verification request failed: ${error}`, { alert: true });
