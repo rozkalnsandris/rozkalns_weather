@@ -88,7 +88,7 @@ def test_real_shell_location_change_does_not_leave_previous_models_chart_after_p
             assert temp_state.get_attribute("role") == "alert"
             assert temp_state.get_attribute("aria-live") == "assertive"
             assert "Temperature forecast unavailable" in temp_state.inner_text()
-            assert "controlled Models temperature failure" in temp_state.inner_text()
+            assert "503 Service Unavailable" in temp_state.inner_text()
 
             assert page.locator("#modelsChart svg").count() == 0
             assert "Temperature forecast unavailable" in page.locator("#modelsChart").inner_text()
