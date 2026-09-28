@@ -4,6 +4,7 @@
   const OBSERVATION_FRESH_MINUTES = 180;
   const TICK_MS = 60 * 1000;
   const CURRENT_BOOTSTRAP_DELAY_MS = 200;
+  const OBSERVATION_SCRIPT_URL = document.currentScript?.src || "";
   let timer = null;
   let latestResult = null;
   let currentBootstrapTimer = null;
@@ -153,6 +154,18 @@
     }, CURRENT_BOOTSTRAP_DELAY_MS);
   }
 
+  function loadForecastLoadingModule() {
+    if (document.querySelector('script[data-rozkalns-forecast-loading="true"]')) return false;
+    const script = document.createElement("script");
+    script.dataset.rozkalnsForecastLoading = "true";
+    script.async = false;
+    script.src = OBSERVATION_SCRIPT_URL
+      ? new URL("forecast_loading.js", OBSERVATION_SCRIPT_URL).href
+      : "/static/forecast_loading.js";
+    document.head.appendChild(script);
+    return true;
+  }
+
   const baseRenderCurrent = window.renderCurrent;
   if (typeof baseRenderCurrent === "function") {
     window.renderCurrent = function renderCurrentWithObservationAge(result, healthMap) {
@@ -166,6 +179,7 @@
   });
 
   scheduleCurrentBootstrap();
+  loadForecastLoadingModule();
 
   window.RozkalnsObservationAge = Object.freeze({
     OBSERVATION_FRESH_MINUTES,
@@ -180,5 +194,6 @@
     currentStateIsLoading,
     loadCurrentIfHealthBlocked,
     scheduleCurrentBootstrap,
+    loadForecastLoadingModule,
   });
 })();
