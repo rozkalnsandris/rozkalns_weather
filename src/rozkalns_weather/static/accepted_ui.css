@@ -99,14 +99,6 @@ html[data-ui-theme] :focus-visible { outline:2px solid var(--accent); outline-of
 .trend-table .table-wrap { max-width:100%; }
 .trend-rain svg { width:11px; height:15px; margin:1px auto; fill:currentColor; }
 
-/* Reserve the expected mobile footprint for asynchronous Overview content.
-   This keeps first-load forecast/detail rendering from pushing visible content. */
-@media(max-width:420px) {
-  html[data-ui-theme] body #overview .weather-hero { min-height:236px; }
-  html[data-ui-theme] body #overview .consumer-panel:has(#hourlyStrip) { min-height:630px; }
-  html[data-ui-theme] body #overview #dailyGrid { min-height:447px; }
-}
-
 /* Accepted Status hierarchy: WeatherNext availability/readiness stay separate; technical provider detail is progressive disclosure. */
 html[data-ui-theme] body .status-primary { background:var(--hero); border-color:var(--accent); }
 .status-primary h2 { margin:4px 0 9px; font-size:21px; letter-spacing:-.4px; }
