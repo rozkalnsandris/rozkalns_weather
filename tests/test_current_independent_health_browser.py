@@ -53,6 +53,7 @@ def _write_fixture(tmp_path: Path) -> Path:
     let currentCalls = 0;
     let renders = 0;
     let healthStarted = false;
+    let lastRenderedMarker = '';
 
     function currentResult(label, value) {{
       return {{
@@ -75,6 +76,7 @@ def _write_fixture(tmp_path: Path) -> Path:
     }};
     window.renderCurrent = (result) => {{
       renders += 1;
+      lastRenderedMarker = result.payload.marker;
       document.getElementById('currentState').dataset.state = 'fresh';
       document.getElementById('heroTemperature').textContent = `${{result.payload.observations[0].value}}°`;
       document.getElementById('heroUpdated').textContent = result.payload.marker;
@@ -110,9 +112,10 @@ def _write_fixture(tmp_path: Path) -> Path:
       proof.dataset.healthStarted = String(healthStarted);
       proof.dataset.currentCalls = String(currentCalls);
       proof.dataset.renders = String(renders);
+      proof.dataset.lastRender = lastRenderedMarker;
       proof.dataset.state = document.getElementById('currentState').dataset.state;
       proof.dataset.temperature = document.getElementById('heroTemperature').textContent;
-      proof.dataset.updated = document.getElementById('heroUpdated').textContent;
+      proof.dataset.ageText = document.getElementById('heroUpdated').textContent;
       proof.dataset.ready = 'true';
     }}, 650);
   </script>
@@ -131,18 +134,19 @@ def test_current_observation_is_not_blocked_by_provider_health(tmp_path: Path) -
     assert 'data-renders="1"' in blocked, blocked
     assert 'data-state="fresh"' in blocked, blocked
     assert 'data-temperature="11°"' in blocked, blocked
-    assert 'data-updated="watchdog-current"' in blocked, blocked
+    assert 'data-last-render="watchdog-current"' in blocked, blocked
+    assert 'data-age-text=' in blocked and 'Observed' in blocked and 'min ago' in blocked, blocked
 
     fast = _run_browser(f"{fixture.as_uri()}?scenario=fast")
     assert 'data-ready="true"' in fast, fast
     assert 'data-current-calls="0"' in fast, fast
     assert 'data-renders="1"' in fast, fast
     assert 'data-temperature="12°"' in fast, fast
-    assert 'data-updated="base-fast"' in fast, fast
+    assert 'data-last-render="base-fast"' in fast, fast
 
     race = _run_browser(f"{fixture.as_uri()}?scenario=race")
     assert 'data-ready="true"' in race, race
     assert 'data-current-calls="1"' in race, race
     assert 'data-renders="1"' in race, race
     assert 'data-temperature="13°"' in race, race
-    assert 'data-updated="base-newer"' in race, race
+    assert 'data-last-render="base-newer"' in race, race
