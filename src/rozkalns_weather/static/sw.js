@@ -1,4 +1,4 @@
-const CACHE = "rozkalns-weather-v22";
+const CACHE = "rozkalns-weather-v23";
 const CACHE_PREFIX = "rozkalns-weather-";
 const ASSETS=[
   "/",
@@ -12,6 +12,7 @@ const ASSETS=[
   "/static/weather_ui.js",
   "/static/consumer_ui.js",
   "/static/observation_age.js",
+  "/static/forecast_loading.js",
   "/static/radar_timeline.js",
   "/static/status_v1.js",
   "/static/runtime_badge.js",
