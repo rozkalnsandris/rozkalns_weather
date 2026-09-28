@@ -42,7 +42,7 @@ class _Handler(BaseHTTPRequestHandler):
             self._write(200, body, "text/html; charset=utf-8")
             return
 
-        if path == "/static/sw.js":
+        if path in {"/sw.js", "/static/sw.js"}:
             source = SW.read_text()
             if self.server.mode == "old":
                 source = source.replace('const CACHE = "rozkalns-weather-v25"', 'const CACHE = "rozkalns-weather-v24"')
@@ -71,6 +71,7 @@ def _page(mode: str) -> str:
   <main id="shell-marker">shell-{mode}</main>
   <output id="proof" data-build="{mode}"></output>
   <script>
+    // Simulate the legacy app.js registration that existed before the root-scope migration.
     navigator.serviceWorker.register('/static/sw.js');
   </script>
   <script src="/static/pwa_lifecycle.js"></script>
@@ -79,13 +80,16 @@ def _page(mode: str) -> str:
       const proof = document.getElementById('proof');
       try {{
         await navigator.serviceWorker.ready;
-        for (let index = 0; index < 80 && !navigator.serviceWorker.controller; index += 1) {{
+        for (let index = 0; index < 100 && !navigator.serviceWorker.controller; index += 1) {{
           await new Promise((resolve) => setTimeout(resolve, 25));
         }}
-        await new Promise((resolve) => setTimeout(resolve, 150));
+        await new Promise((resolve) => setTimeout(resolve, 250));
+        const registrations = await navigator.serviceWorker.getRegistrations();
         proof.dataset.controller = String(Boolean(navigator.serviceWorker.controller));
+        proof.dataset.controllerPath = navigator.serviceWorker.controller ? new URL(navigator.serviceWorker.controller.scriptURL).pathname : '';
         proof.dataset.caches = (await caches.keys()).sort().join(',');
         proof.dataset.lifecycle = document.documentElement.dataset.pwaLifecycle || '';
+        proof.dataset.registrationScopes = registrations.map((registration) => new URL(registration.scope).pathname).sort().join(',');
         proof.dataset.ready = 'true';
       }} catch (error) {{
         proof.dataset.error = String(error);
@@ -105,7 +109,7 @@ def _browser_binary() -> str:
     raise AssertionError("A Chromium-family browser is required for the PWA lifecycle proof")
 
 
-def _run_browser(url: str, profile: Path, *, budget_ms: int = 3500) -> str:
+def _run_browser(url: str, profile: Path, *, budget_ms: int = 4200) -> str:
     completed = subprocess.run(
         [
             _browser_binary(),
@@ -154,6 +158,8 @@ def test_clean_install_offline_reopen_and_atomic_worker_update(tmp_path: Path) -
         assert 'data-ready="true"' in installed, installed
         assert 'data-build="old"' in installed, installed
         assert 'data-controller="true"' in installed, installed
+        assert 'data-controller-path="/sw.js"' in installed, installed
+        assert 'data-registration-scopes="/"' in installed, installed
         assert "rozkalns-weather-v24" in installed, installed
     finally:
         _stop_server(old_server, old_thread)
@@ -162,14 +168,18 @@ def test_clean_install_offline_reopen_and_atomic_worker_update(tmp_path: Path) -
     assert 'data-ready="true"' in offline, offline
     assert 'data-build="old"' in offline, offline
     assert 'data-controller="true"' in offline, offline
+    assert 'data-controller-path="/sw.js"' in offline, offline
+    assert 'data-registration-scopes="/"' in offline, offline
     assert "rozkalns-weather-v24" in offline, offline
 
     new_server, new_thread = _start_server("new", port)
     try:
-        updated = _run_browser(url, profile, budget_ms=5500)
+        updated = _run_browser(url, profile, budget_ms=6500)
         assert 'data-ready="true"' in updated, updated
         assert 'data-build="new"' in updated, updated
         assert 'data-controller="true"' in updated, updated
+        assert 'data-controller-path="/sw.js"' in updated, updated
+        assert 'data-registration-scopes="/"' in updated, updated
         assert 'data-lifecycle="updated"' in updated, updated
         assert "rozkalns-weather-v25" in updated, updated
         assert "rozkalns-weather-v24" not in updated, updated
