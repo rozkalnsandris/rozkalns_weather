@@ -33,6 +33,11 @@
       || "";
   }
 
+  function isRootWorker(worker) {
+    if (!worker?.scriptURL) return false;
+    return new URL(worker.scriptURL).pathname === ROOT_WORKER_URL;
+  }
+
   async function removeLegacyRegistration() {
     const registrations = await navigator.serviceWorker.getRegistrations();
     const legacy = registrations.filter((registration) => {
@@ -66,7 +71,15 @@
   }
 
   async function installRootWorker() {
-    const registration = await navigator.serviceWorker.register(ROOT_WORKER_URL, { scope: ROOT_SCOPE });
+    let registration = null;
+    if (isRootWorker(navigator.serviceWorker.controller)) {
+      registration = await navigator.serviceWorker.getRegistration(ROOT_SCOPE);
+    }
+    if (!registration) {
+      registration = await navigator.serviceWorker.register(ROOT_WORKER_URL, { scope: ROOT_SCOPE });
+    } else if (navigator.onLine) {
+      void registration.update().catch(() => {});
+    }
     await removeLegacyRegistration();
     await navigator.serviceWorker.ready;
     return registration;
@@ -90,6 +103,10 @@
         setLifecycleState("ready", hadControllerAtLoad ? "root-scope service worker active" : "root-scope service worker installed");
       }
     }).catch((error) => {
+      if (hadControllerAtLoad && isRootWorker(navigator.serviceWorker.controller)) {
+        setLifecycleState("ready", "root-scope service worker remains active while update check is unavailable");
+        return;
+      }
       setLifecycleState("error", String(error));
     });
   }
@@ -103,6 +120,7 @@
     updatedAfterReload,
     setLifecycleState,
     registrationScriptUrl,
+    isRootWorker,
     removeLegacyRegistration,
     reloadForUpdatedWorker,
     installRootWorker,
