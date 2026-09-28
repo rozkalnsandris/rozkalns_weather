@@ -26,10 +26,23 @@ PR #276 adds a real-shell Chromium regression proof at the Galaxy A55 `412×892`
 
 This is an automated OS text-scale/reflow proof. It is not a claim that browser-chrome `Ctrl+Plus` zoom was exercised, and it does not replace a screen-reader or physical-device pass.
 
+## Automated accessibility-tree follow-up
+
+PR #278 adds a real-shell Chromium Accessibility Tree proxy at the Galaxy A55 `412×892` viewport using the Chrome DevTools Protocol accessibility domain. The proof checks that the application exposes the `main` and named primary-navigation landmarks, the five primary navigation controls, polite `status` live regions, navigation focus transfer, and a controlled Radar lazy-module failure as an assertive `alert` in the browser accessibility tree.
+
+This validates browser/AX semantics used by assistive technology, not a complete screen-reader user-session. It does not claim manual NVDA, TalkBack, VoiceOver, speech-order, rotor, gesture, Braille-display or physical-device validation.
+
+## Degraded-state interaction follow-up
+
+PR #277 adds a real-shell Accuracy acceptance matrix covering `loading → fresh → preliminary/stale → request error` and cohort-filter behavior at `412×892`. A failed verification request now clears and disables the previous cohort selector instead of leaving old cohort evidence interactive.
+
+This closes the bounded Accuracy filter/state case only; it does not by itself prove every state/filter combination across every view or production runtime integration.
+
 ## Remaining acceptance work
 
 - Manual browser-chrome 200% `Ctrl+Plus` zoom remains unproven because the earlier built-in browser shortcut did not change its zoom state; a narrow viewport or CSS scaling is still not a substitute for that manual browser-zoom check.
-- Screen-reader and physical Galaxy A55/S25+ validation.
-- Complete loading/error/stale/filter interaction matrix and production integration checks.
+- Manual screen-reader validation (NVDA/TalkBack/VoiceOver as applicable), including real announcement order and interaction behavior.
+- Physical Galaxy A55/S25+ validation.
+- Remaining loading/error/stale/filter combinations outside the bounded Accuracy matrix and production integration checks.
 
 The accepted design remains the implementation basis. Full V3 and #237 acceptance stay open. Production application, providers, runtime and deployment are unchanged.
