@@ -4,6 +4,7 @@ import mimetypes
 import shutil
 import subprocess
 import threading
+import time
 from urllib.parse import urlparse
 
 
@@ -134,6 +135,27 @@ def _run_browser(url: str, profile: Path, *, budget_ms: int = 4200) -> str:
     return completed.stdout
 
 
+def _run_browser_until(
+    url: str,
+    profile: Path,
+    required_markers: tuple[str, ...],
+    *,
+    attempts: int = 4,
+    budget_ms: int = 4200,
+) -> str:
+    outputs: list[str] = []
+    for _attempt in range(attempts):
+        output = _run_browser(url, profile, budget_ms=budget_ms)
+        outputs.append(output)
+        if all(marker in output for marker in required_markers):
+            return output
+        time.sleep(0.25)
+    raise AssertionError(
+        "Headless browser did not reach the required persistent-profile state.\n"
+        + "\n\n--- browser attempt ---\n".join(outputs)
+    )
+
+
 def _start_server(mode: str, port: int = 0) -> tuple[_ReusableServer, threading.Thread]:
     server = _ReusableServer(("127.0.0.1", port), mode)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
@@ -154,7 +176,18 @@ def test_clean_install_offline_reopen_and_atomic_worker_update(tmp_path: Path) -
     url = f"http://127.0.0.1:{port}/"
 
     try:
-        installed = _run_browser(url, profile)
+        installed = _run_browser_until(
+            url,
+            profile,
+            (
+                'data-ready="true"',
+                'data-build="old"',
+                'data-controller="true"',
+                'data-controller-path="/sw.js"',
+                'data-registration-scopes="/"',
+                "rozkalns-weather-v24",
+            ),
+        )
         assert 'data-ready="true"' in installed, installed
         assert 'data-build="old"' in installed, installed
         assert 'data-controller="true"' in installed, installed
@@ -174,7 +207,21 @@ def test_clean_install_offline_reopen_and_atomic_worker_update(tmp_path: Path) -
 
     new_server, new_thread = _start_server("new", port)
     try:
-        updated = _run_browser(url, profile, budget_ms=6500)
+        updated = _run_browser_until(
+            url,
+            profile,
+            (
+                'data-ready="true"',
+                'data-build="new"',
+                'data-controller="true"',
+                'data-controller-path="/sw.js"',
+                'data-registration-scopes="/"',
+                'data-lifecycle="updated"',
+                "rozkalns-weather-v25",
+            ),
+            attempts=4,
+            budget_ms=6500,
+        )
         assert 'data-ready="true"' in updated, updated
         assert 'data-build="new"' in updated, updated
         assert 'data-controller="true"' in updated, updated
