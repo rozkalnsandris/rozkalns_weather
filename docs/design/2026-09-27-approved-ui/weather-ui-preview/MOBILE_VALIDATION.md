@@ -38,11 +38,17 @@ PR #277 adds a real-shell Accuracy acceptance matrix covering `loading → fresh
 
 This closes the bounded Accuracy filter/state case only; it does not by itself prove every state/filter combination across every view or production runtime integration.
 
+## Automated Radar degraded-state follow-up
+
+PR #279 adds a real-shell Radar acceptance matrix at the Galaxy A55 `412×892` viewport covering `fresh → stale-cache → hard request error`. The proof requires cached observed/nowcast frames and their timestamps to remain visible only while the surface is explicitly stale, while a hard request error must clear the prior frame list, expose an assertive error state, retain the safety text that unavailable radar does not mean precipitation is absent, and leave the refresh control usable.
+
+This closes the bounded Radar metadata degraded-state case only. It does not claim raster/map rendering validation, manual production interaction, or complete state/filter coverage across every view.
+
 ## Remaining acceptance work
 
 - Manual browser-chrome 200% `Ctrl+Plus` zoom remains unproven because the earlier built-in browser shortcut did not change its zoom state; a narrow viewport or CSS scaling is still not a substitute for that manual browser-zoom check.
 - Manual screen-reader validation (NVDA/TalkBack/VoiceOver as applicable), including real announcement order and interaction behavior.
 - Physical Galaxy A55/S25+ validation.
-- Remaining loading/error/stale/filter combinations outside the bounded Accuracy matrix and production integration checks.
+- Remaining loading/error/stale/filter combinations outside the bounded Accuracy and Radar matrices and production integration checks.
 
 The accepted design remains the implementation basis. Full V3 and #237 acceptance stay open. Production application, providers, runtime and deployment are unchanged.
