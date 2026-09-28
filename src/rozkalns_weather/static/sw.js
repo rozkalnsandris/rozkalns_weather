@@ -1,4 +1,4 @@
-const CACHE = "rozkalns-weather-v24";
+const CACHE = "rozkalns-weather-v25";
 const CACHE_PREFIX = "rozkalns-weather-";
 const ASSETS=[
   "/",
@@ -14,6 +14,7 @@ const ASSETS=[
   "/static/observation_age.js",
   "/static/forecast_loading.js",
   "/static/request_lifecycle.js",
+  "/static/pwa_lifecycle.js",
   "/static/radar_timeline.js",
   "/static/status_v1.js",
   "/static/runtime_badge.js",
@@ -23,9 +24,14 @@ const ASSETS=[
   "/static/manifest.webmanifest",
   "/static/icon.svg",
 ];
+const SHELL_PATHS = new Set(ASSETS);
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(ASSETS)));
+  event.waitUntil(
+    caches.open(CACHE)
+      .then((cache) => cache.addAll(ASSETS))
+      .then(() => self.skipWaiting())
+  );
 });
 
 self.addEventListener("activate", (event) => {
@@ -38,7 +44,24 @@ self.addEventListener("activate", (event) => {
   );
 });
 
+function isShellRequest(request) {
+  const url = new URL(request.url);
+  return url.origin === self.location.origin && SHELL_PATHS.has(url.pathname);
+}
+
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
-  event.respondWith(fetch(event.request).catch(() => caches.match(event.request)));
+
+  if (isShellRequest(event.request)) {
+    event.respondWith(
+      caches.open(CACHE).then(async (cache) => {
+        const cached = await cache.match(event.request, { ignoreSearch: true });
+        if (cached) return cached;
+        return fetch(event.request);
+      })
+    );
+    return;
+  }
+
+  event.respondWith(fetch(event.request));
 });

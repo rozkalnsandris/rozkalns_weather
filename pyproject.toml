@@ -19,6 +19,7 @@ weathernext = [
   "google-cloud-bigquery>=3.36,<4",
 ]
 test = [
+  "playwright>=1.55,<2",
   "pytest>=8.4,<9",
 ]
 

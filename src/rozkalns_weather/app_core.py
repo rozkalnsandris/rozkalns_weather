@@ -92,8 +92,7 @@ def _temperature_common_samples(rows: list[dict[str, object]]) -> list[SkillSamp
             selected[key] = row
             continue
         current_rank = (
-            str(current.get("init_time_utc") or ""),
-            str(current.get("retrieved_at_utc") or ""),
+            str(current.get("init_time_utc") or ""), str(current.get("retrieved_at_utc") or ""),
         )
         if rank > current_rank:
             selected[key] = row
@@ -197,6 +196,14 @@ def create_app(settings: Settings | None = None, database: Database | None = Non
     @app.get("/")
     def index() -> FileResponse:
         return FileResponse(static_dir / "index.html")
+
+    @app.get("/sw.js", include_in_schema=False)
+    def service_worker() -> FileResponse:
+        return FileResponse(
+            static_dir / "sw.js",
+            media_type="application/javascript",
+            headers={"Cache-Control": "no-cache"},
+        )
 
     @app.get("/health")
     def health() -> dict[str, object]:

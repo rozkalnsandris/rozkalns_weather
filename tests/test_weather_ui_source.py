@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 
 
 ROOT = Path(__file__).parents[1]
@@ -70,22 +71,48 @@ def test_public_reference_identity_and_unknown_observation_semantics_are_explici
     assert "HOME_LON" not in source
 
 
-def test_pwa_cache_is_versioned_and_old_weather_caches_are_deleted_on_activate() -> None:
+def test_pwa_cache_is_versioned_complete_and_atomically_activated() -> None:
     source = (STATIC / "sw.js").read_text()
-    assert 'const CACHE = "rozkalns-weather-v24"' in source
-    assert '"/static/navigation_v1.js"' in source
-    assert '"/static/weather_ui.js"' in source
-    assert '"/static/consumer_ui.js"' in source
-    assert '"/static/observation_age.js"' in source
-    assert '"/static/forecast_loading.js"' in source
-    assert '"/static/request_lifecycle.js"' in source
-    assert '"/static/radar_timeline.js"' in source
-    assert '"/static/status_v1.js"' in source
-    assert '"/static/provenance_v1.js"' in source
-    assert 'self.addEventListener("activate"' in source
+    index = (STATIC / "index.html").read_text()
+    app = (STATIC / "app.js").read_text()
+    observation = (STATIC / "observation_age.js").read_text()
+    lifecycle = (STATIC / "pwa_lifecycle.js").read_text()
+
+    assert 'const CACHE = "rozkalns-weather-v25"' in source
+    shell_assets = set(re.findall(r'"(/static/[^"?]+)"', source))
+    index_assets = set(re.findall(r'(?:src|href)="(/static/[^"?]+)"', index))
+    assert index_assets <= shell_assets
+
+    for asset in (
+        "/static/navigation_v1.js",
+        "/static/weather_ui.js",
+        "/static/consumer_ui.js",
+        "/static/observation_age.js",
+        "/static/forecast_loading.js",
+        "/static/request_lifecycle.js",
+        "/static/pwa_lifecycle.js",
+        "/static/radar_timeline.js",
+        "/static/status_v1.js",
+        "/static/runtime_badge.js",
+        "/static/accuracy_v3.js",
+        "/static/provenance_v1.js",
+    ):
+        assert asset in shell_assets
+
+    assert 'navigator.serviceWorker.register("/sw.js", { scope: "/" })' in app
+    assert 'navigator.serviceWorker.register("/static/sw.js")' not in app
+    assert 'siblingScriptUrl("pwa_lifecycle.js")' in observation
+    assert "self.skipWaiting()" in source
+    assert "self.clients.claim()" in source
+    assert "SHELL_PATHS.has(url.pathname)" in source
+    assert 'cache.match(event.request, { ignoreSearch: true })' in source
+    assert "event.respondWith(fetch(event.request));" in source
     assert "caches.keys()" in source
     assert "caches.delete(name)" in source
     assert "name.startsWith(CACHE_PREFIX)" in source
+    assert 'navigator.serviceWorker.addEventListener("controllerchange", () =>' in lifecycle
+    assert "void reloadForUpdatedWorker();" in lifecycle
+    assert "window.location.reload()" in lifecycle
 
 
 def test_visual_acceptance_fixture_declares_required_states_and_viewports() -> None:
