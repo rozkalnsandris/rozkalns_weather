@@ -171,6 +171,8 @@
   }
 
   function setLoading() {
+    const card = qs("#statusWeatherNext");
+    if (card) card.dataset.state = "loading";
     const state = qs("#statusWeatherNextState");
     if (state) {
       state.className = "surface-state state-loading";
@@ -225,6 +227,8 @@
       if (qs("#status")?.classList.contains("active")) void load();
     });
     root.addEventListener?.("offline", () => {
+      const card = qs("#statusWeatherNext");
+      if (card) card.dataset.state = "offline";
       const state = qs("#statusWeatherNextState");
       if (!state) return;
       state.className = "surface-state state-offline";
