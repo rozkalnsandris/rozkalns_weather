@@ -64,17 +64,18 @@ def test_request_lifecycle_times_out_aborts_and_preserves_stale_cache(tmp_path: 
 <script>
 (async () => {{
   const proof = document.getElementById('proof');
+  const api = window.RozkalnsRequestLifecycle.apiWithTimeoutFallback;
   let timeoutError = '';
   try {{
-    await window.apiWithFallback('/timeout', 'no-cache', {{timeoutMs: 30}});
+    await api('/timeout', 'no-cache', {{timeoutMs: 30}});
   }} catch (error) {{
     timeoutError = String(error);
   }}
 
-  const cached = await window.apiWithFallback('/cached', 'cached-key', {{timeoutMs: 30}});
+  const cached = await api('/cached', 'cached-key', {{timeoutMs: 30}});
 
   const controller = new AbortController();
-  const externalPromise = window.apiWithFallback('/external', 'no-external-cache', {{
+  const externalPromise = api('/external', 'no-external-cache', {{
     signal: controller.signal,
     timeoutMs: 250,
   }}).then(() => null, (error) => error);
