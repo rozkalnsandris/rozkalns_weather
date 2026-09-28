@@ -18,7 +18,7 @@ def test_consumer_ui_helper_loads_after_native_weather_ui_and_is_cached() -> Non
     assert html.index('/static/observation_age.js') < html.index('/static/runtime_badge.js')
     assert '"/static/consumer_ui.js"' in worker
     assert '"/static/observation_age.js"' in worker
-    assert 'const CACHE = "rozkalns-weather-v18"' in worker
+    assert 'const CACHE = "rozkalns-weather-v19"' in worker
 
 
 def test_next_hours_has_one_deterministic_now_slot_and_keeps_local_labels() -> None:
@@ -48,7 +48,6 @@ def test_identical_consumer_status_is_hidden_but_distinct_states_are_restored() 
     assert 'duplicate.removeAttribute("role")' in source
     assert 'duplicate.removeAttribute("aria-live")' in source
 
-    # Distinct variable failures remain separate evidence in the base renderer.
     assert "Temperature forecast unavailable" in app
     assert "Precipitation forecast unavailable" in app
 
@@ -66,8 +65,6 @@ def test_provider_ui_semantics_keep_pending_inactive_lagging_and_error_distinct(
     for rule in (error_rule, pending_rule, inactive_rule, fresh_rule, stale_rule):
         assert rule in source
 
-    # Precedence is the behavioral contract: an ingest error wins; access pending
-    # wins over the simultaneous not-tracked marker; otherwise not-tracked is inactive.
     assert source.index(error_rule) < source.index(pending_rule)
     assert source.index(pending_rule) < source.index(inactive_rule)
     assert source.index(inactive_rule) < source.index(fresh_rule)
@@ -77,7 +74,6 @@ def test_provider_ui_semantics_keep_pending_inactive_lagging_and_error_distinct(
     assert 'window.normalizedProviderState = normalizedProviderUiState' in source
     assert "normalizedProviderUiState," in source
 
-    # The recurring public summary remains scoped to its canonical provider set.
     public_scope = app.split("const PUBLIC_PROVIDER_IDS", 1)[1].split("]);", 1)[0]
     for provider in ('"dwd_observations"', '"dwd_mosmix_l"', '"icon_d2"', '"ecmwf_ifs"', '"ecmwf_aifs"'):
         assert provider in public_scope
@@ -85,12 +81,10 @@ def test_provider_ui_semantics_keep_pending_inactive_lagging_and_error_distinct(
     assert 'filter((provider) => PUBLIC_PROVIDER_IDS.has(provider.id))' in app
     assert 'tracked.filter((provider) => normalizedProviderState(provider) !== "fresh")' in app
 
-    # Card text carries the state independently of color, while raw provenance remains visible.
     assert 'class="state-chip state-${uiState}">${uiState}</span>' in app
     assert 'ingest ${escapeHtml(provider.ingest_state || provider.state || "unknown")}' in app
     assert 'freshness ${escapeHtml(provider.freshness_state || "unknown")}' in app
     assert "provider.reason_code" in app
 
-    # WeatherNext remains first-class without inventing a value while access is pending.
     assert 'provider === "weathernext3" ? "No genuine data · pending"' in app
     assert 'const value = row && Number.isFinite(Number(row.value)) ? `${Number(row.value).toFixed(1)}°` : "—";' in app
