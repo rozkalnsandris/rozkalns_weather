@@ -64,7 +64,7 @@
       || outsideRecurringScope
     ) return "inactive";
     if (freshness === "fresh") return "fresh";
-    if (["lagging", "degraded", "stale", "unknown", "not_ingested", "not_tracked"].includes(freshness)) return "stale";
+    if (["lagging", "degraded", "stale", "unknown", "not_ingested"].includes(freshness)) return "stale";
     return "stale";
   }
 
