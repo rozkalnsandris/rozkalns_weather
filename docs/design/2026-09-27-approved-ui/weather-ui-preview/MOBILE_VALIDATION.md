@@ -44,11 +44,17 @@ PR #279 adds a real-shell Radar acceptance matrix at the Galaxy A55 `412×892` v
 
 This closes the bounded Radar metadata degraded-state case only. It does not claim raster/map rendering validation, manual production interaction, or complete state/filter coverage across every view.
 
+## Automated Models degraded-location follow-up
+
+PR #280 adds a real-shell Models acceptance matrix at the Galaxy A55 `412×892` viewport for a user location change where the new location's temperature request fails while precipitation remains fresh. The proof requires the Models location labels to move to the newly selected location, the temperature surface to expose an assertive error, and all temperature-derived visuals from the previous location — chart, uncertainty text, model snapshot and spread — to be cleared instead of remaining visible under the new location heading. The sibling precipitation surface must remain fresh and usable.
+
+The same PR bumps the cache-first PWA shell to `rozkalns-weather-v26` so the corrected `forecast_loading.js` is not stranded behind the previous service-worker cache, and its browser lifecycle proof verifies the atomic `v25 → v26` worker update. This closes only the bounded Models location/partial-failure case; it does not claim every provider/filter combination or production runtime validation.
+
 ## Remaining acceptance work
 
 - Manual browser-chrome 200% `Ctrl+Plus` zoom remains unproven because the earlier built-in browser shortcut did not change its zoom state; a narrow viewport or CSS scaling is still not a substitute for that manual browser-zoom check.
 - Manual screen-reader validation (NVDA/TalkBack/VoiceOver as applicable), including real announcement order and interaction behavior.
 - Physical Galaxy A55/S25+ validation.
-- Remaining loading/error/stale/filter combinations outside the bounded Accuracy and Radar matrices and production integration checks.
+- Remaining loading/error/stale/filter combinations outside the bounded Accuracy, Radar and Models matrices and production integration checks.
 
 The accepted design remains the implementation basis. Full V3 and #237 acceptance stay open. Production application, providers, runtime and deployment are unchanged.
