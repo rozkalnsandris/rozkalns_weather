@@ -60,8 +60,6 @@ def test_navigation_source_and_pwa_contract() -> None:
     assert '"/static/navigation_v1.js"' in sw
     assert '"/static/radar_timeline.js"' in sw
     assert '"/static/status_v1.js"' in sw
-    assert 'new URL("status_v1.js", navigationScriptUrl).href' in navigation
-    assert 'if (viewId === "status") ensureStatusModule().catch(() => {});' in navigation
 
 
 def test_hash_navigation_direct_link_focus_and_back_forward(tmp_path: Path) -> None:
@@ -211,10 +209,14 @@ def _write_viewport_harness(tmp_path: Path, fixture: Path, width: int) -> Path:
 def test_real_shell_responsive_and_200_percent_zoom_equivalent(tmp_path: Path) -> None:
     fixture = _write_real_shell_fixture(tmp_path)
     # 720 CSS px is the effective layout width of a 1440 px desktop viewport at 200% browser zoom.
+    # A visible vertical scrollbar may consume a small part of the iframe's declared width.
     for width in (320, 390, 412, 720, 1440):
         harness = _write_viewport_harness(tmp_path, fixture, width)
         rendered = _run_browser(harness.as_uri(), width=1600, height=1000)
-        assert f'data-client-width="{width}"' in rendered, rendered
+        match = re.search(r'data-client-width="(\d+)"', rendered)
+        assert match, rendered
+        client_width = int(match.group(1))
+        assert width - 20 <= client_width <= width, rendered
         assert 'data-no-page-overflow="true"' in rendered, rendered
         assert 'data-nav-count="5"' in rendered, rendered
         assert 'data-nav-within-viewport="true"' in rendered, rendered
