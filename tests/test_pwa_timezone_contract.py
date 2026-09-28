@@ -21,7 +21,7 @@ def test_pwa_uses_explicit_berlin_timezone_and_offset_bearing_labels() -> None:
     assert 'globalThis.formatLocalTime = formatLocalTimeBerlin' in script
     assert 'globalThis.formatTimestamp = formatTimestampBerlin' in script
     assert 'globalThis.localDateKey = localDateKeyBerlin' in script
-    assert 'globalThis.berlinMonthKey = berlinMonthKeyBerlin' in script
+    assert 'globalThis.berlinMonthKey = localMonthKeyBerlin' in script
     assert 'globalThis.refresh' in script
     assert 'UTC_STRING' in script
 
