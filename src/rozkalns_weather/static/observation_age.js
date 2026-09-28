@@ -165,7 +165,9 @@
     const script = document.createElement("script");
     script.dataset.rozkalnsForecastLoading = "true";
     script.async = false;
-    script.src = siblingScriptUrl("forecast_loading.js");
+    script.src = OBSERVATION_SCRIPT_URL
+      ? new URL("forecast_loading.js", OBSERVATION_SCRIPT_URL).href
+      : "/static/forecast_loading.js";
     document.head.appendChild(script);
     return true;
   }
