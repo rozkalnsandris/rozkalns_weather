@@ -72,10 +72,11 @@ def test_public_reference_identity_and_unknown_observation_semantics_are_explici
 
 def test_pwa_cache_is_versioned_and_old_weather_caches_are_deleted_on_activate() -> None:
     source = (STATIC / "sw.js").read_text()
-    assert 'const CACHE = "rozkalns-weather-v16"' in source
+    assert 'const CACHE = "rozkalns-weather-v17"' in source
     assert '"/static/navigation_v1.js"' in source
     assert '"/static/weather_ui.js"' in source
     assert '"/static/consumer_ui.js"' in source
+    assert '"/static/observation_age.js"' in source
     assert '"/static/provenance_v1.js"' in source
     assert 'self.addEventListener("activate"' in source
     assert "caches.keys()" in source

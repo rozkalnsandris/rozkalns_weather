@@ -14,9 +14,11 @@ def test_consumer_ui_helper_loads_after_native_weather_ui_and_is_cached() -> Non
     worker = SERVICE_WORKER.read_text()
 
     assert html.index('/static/weather_ui.js') < html.index('/static/consumer_ui.js')
-    assert html.index('/static/consumer_ui.js') < html.index('/static/runtime_badge.js')
+    assert html.index('/static/consumer_ui.js') < html.index('/static/observation_age.js')
+    assert html.index('/static/observation_age.js') < html.index('/static/runtime_badge.js')
     assert '"/static/consumer_ui.js"' in worker
-    assert 'const CACHE = "rozkalns-weather-v16"' in worker
+    assert '"/static/observation_age.js"' in worker
+    assert 'const CACHE = "rozkalns-weather-v17"' in worker
 
 
 def test_next_hours_has_one_deterministic_now_slot_and_keeps_local_labels() -> None:
