@@ -5,6 +5,46 @@
   const navButtons = [...document.querySelectorAll(".tabs button[data-view]")];
   const originalHandlers = new Map(navButtons.map((button) => [button, button.onclick]));
   const skipLink = document.querySelector(".skip-link");
+  const navigationScriptUrl = document.currentScript?.src || window.location.href;
+  const radarTimelineUrl = new URL("radar_timeline.js", navigationScriptUrl).href;
+  let radarTimelinePromise = null;
+
+  function markRadarModuleFailure() {
+    const state = document.querySelector("#radarState");
+    const button = document.querySelector("#loadRadar");
+    if (button) button.disabled = false;
+    if (!state) return;
+    state.dataset.state = "error";
+    state.setAttribute("role", "alert");
+    state.setAttribute("aria-live", "assertive");
+    state.textContent = "ERROR · Radar timeline module could not be loaded. This does not mean precipitation is absent.";
+  }
+
+  function ensureRadarTimeline() {
+    if (window.rozkalnsRadarTimeline) {
+      return Promise.resolve(window.rozkalnsRadarTimeline.load?.());
+    }
+    if (radarTimelinePromise) return radarTimelinePromise;
+
+    const button = document.querySelector("#loadRadar");
+    if (button) button.disabled = true;
+
+    radarTimelinePromise = new Promise((resolve, reject) => {
+      const script = document.createElement("script");
+      script.src = radarTimelineUrl;
+      script.dataset.radarTimeline = "true";
+      script.onload = () => {
+        Promise.resolve(window.rozkalnsRadarTimeline?.load?.()).then(resolve, reject);
+      };
+      script.onerror = () => {
+        radarTimelinePromise = null;
+        markRadarModuleFailure();
+        reject(new Error("radar timeline module failed to load"));
+      };
+      document.head.appendChild(script);
+    });
+    return radarTimelinePromise;
+  }
 
   if (skipLink) {
     Object.assign(skipLink.style, {
@@ -56,6 +96,7 @@
       navButtons.forEach((item) => item.classList.toggle("active", item.dataset.view === viewId));
     }
     syncCurrent(viewId);
+    if (viewId === "safety") ensureRadarTimeline().catch(() => {});
   }
 
   function activateHash({ focus = false } = {}) {
