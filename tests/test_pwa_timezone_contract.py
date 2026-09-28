@@ -21,14 +21,14 @@ def test_pwa_uses_explicit_berlin_timezone_and_offset_bearing_labels() -> None:
     assert 'globalThis.formatLocalTime = formatLocalTimeBerlin' in script
     assert 'globalThis.formatTimestamp = formatTimestampBerlin' in script
     assert 'globalThis.localDateKey = localDateKeyBerlin' in script
-    assert 'globalThis.berlinMonthKey = localMonthKeyBerlin' in script
+    assert 'globalThis.berlinMonthKey = berlinMonthKeyBerlin' in script
     assert 'globalThis.refresh' in script
     assert 'UTC_STRING' in script
 
 
 def test_dst_helper_is_part_of_offline_pwa_cache() -> None:
     worker = SERVICE_WORKER.read_text()
-    assert "rozkalns-weather-v17" in worker
+    assert "rozkalns-weather-v18" in worker
     assert '"/static/time_semantics.js"' in worker
 
 
