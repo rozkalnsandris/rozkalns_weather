@@ -181,6 +181,13 @@ def test_real_shell_status_keeps_card_state_in_sync_through_refresh_offline_and_
             assert card.get_attribute("data-state") == "offline"
             assert "last-known and not current" in state.inner_text()
 
+            page.evaluate(
+                """() => {
+                  for (const key of Object.keys(localStorage)) {
+                    if (key.startsWith('rozkalns-weather:pwa-cache:v1:status-')) localStorage.removeItem(key);
+                  }
+                }"""
+            )
             server.api_delay_seconds = 0.05
             server.api_mode = "fail"
             page.evaluate("window.dispatchEvent(new Event('online'))")
