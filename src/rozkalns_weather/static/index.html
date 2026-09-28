@@ -101,8 +101,6 @@
         </div>
         <div id="modelSpread" class="model-spread">Model spread —</div>
       </section>
-
-
     </section>
 
     <section id="models" class="view" aria-label="Models">
@@ -178,6 +176,16 @@
 
     <section id="status" class="view" aria-label="Status">
       <header class="subpage-header status-header"><div><span class="eyebrow">System</span><h1>Status & Sources</h1></div><div id="statusBadge" class="badge">loading</div></header>
+      <section id="statusWeatherNext" class="panel status-primary" data-state="loading" aria-labelledby="statusWeatherNextTitle">
+        <div class="status-eyebrow">Primary research model</div>
+        <h2 id="statusWeatherNextTitle">WeatherNext 3</h2>
+        <div id="statusWeatherNextState" class="surface-state state-loading" role="status" aria-live="polite" aria-atomic="true">LOADING · checking forecast availability and verification readiness</div>
+        <div class="status-key-row"><span>Forecast availability</span><strong id="statusWeatherNextForecast">Checking…</strong></div>
+        <div id="statusWeatherNextForecastMeta" class="muted status-meta">No genuine value is inferred from another provider.</div>
+        <div class="status-key-row"><span>Verification readiness</span><strong id="statusWeatherNextVerification">Checking…</strong></div>
+        <div id="statusWeatherNextVerificationMeta" class="muted status-meta">DWD CDC 05480 benchmark evidence is checked separately.</div>
+        <p class="muted status-note">Forecast availability and sufficient verification evidence are separate steps. WeatherNext is not DWD warning authority.</p>
+      </section>
       <div class="panel">
         <label for="forecastLocation">Forecast location</label>
         <select id="forecastLocation">
@@ -189,13 +197,17 @@
       </div>
       <div id="networkState" class="surface-state state-loading global-state" role="status" aria-live="polite" aria-atomic="true">LOADING · checking live API evidence</div>
       <div class="panel">
-        <div class="panel-title">Provider freshness</div>
-        <div id="providerState" class="surface-state state-loading" role="status" aria-live="polite" aria-atomic="true">LOADING · provider health</div>
-        <div id="providerGrid" class="provider-grid"></div>
+        <div class="panel-title">Public data sources</div>
+        <div id="statusSources" class="status-source-list" aria-live="polite">Open Status to load independent provider evidence.</div>
+        <details class="status-technical-details">
+          <summary>Technical provider health</summary>
+          <div id="providerState" class="surface-state state-loading" role="status" aria-live="polite" aria-atomic="true">LOADING · provider health</div>
+          <div id="providerGrid" class="provider-grid"></div>
+        </details>
       </div>
       <div class="panel">
         <div class="panel-title">Reference semantics</div>
-        <div class="muted">DWD CDC 05480 is the canonical measured benchmark. DWD 10416 remains legacy MOSMIX reference only. measured skill uses DWD CDC 05480 reference truth.</div>
+        <div class="muted">DWD CDC 05480 is the canonical measured benchmark. DWD 10416 remains legacy MOSMIX reference only. Measured skill uses DWD CDC 05480 reference truth.</div>
       </div>
     </section>
   </main>
