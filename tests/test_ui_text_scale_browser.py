@@ -20,7 +20,7 @@ def _assert_view_reflows_without_document_overflow(page, view_id: str) -> None:
     page.locator(f'button[data-view="{view_id}"]').click()
     page.wait_for_function(
         "viewId => document.getElementById(viewId)?.classList.contains('active')",
-        view_id,
+        arg=view_id,
     )
     overflow = page.evaluate(
         """() => ({
