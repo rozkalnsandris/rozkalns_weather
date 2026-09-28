@@ -52,7 +52,8 @@ def test_forecast_loader_is_sibling_module_and_part_of_offline_shell() -> None:
     assert 'selector.value === "home" && providerHealthStillLoading()' in forecast
     assert 'selectedLocation() === locationId' in forecast
     assert '"/static/forecast_loading.js"' in worker
-    assert 'const CACHE = "rozkalns-weather-v23"' in worker
+    assert '"/static/request_lifecycle.js"' in worker
+    assert 'const CACHE = "rozkalns-weather-v24"' in worker
 
 
 def _write_fixture(tmp_path: Path) -> Path:
@@ -104,7 +105,7 @@ def _write_fixture(tmp_path: Path) -> Path:
     window.renderConsumerHourly = () => {{ renders.hourly += 1; }};
     window.renderDaily = (value) => {{ renders.daily += 1; lastDailyLocation = value.payload.location.id; }};
 
-    window.apiWithFallback = (url) => {{
+    window.apiWithFallback = (url, _key, _options = {{}}) => {{
       calls.push(String(url));
       const parsed = new URL(String(url), 'https://weather.invalid');
       const locationId = parsed.searchParams.get('location_id');
@@ -120,6 +121,7 @@ def _write_fixture(tmp_path: Path) -> Path:
       const delay = scenario === 'race' && locationId === 'station_10416' ? 25 : 20;
       return new Promise((resolve) => setTimeout(() => resolve(result(locationId, variable)), delay));
     }};
+    window.RozkalnsRequestLifecycle = {{apiWithTimeoutFallback: window.apiWithFallback}};
   </script>
   <script src="{FORECAST_LOADING.as_uri()}"></script>
   <script>
