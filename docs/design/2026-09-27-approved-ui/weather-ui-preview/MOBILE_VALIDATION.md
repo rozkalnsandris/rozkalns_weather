@@ -20,9 +20,15 @@ Forward sequences: Models has three metric buttons, time select, disclosure and 
 
 Screenshots were inspected in-session; no persisted screenshot artifacts are included. No additional defect was identified in this bounded pass.
 
+## Automated 200% text-enlargement follow-up
+
+PR #276 adds a real-shell Chromium regression proof at the Galaxy A55 `412×892` viewport using the browser engine's `Emulation.setEmulatedOSTextScale` with `scale=2.0`. The test traverses Overview, Models, Radar, Accuracy and Status and fails if the document gains horizontal overflow or the fixed bottom navigation or its controls clip their text.
+
+This is an automated OS text-scale/reflow proof. It is not a claim that browser-chrome `Ctrl+Plus` zoom was exercised, and it does not replace a screen-reader or physical-device pass.
+
 ## Remaining acceptance work
 
-- Actual 200% browser zoom and text enlargement: Ctrl+Plus had no observed effect in the built-in browser (width 639 and devicePixelRatio 1 unchanged). No zoom pass is claimed; a narrow viewport or CSS scaling is not a substitute.
+- Manual browser-chrome 200% `Ctrl+Plus` zoom remains unproven because the earlier built-in browser shortcut did not change its zoom state; a narrow viewport or CSS scaling is still not a substitute for that manual browser-zoom check.
 - Screen-reader and physical Galaxy A55/S25+ validation.
 - Complete loading/error/stale/filter interaction matrix and production integration checks.
 
