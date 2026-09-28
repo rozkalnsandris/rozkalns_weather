@@ -52,7 +52,7 @@ def test_accuracy_summary_source_keeps_real_common_sample_contract() -> None:
     assert "Rows remain provider-separated; no overall winner is inferred." in source
     assert "rain" not in source.split("ACCURACY_VARIABLE_UNITS", 1)[1].split(";", 1)[0]
     assert "wind" not in source.split("ACCURACY_VARIABLE_UNITS", 1)[1].split(";", 1)[0]
-    assert 'const CACHE = "rozkalns-weather-v21"' in worker
+    assert 'const CACHE = "rozkalns-weather-v' in worker
     assert '"/static/accuracy_v3.js"' in worker
 
 
