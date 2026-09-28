@@ -18,7 +18,7 @@ def test_consumer_ui_helper_loads_after_native_weather_ui_and_is_cached() -> Non
     assert html.index('/static/observation_age.js') < html.index('/static/runtime_badge.js')
     assert '"/static/consumer_ui.js"' in worker
     assert '"/static/observation_age.js"' in worker
-    assert 'const CACHE = "rozkalns-weather-v19"' in worker
+    assert 'const CACHE = "rozkalns-weather-v20"' in worker
 
 
 def test_next_hours_has_one_deterministic_now_slot_and_keeps_local_labels() -> None:
