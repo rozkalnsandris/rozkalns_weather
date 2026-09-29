@@ -65,7 +65,7 @@ def test_provider_health_error_keeps_available_current_observation_evidence() ->
             assert initial["pressure"] == "1015 hPa"
             assert page.locator("#heroIcon svg").count() == 1
 
-            page.evaluate(
+            immediate = page.evaluate(
                 """
                 async (dwdHealth) => {
                   const response = await fetch('/api/current', { cache: 'no-store' });
@@ -78,30 +78,59 @@ def test_provider_health_error_keeps_available_current_observation_evidence() ->
                     error: null,
                   };
                   window.renderCurrent(result, { dwd_observations: dwdHealth });
+                  const state = document.querySelector('#currentState');
+                  const text = (selector) => document.querySelector(selector)?.textContent?.trim() ?? null;
+                  return {
+                    state: state?.dataset.state ?? null,
+                    stateText: state?.textContent?.trim() ?? null,
+                    role: state?.getAttribute('role') ?? null,
+                    ariaLive: state?.getAttribute('aria-live') ?? null,
+                    temperature: text('#heroTemperature'),
+                    condition: text('#heroCondition'),
+                    feels: text('#heroFeels'),
+                    source: text('#heroSource'),
+                    humidity: text('#detailHumidity'),
+                    pressure: text('#detailPressure'),
+                    iconCount: document.querySelectorAll('#heroIcon svg').length,
+                  };
                 }
                 """,
                 degraded_observation_health,
             )
 
-            page.wait_for_function(
-                "() => document.querySelector('#currentState')?.dataset.state === 'error' && document.querySelector('#currentState')?.textContent.includes('provider health reports an error')",
-                timeout=7_500,
+            assert immediate["state"] == "error", immediate
+            assert immediate["role"] == "alert", immediate
+            assert immediate["ariaLive"] == "assertive", immediate
+            assert "Latest DWD observation" in immediate["stateText"], immediate
+            assert "provider health reports an error" in immediate["stateText"], immediate
+            assert "DWD current observation unavailable" not in immediate["stateText"], immediate
+            assert immediate["temperature"] == initial["temperature"], immediate
+            assert immediate["condition"] == initial["condition"], immediate
+            assert immediate["feels"] == initial["feels"], immediate
+            assert immediate["source"] == initial["source"], immediate
+            assert immediate["humidity"] == initial["humidity"], immediate
+            assert immediate["pressure"] == initial["pressure"], immediate
+            assert immediate["iconCount"] == 1, immediate
+
+            page.wait_for_timeout(250)
+            settled = page.evaluate(
+                """
+                () => {
+                  const state = document.querySelector('#currentState');
+                  return {
+                    state: state?.dataset.state ?? null,
+                    stateText: state?.textContent?.trim() ?? null,
+                    role: state?.getAttribute('role') ?? null,
+                    ariaLive: state?.getAttribute('aria-live') ?? null,
+                  };
+                }
+                """
             )
-
-            current_state = page.locator("#currentState")
-            assert current_state.get_attribute("role") == "alert"
-            assert current_state.get_attribute("aria-live") == "assertive"
-            assert "Latest DWD observation" in current_state.inner_text()
-            assert "provider health reports an error" in current_state.inner_text()
-            assert "DWD current observation unavailable" not in current_state.inner_text()
-
-            assert page.locator("#heroTemperature").inner_text().strip() == initial["temperature"]
-            assert page.locator("#heroCondition").inner_text().strip() == initial["condition"]
-            assert page.locator("#heroFeels").inner_text().strip() == initial["feels"]
-            assert page.locator("#heroSource").inner_text().strip() == initial["source"]
-            assert page.locator("#detailHumidity").inner_text().strip() == initial["humidity"]
-            assert page.locator("#detailPressure").inner_text().strip() == initial["pressure"]
-            assert page.locator("#heroIcon svg").count() == 1
+            assert settled["state"] == "error", {"immediate": immediate, "settled": settled}
+            assert "provider health reports an error" in settled["stateText"], {
+                "immediate": immediate,
+                "settled": settled,
+            }
 
             assert page.locator("#overviewTempState").get_attribute("data-state") == "fresh"
             assert page.locator("#overviewPrecipState").get_attribute("data-state") == "fresh"
