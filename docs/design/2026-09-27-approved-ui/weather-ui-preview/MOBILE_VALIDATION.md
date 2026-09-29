@@ -108,6 +108,16 @@ The source correction adds a precipitation-specific fail-closed visual cleanup i
 
 This closes only the bounded reciprocal Models precipitation location/partial-failure case. It does not claim manual production validation, every provider/filter combination, physical-device validation, manual screen-reader behavior, browser-chrome zoom acceptance, or complete cross-view state-matrix coverage.
 
+## Automated Models temperature stale-cache fallback follow-up
+
+PR #288 adds a real-shell Models acceptance proof at the Galaxy A55 `412×892` viewport for a location-specific temperature cache fallback. The proof first loads `station_10416` successfully and waits for the production `hourly-temperature-48-station_10416` cache entry to materialize, switches back to `station_05480`, then revisits `station_10416` while forcing only that location's `temperature_2m` refresh to return 503.
+
+The Models temperature surface must become `stale` with polite `status` semantics and visible cached-chart evidence for the selected location, while the independently refreshed precipitation surface remains `fresh` and usable. The proof also requires the mobile shell to remain free of horizontal overflow. Waiting for the concrete location-scoped cache key prevents the previous location's already-fresh DOM state from being mistaken for completion of the cache-priming request.
+
+The existing production request lifecycle already satisfies this contract. Test-first exact-head validation completed with Backend tests #428 and Governance gates #433 successful on `d9ff7a11278260c686d0f2a1935e5d9e631fed99`, so no production JavaScript correction or PWA cache bump is required.
+
+This closes only the bounded Models temperature stale-cache fallback case. It does not claim the reciprocal precipitation stale-cache path, manual production validation, every provider/filter combination, physical-device validation, manual screen-reader behavior, browser-chrome zoom acceptance, or complete cross-view state-matrix coverage.
+
 ## Remaining acceptance work
 
 - Manual browser-chrome 200% `Ctrl+Plus` zoom remains unproven because the earlier built-in browser shortcut did not change its zoom state; a narrow viewport or CSS scaling is still not a substitute for that manual browser-zoom check.
