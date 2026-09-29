@@ -78,7 +78,7 @@ def test_pwa_cache_is_versioned_complete_and_atomically_activated() -> None:
     observation = (STATIC / "observation_age.js").read_text()
     lifecycle = (STATIC / "pwa_lifecycle.js").read_text()
 
-    assert 'const CACHE = "rozkalns-weather-v31"' in source
+    assert 'const CACHE = "rozkalns-weather-v32"' in source
     shell_assets = set(re.findall(r'"(/static/[^"?]+)"', source))
     index_assets = set(re.findall(r'(?:src|href)="(/static/[^"?]+)"', index))
     assert index_assets <= shell_assets
