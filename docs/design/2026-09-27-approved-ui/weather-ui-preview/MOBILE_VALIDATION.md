@@ -80,6 +80,16 @@ The source correction centralizes fail-closed current-observation cleanup in `ob
 
 This closes only the bounded current-observation hard-error cleanup case. It does not claim manual production validation, physical-device validation, manual screen-reader behavior, browser-chrome zoom acceptance, or complete cross-view state-matrix coverage.
 
+## Automated current-observation provider-health degradation follow-up
+
+PR #285 adds a real-shell current-observation acceptance proof at the Galaxy A55 `412×892` viewport for the distinct case where `/api/current` still returns a genuine fresh DWD observation while `dwd_observations` provider health reports `error`. The proof constructs an explicit network-sourced current result, renders it with the degraded provider-health state, and captures both immediate and settled DOM snapshots so the assertion is bound to the actual rendered lifecycle rather than an internal message string or a cache/fallback race.
+
+The accepted UI must expose `currentState` as `data-state="error"`, `role="alert"`, `aria-live="assertive"` with the canonical compact text `ERROR · DWD observation provider degraded`, while retaining the available observation-derived temperature, condition, feels/source presentation, humidity, pressure and condition icon. Forecast sibling surfaces remain fresh. This separates provider-health degradation from the #284 hard-unavailable contract: only explicit `DWD current observation unavailable` semantics trigger fail-closed observation cleanup.
+
+The source correction narrows the `observation_age.js` cleanup observer to that explicit unavailable semantic, preserving valid observation evidence during provider-health degradation while keeping the existing hard-unavailable watchdog/fetch-error cleanup intact. The cache-first PWA shell advances from `rozkalns-weather-v29` to `rozkalns-weather-v30`, with the atomic lifecycle proof rebased accordingly. An exact-head CI rerun after an unrelated headless hidden-rendering flake completed successfully without any code change, so that flake is not part of this bounded acceptance result.
+
+This closes only the bounded current-observation provider-health degradation case. It does not claim manual production validation, physical-device validation, manual screen-reader behavior, browser-chrome zoom acceptance, or complete cross-view state-matrix coverage.
+
 ## Remaining acceptance work
 
 - Manual browser-chrome 200% `Ctrl+Plus` zoom remains unproven because the earlier built-in browser shortcut did not change its zoom state; a narrow viewport or CSS scaling is still not a substitute for that manual browser-zoom check.

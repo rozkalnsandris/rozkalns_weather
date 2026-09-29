@@ -132,8 +132,7 @@
 
   function currentStateRequiresUnavailableCleanup(state) {
     if (!state) return false;
-    return state.dataset.state === "error"
-      || String(state.textContent || "").includes("DWD current observation unavailable");
+    return String(state.textContent || "").includes("DWD current observation unavailable");
   }
 
   function installCurrentStateCleanupObserver() {
