@@ -227,8 +227,9 @@ def test_real_shell_models_temperature_uses_location_scoped_stale_cache_after_re
                 "() => [...document.querySelectorAll('#models .forecast-location-label')].every((node) => node.textContent.includes('10416'))",
                 timeout=7_500,
             )
-            assert page.evaluate(
-                "localStorage.getItem('rozkalns-weather:pwa-cache:v1:hourly-temperature-48-station_10416') !== null"
+            page.wait_for_function(
+                "() => localStorage.getItem('rozkalns-weather:pwa-cache:v1:hourly-temperature-48-station_10416') !== null",
+                timeout=7_500,
             )
 
             page.select_option("#forecastLocation", "station_05480")
