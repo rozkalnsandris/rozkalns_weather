@@ -17,6 +17,16 @@ def _load_lab_module():
     return module
 
 
+def _is_current_precipitation_response(response) -> bool:
+    parsed = urlparse(response.url)
+    query = parse_qs(parsed.query)
+    return (
+        parsed.path == "/api/hourly"
+        and query.get("location_id", [""])[0] == "station_10416"
+        and query.get("variable", [""])[0] == "precipitation_1h"
+    )
+
+
 def test_real_shell_location_change_does_not_leave_previous_overview_hourly_after_temperature_failure() -> None:
     lab = _load_lab_module()
     server, thread = lab._start_server()
@@ -63,14 +73,16 @@ def test_real_shell_location_change_does_not_leave_previous_overview_hourly_afte
 
             page.route("**/api/hourly**", degraded_hourly)
             page.locator('button[data-view="status"]').click()
-            page.select_option("#forecastLocation", "station_10416")
+            with page.expect_response(_is_current_precipitation_response, timeout=7_500) as precipitation_response:
+                page.select_option("#forecastLocation", "station_10416")
+            assert precipitation_response.value.ok
 
             page.wait_for_function(
                 "() => document.querySelector('#overviewTempState')?.dataset.state === 'error'",
                 timeout=7_500,
             )
             page.wait_for_function(
-                "() => document.querySelector('#overviewPrecipState')?.dataset.state === 'fresh'",
+                "() => { const element = document.querySelector('#overviewPrecipState'); return element?.dataset.state === 'fresh' && !element.hidden && element.getAttribute('role') === 'status' && element.getAttribute('aria-live') === 'polite'; }",
                 timeout=7_500,
             )
             page.wait_for_function(
