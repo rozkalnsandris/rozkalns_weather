@@ -64,11 +64,19 @@ The recovery proof is bound to the actual `station_10416` `precipitation_1h` res
 
 This closes only the bounded Overview location/partial-failure case. It does not claim manual production validation, every provider/filter combination, or complete cross-view state-matrix coverage.
 
+## Automated daily degraded-location follow-up
+
+PR #283 adds a real-shell daily forecast acceptance matrix at the Galaxy A55 `412×892` viewport for a forecast-location change where the newly selected location's `/api/daily` request fails while sibling hourly temperature and precipitation continue to load successfully. The proof is bound to the controlled `station_10416` daily request and requires `dailyState` to expose an assertive error, the previous location's daily grid to be replaced by the explicit unavailable state, and the hero high/low values to reset to `H —° · L —°` rather than remain stale under the new location selection.
+
+The same proof requires the hourly cards and combined hourly chart to remain usable and the page to retain mobile-width reflow, demonstrating that the daily failure remains isolated from successful sibling forecast surfaces. The existing production failure path already satisfied this contract, so PR #283 adds regression evidence only and does not change `forecast_loading.js` or advance the `rozkalns-weather-v28` PWA cache.
+
+This closes only the bounded daily location/hard-failure case. It does not claim manual production validation, every provider/filter combination, or complete cross-view state-matrix coverage.
+
 ## Remaining acceptance work
 
 - Manual browser-chrome 200% `Ctrl+Plus` zoom remains unproven because the earlier built-in browser shortcut did not change its zoom state; a narrow viewport or CSS scaling is still not a substitute for that manual browser-zoom check.
 - Manual screen-reader validation (NVDA/TalkBack/VoiceOver as applicable), including real announcement order and interaction behavior.
 - Physical Galaxy A55/S25+ validation.
-- Remaining loading/error/stale/filter combinations outside the bounded Accuracy, Radar, Models, Status and Overview matrices and production integration checks.
+- Remaining loading/error/stale/filter combinations outside the bounded Accuracy, Radar, Models, Status, Overview and daily matrices and production integration checks.
 
 The accepted design remains the implementation basis. Full V3 and #237 acceptance stay open. Production application, providers, runtime and deployment are unchanged.
