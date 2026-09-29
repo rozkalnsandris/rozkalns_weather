@@ -101,8 +101,7 @@ def test_provider_health_error_keeps_available_current_observation_evidence() ->
             assert immediate["state"] == "error", immediate
             assert immediate["role"] == "alert", immediate
             assert immediate["ariaLive"] == "assertive", immediate
-            assert "Latest DWD observation" in immediate["stateText"], immediate
-            assert "provider health reports an error" in immediate["stateText"], immediate
+            assert "DWD observation provider degraded" in immediate["stateText"], immediate
             assert "DWD current observation unavailable" not in immediate["stateText"], immediate
             assert immediate["temperature"] == initial["temperature"], immediate
             assert immediate["condition"] == initial["condition"], immediate
@@ -127,7 +126,7 @@ def test_provider_health_error_keeps_available_current_observation_evidence() ->
                 """
             )
             assert settled["state"] == "error", {"immediate": immediate, "settled": settled}
-            assert "provider health reports an error" in settled["stateText"], {
+            assert "DWD observation provider degraded" in settled["stateText"], {
                 "immediate": immediate,
                 "settled": settled,
             }
