@@ -111,15 +111,47 @@
     return document.querySelector("#currentState")?.dataset.state === "loading";
   }
 
+  function clearUnavailableObservationEvidence() {
+    const values = {
+      heroUpdated: "Current observation unavailable",
+      heroTemperature: "—°",
+      heroCondition: "Observation unavailable",
+      heroIcon: "◌",
+      heroFeels: "No current DWD observation available",
+      heroSource: "DWD current observation unavailable",
+    };
+    Object.entries(values).forEach(([id, value]) => {
+      const element = document.querySelector(`#${id}`);
+      if (element) element.textContent = value;
+    });
+    ["detailHumidity", "detailWind", "detailPressure", "detailRain", "detailCloud", "detailGust"].forEach((id) => {
+      const element = document.querySelector(`#${id}`);
+      if (element) element.textContent = "—";
+    });
+  }
+
+  function currentStateRequiresUnavailableCleanup(state) {
+    if (!state) return false;
+    return state.dataset.state === "error"
+      || String(state.textContent || "").includes("DWD current observation unavailable");
+  }
+
+  function installCurrentStateCleanupObserver() {
+    const state = document.querySelector("#currentState");
+    if (!state || typeof MutationObserver !== "function") return false;
+    const synchronize = () => {
+      if (currentStateRequiresUnavailableCleanup(state)) clearUnavailableObservationEvidence();
+    };
+    const observer = new MutationObserver(synchronize);
+    observer.observe(state, { attributes: true, childList: true, characterData: true, subtree: true, attributeFilter: ["data-state"] });
+    synchronize();
+    return true;
+  }
+
   function markCurrentUnavailable(error) {
     const state = document.querySelector("#currentState");
     if (!state || state.dataset.state !== "loading") return;
-    const heroUpdated = document.querySelector("#heroUpdated");
-    const heroTemperature = document.querySelector("#heroTemperature");
-    const heroCondition = document.querySelector("#heroCondition");
-    if (heroUpdated) heroUpdated.textContent = "Current observation unavailable";
-    if (heroTemperature) heroTemperature.textContent = "—°";
-    if (heroCondition) heroCondition.textContent = "Observation unavailable";
+    clearUnavailableObservationEvidence();
     if (typeof window.setSurfaceState === "function") {
       window.setSurfaceState(
         "currentState",
@@ -194,6 +226,7 @@
     if (document.visibilityState === "visible") updateObservationAge(latestResult);
   });
 
+  installCurrentStateCleanupObserver();
   scheduleCurrentBootstrap();
   loadPwaLifecycleModule();
   loadForecastLoadingModule();
@@ -209,6 +242,9 @@
     updateObservationAge,
     startObservationAgeTicker,
     currentStateIsLoading,
+    clearUnavailableObservationEvidence,
+    currentStateRequiresUnavailableCleanup,
+    installCurrentStateCleanupObserver,
     loadCurrentIfHealthBlocked,
     scheduleCurrentBootstrap,
     siblingScriptUrl,
