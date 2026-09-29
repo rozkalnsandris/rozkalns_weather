@@ -150,6 +150,13 @@
     }
   }
 
+  function clearPrecipitationVisuals() {
+    const chart = document.querySelector("#modelsPrecip");
+    if (!chart) return;
+    chart.classList.add("empty");
+    chart.textContent = "Precipitation forecast unavailable for this location.";
+  }
+
   function clearOverviewHourlyVisuals() {
     const strip = document.querySelector("#hourlyStrip");
     if (strip) strip.innerHTML = '<div class="empty-card">Next-hours forecast unavailable for this location.</div>';
@@ -215,6 +222,7 @@
     } catch (error) {
       if (!stillCurrent(sequence, locationId)) return false;
       activePrecipitation = null;
+      clearPrecipitationVisuals();
       clearOverviewHourlyVisuals();
       setFailure(["modelsPrecipState", "overviewPrecipState"], "Precipitation forecast", error);
       return false;

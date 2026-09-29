@@ -104,3 +104,93 @@ def test_real_shell_location_change_does_not_leave_previous_models_chart_after_p
             browser.close()
     finally:
         lab._stop_server(server, thread)
+
+
+def test_real_shell_location_change_does_not_leave_previous_models_precipitation_after_partial_failure() -> None:
+    lab = _load_lab_module()
+    server, thread = lab._start_server()
+    url = f"http://127.0.0.1:{server.server_address[1]}/"
+
+    try:
+        with sync_playwright() as playwright:
+            browser = playwright.chromium.launch(
+                executable_path=lab._browser_binary(),
+                headless=True,
+                args=["--no-sandbox", "--disable-gpu"],
+            )
+            context = browser.new_context(
+                viewport={"width": 412, "height": 892},
+                service_workers="block",
+                is_mobile=True,
+            )
+            page = context.new_page()
+            page.goto(url, wait_until="domcontentloaded", timeout=15_000)
+            lab._wait_for_forecast(page)
+
+            page.locator('button[data-view="models"]').click()
+            page.wait_for_function(
+                "() => document.querySelector('#modelsTempState')?.dataset.state === 'fresh' && document.querySelector('#modelsPrecipState')?.dataset.state === 'fresh'",
+                timeout=7_500,
+            )
+            assert page.locator("#modelsChart svg").count() == 1
+            assert page.locator("#modelsPrecip svg").count() == 1
+
+            precip_failure_seen = {"value": False}
+
+            def degraded_hourly(route: Route) -> None:
+                parsed = urlparse(route.request.url)
+                query = parse_qs(parsed.query)
+                if parsed.path != "/api/hourly" or query.get("location_id", [""])[0] != "station_10416":
+                    route.continue_()
+                    return
+                variable = query.get("variable", [""])[0]
+                if variable == "precipitation_1h":
+                    precip_failure_seen["value"] = True
+                    route.fulfill(
+                        status=503,
+                        content_type="application/json",
+                        body='{"detail":"controlled Models precipitation failure"}',
+                    )
+                    return
+                route.continue_()
+
+            page.route("**/api/hourly**", degraded_hourly)
+            page.locator('button[data-view="status"]').click()
+            page.select_option("#forecastLocation", "station_10416")
+
+            page.wait_for_function(
+                "() => document.querySelector('#modelsTempState')?.dataset.state === 'fresh'",
+                timeout=7_500,
+            )
+            page.wait_for_function(
+                "() => document.querySelector('#modelsPrecipState')?.dataset.state === 'error'",
+                timeout=7_500,
+            )
+            page.wait_for_function(
+                "() => [...document.querySelectorAll('#models .forecast-location-label')].every((node) => node.textContent.includes('10416'))",
+                timeout=7_500,
+            )
+            assert precip_failure_seen["value"] is True
+
+            page.locator('button[data-view="models"]').click()
+            labels = page.locator("#models .forecast-location-label").all_inner_texts()
+            assert labels and all("10416" in label for label in labels)
+
+            temp_state = page.locator("#modelsTempState")
+            precip_state = page.locator("#modelsPrecipState")
+            assert temp_state.get_attribute("role") == "status"
+            assert temp_state.get_attribute("aria-live") == "polite"
+            assert page.locator("#modelsChart svg").count() == 1
+
+            assert precip_state.get_attribute("role") == "alert"
+            assert precip_state.get_attribute("aria-live") == "assertive"
+            assert "Precipitation forecast unavailable" in precip_state.inner_text()
+            assert "503 Service Unavailable" in precip_state.inner_text()
+            assert page.locator("#modelsPrecip svg").count() == 0
+            assert "Precipitation forecast unavailable" in page.locator("#modelsPrecip").inner_text()
+            assert page.evaluate("document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1")
+
+            context.close()
+            browser.close()
+    finally:
+        lab._stop_server(server, thread)

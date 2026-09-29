@@ -100,6 +100,14 @@ The existing production cache/fallback path already satisfies this contract, so 
 
 This closes only the bounded current-observation stale-cache fallback case. It does not claim a physical offline-browser pass, manual production validation, physical-device validation, manual screen-reader behavior, browser-chrome zoom acceptance, or complete cross-view state-matrix coverage.
 
+## Automated Models precipitation degraded-location follow-up
+
+PR #287 adds the reciprocal real-shell Models partial-failure acceptance case at the Galaxy A55 `412×892` viewport. Starting from fresh temperature and precipitation charts, the proof changes the forecast location to `station_10416` while forcing only that location's `precipitation_1h` request to return 503. The temperature surface must remain fresh and usable for the new location, while `modelsPrecipState` must become an assertive error and the previous location's precipitation SVG must be removed instead of remaining visible below the new location label.
+
+The source correction adds a precipitation-specific fail-closed visual cleanup in `forecast_loading.js`: only `#modelsPrecip` is replaced by an explicit `Precipitation forecast unavailable for this location.` presentation on a hard precipitation failure, while the independently successful temperature chart is preserved. The combined Overview hourly surface still clears because it requires both temperature and precipitation inputs. The cache-first PWA shell advances from `rozkalns-weather-v30` to `rozkalns-weather-v31`, and the source/sibling/offline lifecycle contracts are rebased to prove the atomic `v30 → v31` update.
+
+This closes only the bounded reciprocal Models precipitation location/partial-failure case. It does not claim manual production validation, every provider/filter combination, physical-device validation, manual screen-reader behavior, browser-chrome zoom acceptance, or complete cross-view state-matrix coverage.
+
 ## Remaining acceptance work
 
 - Manual browser-chrome 200% `Ctrl+Plus` zoom remains unproven because the earlier built-in browser shortcut did not change its zoom state; a narrow viewport or CSS scaling is still not a substitute for that manual browser-zoom check.
