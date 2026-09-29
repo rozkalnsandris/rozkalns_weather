@@ -270,10 +270,13 @@ async function refreshAccuracyV3(days = 30) {
   accuracyPanelTitle("DWD CDC 05480 verification evidence · loading");
 
   try {
-    const [providers, summary, precipitation] = await Promise.all([
+    const precipitationPromise = accuracyV3Api(`/api/verification/precipitation?days=${days}`).then(
+      (data) => ({ data, error: null }),
+      (error) => ({ data: null, error }),
+    );
+    const [providers, summary] = await Promise.all([
       accuracyV3Api("/api/providers"),
       accuracyV3Api(`/api/verification/summary?days=${days}`),
-      accuracyV3Api(`/api/verification/precipitation?days=${days}`),
     ]);
     if (sequence !== accuracyRequestSequence) return;
 
@@ -281,7 +284,6 @@ async function refreshAccuracyV3(days = 30) {
     if (classes) classes.innerHTML = providerClassCards(providers.providers || []);
     renderAccuracySummary(summary);
     renderAccuracyTable(summary);
-    renderCalibration(precipitation);
 
     if (summary.verification_ready === true) {
       accuracyPanelTitle("DWD CDC 05480 station benchmark · deterministic");
@@ -291,6 +293,14 @@ async function refreshAccuracyV3(days = 30) {
       accuracyPanelTitle("DWD CDC 05480 verification evidence · preliminary");
       setAccuracyState("stale", `NOT READY · INCOMPLETE TRUTH — ${humanTruthReasons(summary.truth_quality)} Metrics below are preliminary descriptive evidence, not a clean benchmark.`);
       if (lead) lead.textContent = "Lead-bucket aggregates are hidden until verification_ready=true.";
+    }
+
+    const precipitationResult = await precipitationPromise;
+    if (sequence !== accuracyRequestSequence) return;
+    if (precipitationResult.error) {
+      if (calibration) calibration.textContent = "Precipitation calibration unavailable.";
+    } else {
+      renderCalibration(precipitationResult.data);
     }
   } catch (error) {
     if (sequence !== accuracyRequestSequence) return;
