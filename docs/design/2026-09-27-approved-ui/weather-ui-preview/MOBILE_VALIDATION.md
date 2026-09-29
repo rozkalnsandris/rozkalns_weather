@@ -56,11 +56,19 @@ PR #281 adds a real-shell Status acceptance matrix at the Galaxy A55 `412×892` 
 
 The correction also advances the cache-first PWA shell to `rozkalns-weather-v27`, with the atomic lifecycle proof rebased from `v26 → v27`, so the corrected `status_v1.js` cannot remain stranded behind the prior worker cache. The hard-error case explicitly clears only the test's Status fallback cache before a controlled 503; normal cached request failures remain stale/offline fallback evidence rather than being mislabeled as hard errors. This closes only the bounded Status state-consistency case and does not claim manual production, physical-device or complete cross-view state-matrix validation.
 
+## Automated Overview degraded-location follow-up
+
+PR #282 adds a real-shell Overview acceptance matrix at the Galaxy A55 `412×892` viewport for a forecast-location change where the new location's temperature request fails while precipitation and daily data remain available. The proof requires the temperature state to become an assertive error, all combined next-hours evidence from the previous location — hourly cards, chart, provider summary and detail — to be cleared, and the independently successful precipitation state to remain visible as a polite `status` for the newly selected location.
+
+The recovery proof is bound to the actual `station_10416` `precipitation_1h` response before it accepts the refreshed Overview precipitation semantics, preventing a previous-location `fresh` state from satisfying the test early. The source path independently restores Overview temperature/precipitation state visibility before combined rendering can deduplicate equivalent fresh states. The same PR advances the cache-first PWA shell to `rozkalns-weather-v28`, with the lifecycle proof rebased from `v27 → v28`, so the corrected forecast-loading behavior is not stranded behind the prior service-worker cache.
+
+This closes only the bounded Overview location/partial-failure case. It does not claim manual production validation, every provider/filter combination, or complete cross-view state-matrix coverage.
+
 ## Remaining acceptance work
 
 - Manual browser-chrome 200% `Ctrl+Plus` zoom remains unproven because the earlier built-in browser shortcut did not change its zoom state; a narrow viewport or CSS scaling is still not a substitute for that manual browser-zoom check.
 - Manual screen-reader validation (NVDA/TalkBack/VoiceOver as applicable), including real announcement order and interaction behavior.
 - Physical Galaxy A55/S25+ validation.
-- Remaining loading/error/stale/filter combinations outside the bounded Accuracy, Radar, Models and Status matrices and production integration checks.
+- Remaining loading/error/stale/filter combinations outside the bounded Accuracy, Radar, Models, Status and Overview matrices and production integration checks.
 
 The accepted design remains the implementation basis. Full V3 and #237 acceptance stay open. Production application, providers, runtime and deployment are unchanged.
