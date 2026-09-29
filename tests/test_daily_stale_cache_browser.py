@@ -49,10 +49,13 @@ def test_real_shell_daily_uses_location_scoped_stale_cache_after_refresh_failure
                 timeout=7_500,
             )
             page.locator('button[data-view="overview"]').click()
-            cached_daily_text = page.locator("#dailyGrid").inner_text().strip()
+            cached_day_labels = page.locator("#dailyGrid .trend-day").evaluate_all(
+                "elements => elements.map((element) => element.getAttribute('aria-label'))"
+            )
+            cached_provider = page.locator("#dailyProvider").inner_text().strip()
             cached_high_low = page.locator("#heroHighLow").inner_text().strip()
-            assert cached_daily_text
-            assert "Daily forecast unavailable" not in cached_daily_text
+            assert cached_day_labels
+            assert cached_provider
 
             page.locator('button[data-view="status"]').click()
             page.select_option("#forecastLocation", "station_05480")
@@ -97,9 +100,13 @@ def test_real_shell_daily_uses_location_scoped_stale_cache_after_refresh_failure
             assert "cached" in daily_state.inner_text()
             assert "Data is not current" in daily_state.inner_text()
 
-            assert page.locator("#dailyGrid").inner_text().strip() == cached_daily_text
+            stale_day_labels = page.locator("#dailyGrid .trend-day").evaluate_all(
+                "elements => elements.map((element) => element.getAttribute('aria-label'))"
+            )
+            assert stale_day_labels == cached_day_labels
+            assert page.locator("#dailyProvider").inner_text().strip() == cached_provider
             assert page.locator("#heroHighLow").inner_text().strip() == cached_high_low
-            assert page.locator("#dailyGrid .trend-day").count() > 0
+            assert "Daily forecast unavailable" not in page.locator("#dailyGrid").inner_text()
             assert page.locator("#hourlyStrip .hour-card").count() > 0
             assert page.locator("#consumerHourlyChart svg").count() == 1
             assert page.evaluate("document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1")
