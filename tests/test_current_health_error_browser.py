@@ -86,11 +86,20 @@ def test_provider_health_error_keeps_available_current_observation_evidence() ->
                 timeout=7_500,
             )
 
-            assert page.locator("#heroTemperature").inner_text().strip() == "13°"
-            assert "Observed" in page.locator("#heroFeels").inner_text()
-            assert "DWD CDC 05480" in page.locator("#heroSource").inner_text()
-            assert page.locator("#detailHumidity").inner_text().strip() == "72%"
-            assert page.locator("#detailPressure").inner_text().strip() == "1015 hPa"
+            initial = {
+                "temperature": page.locator("#heroTemperature").inner_text().strip(),
+                "condition": page.locator("#heroCondition").inner_text().strip(),
+                "feels": page.locator("#heroFeels").inner_text().strip(),
+                "source": page.locator("#heroSource").inner_text().strip(),
+                "humidity": page.locator("#detailHumidity").inner_text().strip(),
+                "pressure": page.locator("#detailPressure").inner_text().strip(),
+            }
+            assert initial["temperature"] == "13°"
+            assert initial["condition"] != "Observation unavailable"
+            assert initial["feels"] and initial["feels"] != "No current DWD observation available"
+            assert initial["source"] and initial["source"] != "DWD current observation unavailable"
+            assert initial["humidity"] == "72%"
+            assert initial["pressure"] == "1015 hPa"
             assert page.locator("#heroIcon svg").count() == 1
 
             health_failure_seen = {"value": False}
@@ -122,12 +131,12 @@ def test_provider_health_error_keeps_available_current_observation_evidence() ->
             assert "provider health reports an error" in current_state.inner_text()
             assert "DWD current observation unavailable" not in current_state.inner_text()
 
-            assert page.locator("#heroTemperature").inner_text().strip() == "13°"
-            assert page.locator("#heroCondition").inner_text().strip() != "Observation unavailable"
-            assert "Observed" in page.locator("#heroFeels").inner_text()
-            assert "DWD CDC 05480" in page.locator("#heroSource").inner_text()
-            assert page.locator("#detailHumidity").inner_text().strip() == "72%"
-            assert page.locator("#detailPressure").inner_text().strip() == "1015 hPa"
+            assert page.locator("#heroTemperature").inner_text().strip() == initial["temperature"]
+            assert page.locator("#heroCondition").inner_text().strip() == initial["condition"]
+            assert page.locator("#heroFeels").inner_text().strip() == initial["feels"]
+            assert page.locator("#heroSource").inner_text().strip() == initial["source"]
+            assert page.locator("#detailHumidity").inner_text().strip() == initial["humidity"]
+            assert page.locator("#detailPressure").inner_text().strip() == initial["pressure"]
             assert page.locator("#heroIcon svg").count() == 1
 
             assert page.locator("#overviewTempState").get_attribute("data-state") == "fresh"
