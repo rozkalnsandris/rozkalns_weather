@@ -68,7 +68,15 @@ def test_provider_health_error_keeps_available_current_observation_evidence() ->
             page.evaluate(
                 """
                 async (dwdHealth) => {
-                  const result = await window.apiWithFallback('/api/current', 'current');
+                  const response = await fetch('/api/current', { cache: 'no-store' });
+                  if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
+                  const payload = await response.json();
+                  const result = {
+                    payload,
+                    source: 'network',
+                    cached_at_utc: new Date().toISOString(),
+                    error: null,
+                  };
                   window.renderCurrent(result, { dwd_observations: dwdHealth });
                 }
                 """,
