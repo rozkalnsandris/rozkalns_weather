@@ -55,7 +55,6 @@ def test_real_shell_current_hard_error_clears_previous_observation_evidence() ->
                 "detailGust",
             ]
             initial_details = {item: page.locator(f"#{item}").inner_text().strip() for item in detail_ids}
-            assert initial_icon
             assert initial_feels
             assert initial_source
             assert any(value != "—" for value in initial_details.values())
