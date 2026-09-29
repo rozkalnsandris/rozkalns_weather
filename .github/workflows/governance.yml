@@ -37,6 +37,39 @@ jobs:
     permissions:
       contents: read
 
+  umbrella-closing-reference-safety:
+    name: Umbrella closing-reference safety
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Protect issue 237 from accidental GitHub closing keywords
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os
+          import re
+          import sys
+
+          if os.environ.get("GITHUB_EVENT_NAME") != "pull_request":
+              print("UMBRELLA_CLOSING_REFERENCE_SAFETY=SKIP_NON_PR")
+              raise SystemExit(0)
+
+          body = os.environ.get("PR_BODY", "")
+          closing_reference = re.compile(
+              r"\b(?:close|closes|closed|fix|fixes|fixed|resolve|resolves|resolved)\s*:?\s*#237\b",
+              re.IGNORECASE,
+          )
+          if closing_reference.search(body):
+              print(
+                  "::error::PR body contains a GitHub auto-closing keyword for umbrella issue #237. "
+                  "Use a non-closing reference such as 'Refs #237; umbrella remains open.'"
+              )
+              sys.exit(1)
+
+          print("UMBRELLA_CLOSING_REFERENCE_SAFETY=PASS")
+          PY
+
   auto-run-contract:
     name: AUTO-RUN FULL contract
     runs-on: ubuntu-24.04
@@ -157,6 +190,7 @@ jobs:
       - github-only-policy
       - public-repository-baseline
       - workflow-security
+      - umbrella-closing-reference-safety
       - auto-run-contract
       - github-api-access-canary
     if: ${{ always() }}
@@ -167,6 +201,7 @@ jobs:
           GITHUB_ONLY_RESULT: ${{ needs.github-only-policy.result }}
           PUBLIC_BASELINE_RESULT: ${{ needs.public-repository-baseline.result }}
           WORKFLOW_SECURITY_RESULT: ${{ needs.workflow-security.result }}
+          UMBRELLA_CLOSING_REFERENCE_RESULT: ${{ needs.umbrella-closing-reference-safety.result }}
           AUTO_RUN_RESULT: ${{ needs.auto-run-contract.result }}
           GITHUB_API_ACCESS_RESULT: ${{ needs.github-api-access-canary.result }}
         run: |
@@ -175,5 +210,6 @@ jobs:
           test "$GITHUB_ONLY_RESULT" = success
           test "$PUBLIC_BASELINE_RESULT" = success
           test "$WORKFLOW_SECURITY_RESULT" = success
+          test "$UMBRELLA_CLOSING_REFERENCE_RESULT" = success
           test "$AUTO_RUN_RESULT" = success
           test "$GITHUB_API_ACCESS_RESULT" = success
