@@ -72,11 +72,19 @@ The same proof requires the hourly cards and combined hourly chart to remain usa
 
 This closes only the bounded daily location/hard-failure case. It does not claim manual production validation, every provider/filter combination, or complete cross-view state-matrix coverage.
 
+## Automated current-observation hard-error follow-up
+
+PR #284 adds a real-shell current-observation acceptance matrix at the Galaxy A55 `412×892` viewport for a previously fresh DWD observation followed by a controlled hard `/api/current` 503 with the current fallback cache deliberately absent. The proof requires `currentState` to expose an assertive error, clears the observation-derived hero temperature, condition, icon, observation-time text and source text, clears humidity/wind/pressure/rain/cloud/gust detail values, and requires hourly and daily forecast siblings to remain usable.
+
+The source correction centralizes fail-closed current-observation cleanup in `observation_age.js`, including the health-blocked watchdog path, while preserving normal cached `stale`/`offline` last-known observation evidence when an actual cached payload and timestamp remain available. The cache-first PWA shell advances from `rozkalns-weather-v28` to `rozkalns-weather-v29`, and the atomic lifecycle proof is rebased from `v28 → v29` so the corrected lifecycle module cannot remain stranded behind the prior worker cache.
+
+This closes only the bounded current-observation hard-error cleanup case. It does not claim manual production validation, physical-device validation, manual screen-reader behavior, browser-chrome zoom acceptance, or complete cross-view state-matrix coverage.
+
 ## Remaining acceptance work
 
 - Manual browser-chrome 200% `Ctrl+Plus` zoom remains unproven because the earlier built-in browser shortcut did not change its zoom state; a narrow viewport or CSS scaling is still not a substitute for that manual browser-zoom check.
 - Manual screen-reader validation (NVDA/TalkBack/VoiceOver as applicable), including real announcement order and interaction behavior.
 - Physical Galaxy A55/S25+ validation.
-- Remaining loading/error/stale/filter combinations outside the bounded Accuracy, Radar, Models, Status, Overview and daily matrices and production integration checks.
+- Remaining loading/error/stale/filter combinations outside the bounded Accuracy, Radar, Models, Status, Overview, daily and current-observation matrices and production integration checks.
 
-The accepted design remains the implementation basis. Full V3 and #237 acceptance stay open. Production application, providers, runtime and deployment are unchanged.
+The accepted design remains the implementation basis. Full V3 and #237 acceptance stay open. Production runtime, providers and deployment are unchanged by these source-level acceptance passes.
