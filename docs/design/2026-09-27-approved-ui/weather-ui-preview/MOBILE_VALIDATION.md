@@ -50,11 +50,17 @@ PR #280 adds a real-shell Models acceptance matrix at the Galaxy A55 `412×892` 
 
 The same PR bumps the cache-first PWA shell to `rozkalns-weather-v26` so the corrected `forecast_loading.js` is not stranded behind the previous service-worker cache, and its browser lifecycle proof verifies the atomic `v25 → v26` worker update. This closes only the bounded Models location/partial-failure case; it does not claim every provider/filter combination or production runtime validation.
 
+## Automated Status degraded-state follow-up
+
+PR #281 adds a real-shell Status acceptance matrix at the Galaxy A55 `412×892` viewport covering `fresh → loading → stale → offline → hard request error`. It verifies that the WeatherNext Status card-level `data-state` remains synchronized with the accessible live-region state during refresh and offline transitions, while forecast availability and verification readiness continue to be reported separately and no WeatherNext value is inferred from another provider.
+
+The correction also advances the cache-first PWA shell to `rozkalns-weather-v27`, with the atomic lifecycle proof rebased from `v26 → v27`, so the corrected `status_v1.js` cannot remain stranded behind the prior worker cache. The hard-error case explicitly clears only the test's Status fallback cache before a controlled 503; normal cached request failures remain stale/offline fallback evidence rather than being mislabeled as hard errors. This closes only the bounded Status state-consistency case and does not claim manual production, physical-device or complete cross-view state-matrix validation.
+
 ## Remaining acceptance work
 
 - Manual browser-chrome 200% `Ctrl+Plus` zoom remains unproven because the earlier built-in browser shortcut did not change its zoom state; a narrow viewport or CSS scaling is still not a substitute for that manual browser-zoom check.
 - Manual screen-reader validation (NVDA/TalkBack/VoiceOver as applicable), including real announcement order and interaction behavior.
 - Physical Galaxy A55/S25+ validation.
-- Remaining loading/error/stale/filter combinations outside the bounded Accuracy, Radar and Models matrices and production integration checks.
+- Remaining loading/error/stale/filter combinations outside the bounded Accuracy, Radar, Models and Status matrices and production integration checks.
 
 The accepted design remains the implementation basis. Full V3 and #237 acceptance stay open. Production application, providers, runtime and deployment are unchanged.
