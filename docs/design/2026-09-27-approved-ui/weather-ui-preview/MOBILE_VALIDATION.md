@@ -90,6 +90,16 @@ The source correction narrows the `observation_age.js` cleanup observer to that 
 
 This closes only the bounded current-observation provider-health degradation case. It does not claim manual production validation, physical-device validation, manual screen-reader behavior, browser-chrome zoom acceptance, or complete cross-view state-matrix coverage.
 
+## Automated current-observation stale-cache fallback follow-up
+
+PR #286 adds a real-shell current-observation acceptance proof at the Galaxy A55 `412×892` viewport for a previously fresh DWD observation followed by a controlled `/api/current` refresh failure while the production current cache remains available. The initial successful request populates the real cache path; the controlled 503 must then resolve through the cache-aware request lifecycle instead of becoming a hard-unavailable state.
+
+The proof requires `currentState` to become `stale` with polite `status` semantics and canonical `STALE · DWD observation is not current` text, while retaining the cached observation-derived temperature, condition, source, humidity, wind, pressure, precipitation, cloud, gust and condition icon. Hourly and daily forecast sibling surfaces must remain fresh and usable, and the mobile shell must not gain horizontal overflow. This complements #284, where the cache is deliberately absent and the same request failure must fail closed, and #285, where the live observation remains available but provider health itself is degraded.
+
+The existing production cache/fallback path already satisfies this contract, so PR #286 adds regression evidence only. It does not change current-observation source behavior or advance the `rozkalns-weather-v30` PWA cache.
+
+This closes only the bounded current-observation stale-cache fallback case. It does not claim a physical offline-browser pass, manual production validation, physical-device validation, manual screen-reader behavior, browser-chrome zoom acceptance, or complete cross-view state-matrix coverage.
+
 ## Remaining acceptance work
 
 - Manual browser-chrome 200% `Ctrl+Plus` zoom remains unproven because the earlier built-in browser shortcut did not change its zoom state; a narrow viewport or CSS scaling is still not a substitute for that manual browser-zoom check.
