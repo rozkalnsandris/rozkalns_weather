@@ -92,9 +92,18 @@
     return sequence === forecastSequence && selectedLocation() === locationId;
   }
 
+  function restoreSurfaceVisibility(id) {
+    const element = document.querySelector(`#${id}`);
+    if (!element) return;
+    element.hidden = false;
+    element.removeAttribute("aria-hidden");
+    delete element.dataset.dedupHidden;
+  }
+
   function setFailure(ids, label, error) {
     ids.forEach((id) => {
       if (typeof window.setSurfaceState === "function") {
+        restoreSurfaceVisibility(id);
         window.setSurfaceState(
           id,
           navigator.onLine ? "error" : "offline",
@@ -103,6 +112,19 @@
         );
       }
     });
+  }
+
+  function setOverviewResultState(id, label, result) {
+    if (typeof window.setSurfaceState !== "function") return;
+    const rows = result?.payload?.series || [];
+    const state = typeof window.providerSurfaceState === "function"
+      ? window.providerSurfaceState(rows, {}, result)
+      : {
+          state: typeof window.stateFromResult === "function" ? window.stateFromResult(result) : "fresh",
+          message: "Forecast API response loaded independently.",
+        };
+    restoreSurfaceVisibility(id);
+    window.setSurfaceState(id, state.state, `${label}: ${state.message}`);
   }
 
   function clearTemperatureVisuals() {
@@ -162,6 +184,7 @@
       activeTemperature = result;
       if (typeof window.renderTemperature === "function") window.renderTemperature(result, {});
       if (typeof window.renderModelSnapshot === "function") window.renderModelSnapshot(result.payload?.series || [], {});
+      setOverviewResultState("overviewTempState", "Temperature forecast", result);
       maybeRenderHourly(sequence, locationId);
       return true;
     } catch (error) {
@@ -186,6 +209,7 @@
       if (!stillCurrent(sequence, locationId)) return false;
       activePrecipitation = result;
       if (typeof window.renderPrecipitation === "function") window.renderPrecipitation(result, {});
+      setOverviewResultState("overviewPrecipState", "Precipitation forecast", result);
       maybeRenderHourly(sequence, locationId);
       return true;
     } catch (error) {
