@@ -128,6 +128,20 @@
     }
   }
 
+  function clearOverviewHourlyVisuals() {
+    const strip = document.querySelector("#hourlyStrip");
+    if (strip) strip.innerHTML = '<div class="empty-card">Next-hours forecast unavailable for this location.</div>';
+
+    const chart = document.querySelector("#consumerHourlyChart");
+    if (chart) chart.textContent = "";
+
+    const provider = document.querySelector("#hourlyProvider");
+    if (provider) provider.textContent = "Next-hours forecast unavailable for this location.";
+
+    const detail = document.querySelector("#hourlyDetail");
+    if (detail) detail.textContent = "Next-hours details unavailable because the selected location forecast is incomplete.";
+  }
+
   function maybeRenderHourly(sequence, locationId) {
     if (!activeTemperature || !activePrecipitation || !stillCurrent(sequence, locationId)) return;
     if (typeof window.renderConsumerHourly === "function") {
@@ -154,6 +168,7 @@
       if (!stillCurrent(sequence, locationId)) return false;
       activeTemperature = null;
       clearTemperatureVisuals();
+      clearOverviewHourlyVisuals();
       setFailure(["modelsTempState", "overviewTempState"], "Temperature forecast", error);
       return false;
     }
@@ -176,6 +191,7 @@
     } catch (error) {
       if (!stillCurrent(sequence, locationId)) return false;
       activePrecipitation = null;
+      clearOverviewHourlyVisuals();
       setFailure(["modelsPrecipState", "overviewPrecipState"], "Precipitation forecast", error);
       return false;
     }
