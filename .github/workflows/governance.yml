@@ -51,15 +51,20 @@ jobs:
           import re
           import sys
 
+          closing_reference = re.compile(
+              r"\b(?:close|closes|closed|fix|fixes|fixed|resolve|resolves|resolved)\s*:?\s*#237\b",
+              re.IGNORECASE,
+          )
+
+          assert closing_reference.search("This PR does not close #237")
+          assert closing_reference.search("Fixes: #237")
+          assert not closing_reference.search("Refs #237; umbrella remains open.")
+
           if os.environ.get("GITHUB_EVENT_NAME") != "pull_request":
               print("UMBRELLA_CLOSING_REFERENCE_SAFETY=SKIP_NON_PR")
               raise SystemExit(0)
 
           body = os.environ.get("PR_BODY", "")
-          closing_reference = re.compile(
-              r"\b(?:close|closes|closed|fix|fixes|fixed|resolve|resolves|resolved)\s*:?\s*#237\b",
-              re.IGNORECASE,
-          )
           if closing_reference.search(body):
               print(
                   "::error::PR body contains a GitHub auto-closing keyword for umbrella issue #237. "
