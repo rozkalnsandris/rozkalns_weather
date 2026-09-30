@@ -135,7 +135,7 @@ def test_dwd_warning_authority_remains_explicit_when_cached_or_offline(tmp_path)
     root = client.get("/").text
     script = client.get("/static/app.js").text
 
-    assert "DWD warning slānis ir autoritatīvs" in root
+    assert "DWD warning layer is authoritative and separate from model forecasts." in root
     assert "DWD official warning" in script
     assert "NOT current official warning status" in script
     assert "DWD remains the authority; reconnect and refresh before relying on warnings." in script
