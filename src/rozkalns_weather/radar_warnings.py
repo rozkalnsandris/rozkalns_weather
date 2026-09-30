@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from .models import parse_time, utc_iso
@@ -8,14 +8,12 @@ from .providers.base import JsonFetcher, fetch_json
 
 BRIGHTSKY_ALERTS_URL = "https://api.brightsky.dev/alerts"
 BRIGHTSKY_RADAR_URL = "https://api.brightsky.dev/radar"
-RADAR_RASTER_CONTRACT_REASON = "RADAR_RASTER_CONTRACT_PENDING"
-RADAR_RASTER_REQUIRED_FIELDS = [
-    "encoding",
-    "dimensions",
-    "projection",
-    "precipitation_unit",
-    "nodata",
-]
+RADAR_RENDER_DISTANCE_M = 20_000
+RADAR_GRID_CELL_M = 1_000
+RADAR_PRECIPITATION_SCALE_MM_PER_5_MIN = 0.01
+RADAR_PROJECTION_ID = "DWD_RADOLAN_DE1200"
+RADAR_RASTER_INVALID_REASON = "RADAR_RASTER_VALIDATION_FAILED"
+RADAR_RASTER_EMPTY_REASON = "RADAR_NO_RENDERABLE_FRAMES"
 
 
 def _safe_time(value: Any) -> datetime | None:
@@ -70,24 +68,100 @@ def radar_frame_kind(timestamp: str | None, *, now: datetime) -> str:
     return "radar_observed" if stamp <= now.astimezone(timezone.utc) else "radar_nowcast"
 
 
-def _sanitized_radar_frame(raw: dict[str, Any], *, now: datetime) -> dict[str, Any]:
-    """Return only privacy-safe timeline metadata from an upstream radar frame.
+def _plain_radar_grid(value: Any) -> list[list[int]] | None:
+    if not isinstance(value, list) or not value:
+        return None
+    rows: list[list[int]] = []
+    width: int | None = None
+    for raw_row in value:
+        if not isinstance(raw_row, list) or not raw_row:
+            return None
+        if width is None:
+            width = len(raw_row)
+        elif len(raw_row) != width:
+            return None
+        row: list[int] = []
+        for raw_cell in raw_row:
+            if isinstance(raw_cell, bool) or not isinstance(raw_cell, int):
+                return None
+            if raw_cell < 0 or raw_cell > 32767:
+                return None
+            row.append(raw_cell)
+        rows.append(row)
+    return rows
 
-    Bright Sky radar frames can contain encoded precipitation grids. Those grids,
-    geometry, bbox and relative center information are intentionally not part of
-    the public API contract until encoding/projection/unit/nodata semantics are
-    normalized and reviewed for the UI renderer.
-    """
+
+def _sanitized_radar_frame(raw: dict[str, Any], *, now: datetime) -> dict[str, Any]:
+    """Normalize one Bright Sky frame without exposing geometry or coordinates."""
 
     timestamp = raw.get("timestamp") or raw.get("time")
+    kind = radar_frame_kind(str(timestamp) if timestamp else None, now=now)
     frame: dict[str, Any] = {
         "timestamp": str(timestamp) if timestamp else None,
-        "kind": radar_frame_kind(str(timestamp) if timestamp else None, now=now),
+        "kind": kind,
     }
     source = raw.get("source")
     if source:
         frame["source"] = str(source)
+
+    grid = _plain_radar_grid(raw.get("precipitation_5"))
+    if grid is not None and kind in {"radar_observed", "radar_nowcast"}:
+        frame["raster"] = {
+            "width": len(grid[0]),
+            "height": len(grid),
+            "values": grid,
+        }
     return frame
+
+
+def _radar_rendering_contract(frames: list[dict[str, Any]]) -> dict[str, Any]:
+    raster_frames = [frame for frame in frames if isinstance(frame.get("raster"), dict)]
+    if not raster_frames:
+        return {
+            "state": "unavailable",
+            "raster_rendering_available": False,
+            "reason_code": RADAR_RASTER_EMPTY_REASON,
+        }
+
+    dimensions = {
+        (int(frame["raster"]["width"]), int(frame["raster"]["height"]))
+        for frame in raster_frames
+    }
+    if len(dimensions) != 1:
+        for frame in frames:
+            frame.pop("raster", None)
+        return {
+            "state": "unavailable",
+            "raster_rendering_available": False,
+            "reason_code": RADAR_RASTER_INVALID_REASON,
+        }
+
+    width, height = dimensions.pop()
+    return {
+        "state": "raster_ready",
+        "raster_rendering_available": True,
+        "encoding": "plain_integer_grid",
+        "dimensions": {"width": width, "height": height},
+        "projection": {
+            "id": RADAR_PROJECTION_ID,
+            "kind": "polar_stereographic",
+            "pixel_size_m": RADAR_GRID_CELL_M,
+            "web_mercator_overlay_safe": False,
+        },
+        "precipitation_unit": {
+            "field": "precipitation_5",
+            "unit": "mm_per_5_min",
+            "scale": RADAR_PRECIPITATION_SCALE_MM_PER_5_MIN,
+        },
+        "nodata": {
+            "sentinel": None,
+            "zero_may_include_uncovered_grid_edge": True,
+        },
+        "crop_radius_m": RADAR_RENDER_DISTANCE_M,
+        "center_marker": "privacy_safe_crop_center",
+        "raster_frame_count": len(raster_frames),
+        "timeline_frame_count": len(frames),
+    }
 
 
 def fetch_dwd_alerts(
@@ -121,15 +195,29 @@ def fetch_radar_point(
     now: datetime | None = None,
 ) -> dict[str, Any]:
     now = (now or datetime.now(timezone.utc)).astimezone(timezone.utc)
-    payload = fetcher(BRIGHTSKY_RADAR_URL, {"lat": lat, "lon": lon})
+    payload = fetcher(
+        BRIGHTSKY_RADAR_URL,
+        {
+            "lat": lat,
+            "lon": lon,
+            "distance": RADAR_RENDER_DISTANCE_M,
+            "format": "plain",
+            "date": utc_iso(now - timedelta(hours=1)),
+            "last_date": utc_iso(now + timedelta(hours=2)),
+            "tz": "UTC",
+        },
+    )
     raw_frames = payload.get("radar", [])
     frames: list[dict[str, Any]] = []
     if isinstance(raw_frames, list):
         for raw in raw_frames:
             if not isinstance(raw, dict):
                 continue
-            frames.append(_sanitized_radar_frame(raw, now=now))
+            frame = _sanitized_radar_frame(raw, now=now)
+            if frame["kind"] in {"radar_observed", "radar_nowcast"}:
+                frames.append(frame)
 
+    rendering_contract = _radar_rendering_contract(frames)
     return {
         "source": "DWD radar via Bright Sky",
         "transport": "Bright Sky",
@@ -144,12 +232,7 @@ def fetch_radar_point(
             "raw_payload_exposed": False,
             "allowed_kinds": ["radar_observed", "radar_nowcast"],
             "model_forecast_is_separate": True,
-            "rendering_contract": {
-                "state": "metadata_only",
-                "raster_rendering_available": False,
-                "reason_code": RADAR_RASTER_CONTRACT_REASON,
-                "required_fields": RADAR_RASTER_REQUIRED_FIELDS,
-            },
+            "rendering_contract": rendering_contract,
         },
         "frames": frames,
     }
