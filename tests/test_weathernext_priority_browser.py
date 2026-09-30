@@ -91,7 +91,7 @@ def _fixture(tmp_path: Path, *, theme: str) -> Path:
     const publicOnlyRows = genuineRows.filter((row) => row.provider !== 'weathernext3');
     window.renderModelSnapshot(publicOnlyRows, {{weathernext3:{{ingest_state:'access_pending', freshness_state:'not_tracked'}}}});
     const pendingText = cards()[0].textContent;
-    proof.dataset.pending = String(cards().every((card) => card.dataset.state === 'stale' && card.querySelector('.wn-value').hidden) && pendingText.includes('access pending') && !pendingText.includes('12.5°'));
+    proof.dataset.pending = String(cards().every((card) => card.dataset.state === 'pending' && card.querySelector('.wn-value').hidden) && pendingText.includes('PENDING') && pendingText.includes('access pending') && !pendingText.includes('12.5°'));
 
     const tempState = document.getElementById('modelsTempState');
     tempState.dataset.state = 'error';
@@ -124,8 +124,8 @@ def test_weathernext_priority_component_source_contract() -> None:
     assert 'typeof root.qs' not in source
 
 
-def test_weathernext_priority_component_states_provenance_and_mobile_widths(tmp_path: Path) -> None:
-    for width, theme in ((384, "dark"), (412, "light")):
+def test_weathernext_priority_component_states_provenance_and_required_viewports(tmp_path: Path) -> None:
+    for width, theme in ((412, "light"), (1440, "dark")):
         rendered = _run_browser(_fixture(tmp_path, theme=theme).as_uri(), width=width)
         for attribute in (
             "initial-loading",
