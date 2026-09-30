@@ -235,6 +235,35 @@ function renderAccuracySummary(summary) {
   renderAccuracySummarySelection(0);
 }
 
+function accuracyMetricValue(value, digits = 2) {
+  return value == null ? "—" : Number(value).toFixed(digits);
+}
+
+function accuracyCoverageValue(metrics) {
+  return metrics.p10_p90_coverage == null
+    ? "—"
+    : `${(metrics.p10_p90_coverage * 100).toFixed(0)}% (${metrics.coverage_n})`;
+}
+
+function accuracyMobileCard(metrics) {
+  const missing = metrics.missingness || {};
+  const fields = [
+    ["Model", metrics.provider],
+    ["Version", metrics.model_version || "unknown"],
+    ["Lead", metrics.lead_bucket],
+    ["n", metrics.n],
+    ["Missing", `${missing.missing_n ?? "—"}/${missing.expected_n ?? "—"}`],
+    ["Sufficiency", metrics.sample_sufficiency_state],
+    ["MAE", accuracyMetricValue(metrics.mae)],
+    ["RMSE", accuracyMetricValue(metrics.rmse)],
+    ["Bias", accuracyMetricValue(metrics.bias)],
+    ["p10–p90", accuracyCoverageValue(metrics)],
+  ];
+  return `<article class="accuracy-metric-card" role="listitem" tabindex="0" aria-label="${metrics.provider} ${metrics.lead_bucket} benchmark metrics">
+    <dl>${fields.map(([label, value]) => `<div><dt>${label}</dt><dd>${value}</dd></div>`).join("")}</dl>
+  </article>`;
+}
+
 function renderAccuracyTable(summary) {
   const target = document.querySelector("#accuracyTable");
   const rows = summary.common_sample_slices || [];
@@ -243,13 +272,32 @@ function renderAccuracyTable(summary) {
     target.textContent = "Not enough common station samples exist between at least two providers in one lead-bucket/model-version cohort.";
     return;
   }
-  target.innerHTML = `<table><thead><tr><th>Model</th><th>Version</th><th>Lead</th><th>n</th><th>Missing</th><th>Sufficiency</th><th>MAE</th><th>RMSE</th><th>Bias</th><th>p10–p90</th></tr></thead><tbody>${rows.map((metrics) => {
-    const missing = metrics.missingness || {};
-    return `<tr><td>${metrics.provider}</td><td>${metrics.model_version || "unknown"}</td><td>${metrics.lead_bucket}</td><td>${metrics.n}</td>
-    <td>${missing.missing_n ?? "—"}/${missing.expected_n ?? "—"}</td><td>${metrics.sample_sufficiency_state}</td>
-    <td>${metrics.mae?.toFixed(2) ?? "—"}</td><td>${metrics.rmse?.toFixed(2) ?? "—"}</td><td>${metrics.bias?.toFixed(2) ?? "—"}</td>
-    <td>${metrics.p10_p90_coverage == null ? "—" : `${(metrics.p10_p90_coverage * 100).toFixed(0)}% (${metrics.coverage_n})`}</td></tr>`;
-  }).join("")}</tbody></table>`;
+  target.innerHTML = `<style>
+    #accuracyTable .accuracy-mobile-cards{display:none}
+    @media (max-width:760px){
+      #accuracyTable{overflow:visible}
+      #accuracyTable .accuracy-desktop-table{display:none}
+      #accuracyTable .accuracy-mobile-cards{display:grid;gap:10px}
+      #accuracyTable .accuracy-metric-card{min-width:0;border:1px solid #213e59;border-radius:12px;padding:10px;background:var(--card);outline-offset:3px}
+      #accuracyTable .accuracy-metric-card dl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 10px;margin:0}
+      #accuracyTable .accuracy-metric-card dl>div{min-width:0}
+      #accuracyTable .accuracy-metric-card dt{font-size:.68rem;color:var(--muted);font-weight:650}
+      #accuracyTable .accuracy-metric-card dd{margin:2px 0 0;font-size:.86rem;color:var(--ink);overflow-wrap:anywhere}
+    }
+    @media (max-width:420px){
+      #accuracyTable .accuracy-metric-card dl{grid-template-columns:1fr}
+    }
+  </style>
+  <div class="accuracy-desktop-table">
+    <table><thead><tr><th>Model</th><th>Version</th><th>Lead</th><th>n</th><th>Missing</th><th>Sufficiency</th><th>MAE</th><th>RMSE</th><th>Bias</th><th>p10–p90</th></tr></thead><tbody>${rows.map((metrics) => {
+      const missing = metrics.missingness || {};
+      return `<tr><td>${metrics.provider}</td><td>${metrics.model_version || "unknown"}</td><td>${metrics.lead_bucket}</td><td>${metrics.n}</td>
+      <td>${missing.missing_n ?? "—"}/${missing.expected_n ?? "—"}</td><td>${metrics.sample_sufficiency_state}</td>
+      <td>${accuracyMetricValue(metrics.mae)}</td><td>${accuracyMetricValue(metrics.rmse)}</td><td>${accuracyMetricValue(metrics.bias)}</td>
+      <td>${accuracyCoverageValue(metrics)}</td></tr>`;
+    }).join("")}</tbody></table>
+  </div>
+  <div class="accuracy-mobile-cards" role="list" aria-label="Accuracy benchmark metrics">${rows.map(accuracyMobileCard).join("")}</div>`;
 }
 
 async function refreshAccuracyV3(days = 30) {
