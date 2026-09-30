@@ -53,13 +53,14 @@
   }
 
   function priorityState(row, health) {
+    const states = [health?.ingest_state, health?.state, health?.freshness_state];
     if (row) {
-      if ([health?.state, health?.freshness_state].includes("error")) return "stale";
+      if (states.includes("error")) return "stale";
       if (["stale", "lagging", "degraded"].includes(health?.freshness_state)) return "stale";
       return "fresh";
     }
-    if ([health?.ingest_state, health?.state, health?.freshness_state].includes("error")) return "error";
-    return "stale";
+    if (states.includes("error")) return "error";
+    return "pending";
   }
 
   function ensurePriorityStyles() {
@@ -71,6 +72,7 @@
       ".wn-eyebrow{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);font-weight:700}",
       ".wn-primary h2{font-size:21px;letter-spacing:-.4px;margin:4px 0 8px}",
       ".wn-status{display:inline-block;padding:5px 8px;border-radius:7px;background:var(--card);font-size:12px;font-weight:650}",
+      ".state-pending{color:#d9e8f7;background:#16324a;border-color:#4b789c}",
       ".wn-primary p{font-size:12px;margin:8px 0 0;color:var(--ink)}",
       ".wn-primary .wn-note{font-size:11px;color:var(--muted)}",
       ".wn-value{display:block;font-size:26px;line-height:1.1;margin-top:8px}",
@@ -154,9 +156,9 @@
         if (state === "error") {
           status.textContent = `ERROR · WeatherNext forecast unavailable; provider state ${healthState}`;
         } else if ([health.ingest_state, health.state, health.freshness_state].includes("access_pending")) {
-          status.textContent = "STALE · WeatherNext access pending; no genuine forecast value available";
+          status.textContent = "PENDING · WeatherNext access pending; no genuine forecast value available";
         } else {
-          status.textContent = `STALE · no genuine WeatherNext forecast value available; provider state ${healthState}`;
+          status.textContent = `PENDING · no genuine WeatherNext forecast value available; provider state ${healthState}`;
         }
         meta.textContent = provenanceText(null);
       }
