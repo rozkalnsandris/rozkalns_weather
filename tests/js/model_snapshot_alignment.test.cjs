@@ -65,3 +65,12 @@ test('run age is derived from init provenance without mutating provider rows', (
   assert.equal(model.runAgeHours(source, NOW), 4);
   assert.equal(source.init_time_utc, '2026-09-27T06:00:00Z');
 });
+
+test('WeatherNext no-data state is pending while genuine stale and fresh rows stay distinct', () => {
+  const genuine = row('weathernext3', '2026-09-27T12:00:00Z', 12.5);
+
+  assert.equal(model.priorityState(null, { ingest_state: 'access_pending', freshness_state: 'not_tracked' }), 'pending');
+  assert.equal(model.priorityState(null, { ingest_state: 'ready', freshness_state: 'not_ingested' }), 'pending');
+  assert.equal(model.priorityState(genuine, { ingest_state: 'ready', freshness_state: 'stale' }), 'stale');
+  assert.equal(model.priorityState(genuine, { ingest_state: 'ready', freshness_state: 'fresh' }), 'fresh');
+});
