@@ -77,6 +77,11 @@
       ".wn-primary .wn-note{font-size:11px;color:var(--muted)}",
       ".wn-value{display:block;font-size:26px;line-height:1.1;margin-top:8px}",
       ".wn-meta{overflow-wrap:anywhere}",
+      ".provider{min-width:0}",
+      ".provider-heading{min-width:0}",
+      ".provider-heading>strong{min-width:0;overflow-wrap:anywhere}",
+      ".provider small{display:block;min-width:0;overflow-wrap:anywhere}",
+      ".provider .state-chip{flex:0 0 auto}",
     ].join("");
     root.document.head.appendChild(style);
   }
