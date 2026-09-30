@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="lv">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -170,16 +170,16 @@
       <header class="subpage-header"><div><span class="eyebrow">Official safety data</span><h1>Radar & Warnings</h1></div></header>
       <div class="panel warning" data-warning-authority="DWD">
         <div class="panel-title">DWD official warnings</div>
-        <p>DWD warning slānis ir autoritatīvs un atdalīts no modeļiem.</p>
-        <p class="muted">public-only režīmā warnings izmanto publisko DWD CDC Werl 05480 reference punktu; precīzas privātās koordinātas API/UI netiek izpaustas.</p>
-        <p class="muted">Public-only režīmā bez privāta home punkta centrs ir publiskais DWD CDC Werl 05480 reference punkts.</p>
+        <p>DWD warning layer is authoritative and separate from model forecasts.</p>
+        <p class="muted">In public-only mode, warnings use the public DWD CDC Werl 05480 reference point; exact private coordinates are not exposed through the API/UI.</p>
+        <p class="muted">In public-only mode without a private home point, the view is centered on the public DWD CDC Werl 05480 reference point.</p>
         <div id="warningsState" class="surface-state state-loading" role="status" aria-live="polite" aria-atomic="true">LOADING · warning data has not been requested</div>
         <button id="loadWarnings" type="button">Load current DWD warnings</button>
         <pre id="warningsOutput"></pre>
       </div>
       <div class="panel">
         <div class="panel-title">DWD radar</div>
-        <p class="muted">Radar observed/nowcast nav model forecast. Coordinates remain private.</p>
+        <p class="muted">Radar observed/nowcast is not a model forecast. Coordinates remain private.</p>
         <div id="radarState" class="surface-state state-loading" role="status" aria-live="polite" aria-atomic="true">LOADING · radar data has not been requested</div>
         <button id="loadRadar" type="button">Load radar metadata</button>
         <pre id="radarOutput"></pre>
