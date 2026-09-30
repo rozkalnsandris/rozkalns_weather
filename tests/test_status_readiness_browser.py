@@ -148,13 +148,14 @@ def test_status_module_is_lazy_cached_and_uses_existing_contracts() -> None:
 
 def test_status_browser_separates_forecast_availability_from_verification_readiness(tmp_path: Path) -> None:
     fixture = _write_fixture(tmp_path)
-    for width in (384, 412):
+    for width in (412, 1440):
         pending = _run_browser(f"{fixture.as_uri()}?scenario=pending#overview", width=width)
         assert 'data-ready="true"' in pending, pending
         assert 'data-scenario="pending"' in pending, pending
         assert 'data-calls="3"' in pending, pending
         assert 'data-forecast="No genuine data · access pending"' in pending, pending
         assert 'data-verification="Not ready · no WeatherNext verified samples"' in pending, pending
+        assert 'data-state="pending"' in pending, pending
         assert 'data-weathernext-in-public-sources="false"' in pending, pending
         assert 'data-public-source-count="5"' in pending, pending
         assert 'data-no-overflow="true"' in pending, pending
