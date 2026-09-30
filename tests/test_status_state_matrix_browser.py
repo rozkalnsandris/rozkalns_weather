@@ -167,10 +167,10 @@ def test_real_shell_status_keeps_card_state_in_sync_through_refresh_offline_and_
             assert card.get_attribute("data-state") == "loading"
 
             page.wait_for_function(
-                "() => document.querySelector('#statusWeatherNextState')?.dataset.state === 'stale'",
+                "() => document.querySelector('#statusWeatherNextState')?.dataset.state === 'pending'",
                 timeout=7_500,
             )
-            assert card.get_attribute("data-state") == "stale"
+            assert card.get_attribute("data-state") == "pending"
             assert "No genuine data · access pending" in page.locator("#statusWeatherNextForecast").inner_text()
 
             page.evaluate("window.dispatchEvent(new Event('offline'))")
