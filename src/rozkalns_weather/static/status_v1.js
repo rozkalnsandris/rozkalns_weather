@@ -135,11 +135,17 @@
       return { state: "error", label: "Unavailable · provider error", detail: `Provider state ${health?.reason_code || health?.freshness_state || health?.state || "error"}.` };
     }
     if (healthStates.includes("access_pending")) {
-      return { state: "stale", label: "No genuine data · access pending", detail: "No WeatherNext value is inferred from another provider." };
+      return { state: "pending", label: "No genuine data · access pending", detail: "No WeatherNext value is inferred from another provider." };
+    }
+    if (fallback === "offline") {
+      return { state: "offline", label: "No genuine WeatherNext forecast available", detail: "No WeatherNext value is inferred from another provider." };
+    }
+    if (fallback === "stale") {
+      return { state: "stale", label: "No genuine WeatherNext forecast available", detail: "Cached forecast availability evidence is stale; no WeatherNext value is inferred from another provider." };
     }
     return {
-      state: fallback === "offline" ? "offline" : "stale",
-      label: "No genuine WeatherNext forecast available",
+      state: "pending",
+      label: "No genuine WeatherNext forecast available · pending",
       detail: "No WeatherNext value is inferred from another provider.",
     };
   }
@@ -157,9 +163,11 @@
       ? "error"
       : forecast.state === "offline" || verification.state === "offline"
         ? "offline"
-        : forecast.state === "fresh" && verification.state === "fresh"
-          ? "fresh"
-          : "stale";
+        : forecast.state === "pending"
+          ? "pending"
+          : forecast.state === "fresh" && verification.state === "fresh"
+            ? "fresh"
+            : "stale";
     card.dataset.state = combined;
     state.className = `surface-state state-${combined}`;
     state.dataset.state = combined;
