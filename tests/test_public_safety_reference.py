@@ -120,6 +120,6 @@ def test_safety_ui_explains_public_reference_and_dwd_authority(tmp_path):
     client = _client(tmp_path)
     html = client.get("/").text
     assert "DWD official warnings" in html
-    assert "DWD warning slānis ir autoritatīvs" in html
-    assert "public-only režīmā warnings izmanto publisko DWD CDC Werl 05480 reference punktu" in html
-    assert "Public-only režīmā bez privāta home punkta centrs ir publiskais DWD CDC Werl 05480 reference punkts" in html
+    assert "DWD warning layer is authoritative and separate from model forecasts." in html
+    assert "In public-only mode, warnings use the public DWD CDC Werl 05480 reference point" in html
+    assert "In public-only mode without a private home point, the view is centered on the public DWD CDC Werl 05480 reference point." in html
