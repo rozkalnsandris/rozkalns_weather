@@ -91,18 +91,16 @@ def test_hidden_hero_state_has_no_rendered_box_while_degraded_states_remain_visi
       };
     }
 
-    requestAnimationFrame(() => {
-      const light = snapshot("light");
-      const dark = snapshot("dark");
-      const proof = document.getElementById("proof");
-      proof.dataset.lightFreshNonRendered = String(light.freshNonRendered);
-      proof.dataset.lightStaleVisible = String(light.staleVisible);
-      proof.dataset.lightErrorVisible = String(light.errorVisible);
-      proof.dataset.darkFreshNonRendered = String(dark.freshNonRendered);
-      proof.dataset.darkStaleVisible = String(dark.staleVisible);
-      proof.dataset.darkErrorVisible = String(dark.errorVisible);
-      document.documentElement.dataset.proofReady = "true";
-    });
+    const light = snapshot("light");
+    const dark = snapshot("dark");
+    const proof = document.getElementById("proof");
+    proof.dataset.lightFreshNonRendered = String(light.freshNonRendered);
+    proof.dataset.lightStaleVisible = String(light.staleVisible);
+    proof.dataset.lightErrorVisible = String(light.errorVisible);
+    proof.dataset.darkFreshNonRendered = String(dark.freshNonRendered);
+    proof.dataset.darkStaleVisible = String(dark.staleVisible);
+    proof.dataset.darkErrorVisible = String(dark.errorVisible);
+    document.documentElement.dataset.proofReady = "true";
   </script>
 </body>
 </html>
@@ -121,7 +119,6 @@ def test_hidden_hero_state_has_no_rendered_box_while_degraded_states_remain_visi
             "--disable-gpu",
             "--no-sandbox",
             "--allow-file-access-from-files",
-            "--virtual-time-budget=1000",
             "--dump-dom",
             fixture.as_uri(),
         ],
