@@ -59,10 +59,12 @@ WeatherNext 3 paliek first-class `primary_research`, bet real private access vē
 Current sequence:
 
 1. #168 — **completed**: first-access canary source contract migrēts no legacy `station_10416` uz canonical `station_05480`;
-2. #224 — pabeigt one-time private WeatherNext runtime/linked-dataset prerequisites un trusted-runtime reconciliation; pats issue nedod BigQuery query vai production-data authority;
+2. #224 — pabeigt vienu WeatherNext Analytics Hub linked dataset un vienkāršu RPi5 runtime authentication; custom installer/bootstrap/Deploy-Queue path nav aktīvs prerequisite, un pats issue nedod BigQuery query vai production-data authority;
 3. #122 — tikai pēc #224 un fresh preflight veikt explicit owner-authorized bounded private read-only BigQuery first-access gate;
 4. first real WeatherNext snapshot write — atsevišķa production-data authorization;
 5. sustained private collection — tikai pēc proven access/provenance/cost/runtime contracts.
+
+SIMPLE target ir standard BigQuery client + ADC-compatible runtime credential; ordinary application code joprojām tiek piegādāts caur SIMPLE-DEPLOY, bet credentials/private-provider activation paliek atsevišķs owner gate.
 
 Current first-access source binding ir aligned ar canonical `station_05480`, bet tas pats par sevi neautorizē private query. WeatherNext real values nekad netiek fabricētas.
 
