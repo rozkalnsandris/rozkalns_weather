@@ -49,11 +49,13 @@ def test_forecast_loader_is_sibling_module_and_part_of_offline_shell() -> None:
     assert 'new URL("forecast_loading.js", OBSERVATION_SCRIPT_URL).href' in loader
     assert 'script.dataset.rozkalnsForecastLoading = "true"' in loader
     assert 'PUBLIC_DEFAULT_LOCATION = "station_05480"' in forecast
+    assert 'PROVIDER_HEALTH_CACHE_KEY = "rozkalns-weather:pwa-cache:v1:provider-health"' in forecast
+    assert 'syncHomeLocationAvailability' in forecast
     assert 'selector.value === "home" && providerHealthStillLoading()' in forecast
     assert 'selectedLocation() === locationId' in forecast
     assert '"/static/forecast_loading.js"' in worker
     assert '"/static/request_lifecycle.js"' in worker
-    assert 'const CACHE = "rozkalns-weather-v37"' in worker
+    assert 'const CACHE = "rozkalns-weather-v38"' in worker
 
 
 def _write_fixture(tmp_path: Path) -> Path:
@@ -84,6 +86,16 @@ def _write_fixture(tmp_path: Path) -> Path:
       const row = {{provider:'icon_d2', model_name:'ICON-D2', statistic:'deterministic', value:12, valid_time_utc:'2026-09-28T18:00:00Z', retrieved_at_utc:'2026-09-28T16:00:00Z'}};
       if (variable === 'daily') return {{payload:{{location:{{id:locationId}},days_by_provider:[{{provider:'icon_d2',date:'2026-09-28',temperature_min_c:8,temperature_max_c:14}}]}},source:'network',cached_at_utc:'2026-09-28T16:00:00Z',error:null}};
       return {{payload:{{location:{{id:locationId}},series:[row]}},source:'network',cached_at_utc:'2026-09-28T16:00:00Z',error:null}};
+    }}
+
+    function publishProviderHealth(configured, state = 'fresh') {{
+      localStorage.setItem(
+        'rozkalns-weather:pwa-cache:v1:provider-health',
+        JSON.stringify({{cached_at_utc:'2026-09-28T16:00:00Z', payload:{{home:{{configured}}}}}}),
+      );
+      const providerState = document.getElementById('providerState');
+      providerState.dataset.state = state;
+      providerState.textContent = `${{state}} health`;
     }}
 
     window.stateFromResult = () => 'fresh';
@@ -133,9 +145,29 @@ def _write_fixture(tmp_path: Path) -> Path:
         selector.dispatchEvent(new Event('change', {{bubbles:true}}));
       }}, 60);
     }}
+    if (scenario === 'home-unavailable') {{
+      setTimeout(() => publishProviderHealth(false, 'fresh'), 60);
+    }}
+    if (scenario === 'home-available') {{
+      setTimeout(() => publishProviderHealth(true, 'fresh'), 60);
+    }}
+    if (scenario === 'home-stale') {{
+      setTimeout(() => {{
+        localStorage.setItem(
+          'rozkalns-weather:pwa-cache:v1:provider-health',
+          JSON.stringify({{cached_at_utc:'2026-09-28T16:00:00Z', payload:{{home:{{configured:true}}}}}}),
+        );
+        const selector = document.getElementById('forecastLocation');
+        selector.value = 'home';
+        const providerState = document.getElementById('providerState');
+        providerState.dataset.state = 'stale';
+        providerState.textContent = 'stale health';
+      }}, 60);
+    }}
     setTimeout(() => {{
       proof.dataset.scenario = scenario;
       proof.dataset.location = document.getElementById('forecastLocation').value;
+      proof.dataset.homeDisabled = String(document.querySelector('#forecastLocation option[value="home"]').disabled);
       proof.dataset.calls = String(calls.length);
       proof.dataset.temperatureRenders = String(renders.temperature);
       proof.dataset.precipitationRenders = String(renders.precipitation);
@@ -159,6 +191,7 @@ def test_daily_and_hourly_surfaces_do_not_wait_for_each_other_or_health(tmp_path
 
     assert 'data-ready="true"' in rendered, rendered
     assert 'data-location="station_05480"' in rendered, rendered
+    assert 'data-home-disabled="true"' in rendered, rendered
     assert 'data-temperature-renders="0"' in rendered, rendered
     assert 'data-precipitation-renders="1"' in rendered, rendered
     assert 'data-daily-renders="1"' in rendered, rendered
@@ -177,3 +210,26 @@ def test_location_change_ignores_late_response_from_previous_location(tmp_path: 
     assert 'data-last-daily-location="station_10416"' in rendered, rendered
     assert 'data-pending-health-state="fresh"' in rendered, rendered
     assert 'provider health is still pending' in rendered, rendered
+
+
+def test_home_location_stays_disabled_without_fresh_configured_health(tmp_path: Path) -> None:
+    fixture = _write_fixture(tmp_path)
+
+    unavailable = _run_browser(f"{fixture.as_uri()}?scenario=home-unavailable")
+    assert 'data-ready="true"' in unavailable, unavailable
+    assert 'data-location="station_05480"' in unavailable, unavailable
+    assert 'data-home-disabled="true"' in unavailable, unavailable
+
+    stale = _run_browser(f"{fixture.as_uri()}?scenario=home-stale")
+    assert 'data-ready="true"' in stale, stale
+    assert 'data-location="station_05480"' in stale, stale
+    assert 'data-home-disabled="true"' in stale, stale
+
+
+def test_home_location_enables_only_with_fresh_configured_health(tmp_path: Path) -> None:
+    fixture = _write_fixture(tmp_path)
+    rendered = _run_browser(f"{fixture.as_uri()}?scenario=home-available")
+
+    assert 'data-ready="true"' in rendered, rendered
+    assert 'data-location="station_05480"' in rendered, rendered
+    assert 'data-home-disabled="false"' in rendered, rendered

@@ -46,7 +46,7 @@ class _Handler(BaseHTTPRequestHandler):
         if path in {"/sw.js", "/static/sw.js"}:
             source = SW.read_text()
             if self.server.mode == "old":
-                source = source.replace('const CACHE = "rozkalns-weather-v37"', 'const CACHE = "rozkalns-weather-v36"')
+                source = source.replace('const CACHE = "rozkalns-weather-v38"', 'const CACHE = "rozkalns-weather-v37"')
             self._write(200, source.encode(), "application/javascript; charset=utf-8")
             return
 
@@ -170,7 +170,7 @@ def test_clean_install_offline_reopen_and_atomic_worker_update(tmp_path: Path) -
                     initial_context,
                     url,
                     build="old",
-                    cache="rozkalns-weather-v36",
+                    cache="rozkalns-weather-v37",
                     lifecycle="ready",
                 )
             finally:
@@ -184,7 +184,7 @@ def test_clean_install_offline_reopen_and_atomic_worker_update(tmp_path: Path) -
                 offline_context,
                 url,
                 build="old",
-                cache="rozkalns-weather-v36",
+                cache="rozkalns-weather-v37",
                 lifecycle="ready",
             )
         finally:
@@ -198,7 +198,7 @@ def test_clean_install_offline_reopen_and_atomic_worker_update(tmp_path: Path) -
                     updated_context,
                     url,
                     build="new",
-                    cache="rozkalns-weather-v37",
+                    cache="rozkalns-weather-v38",
                     lifecycle="updated",
                 )
             finally:

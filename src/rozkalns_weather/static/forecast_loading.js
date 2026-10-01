@@ -4,17 +4,23 @@
   const PUBLIC_DEFAULT_LOCATION = "station_05480";
   const FORECAST_LOCATIONS = new Set(["home", "station_05480", "station_10416"]);
   const FORECAST_SCRIPT_URL = document.currentScript?.src || "";
+  const PROVIDER_HEALTH_CACHE_KEY = "rozkalns-weather:pwa-cache:v1:provider-health";
   let forecastSequence = 0;
   let activeTemperature = null;
   let activePrecipitation = null;
   let activeForecastController = null;
+  let homeAvailabilityObserver = null;
 
   function locationSelector() {
     return document.querySelector("#forecastLocation");
   }
 
+  function providerHealthState() {
+    return document.querySelector("#providerState")?.dataset.state || "loading";
+  }
+
   function providerHealthStillLoading() {
-    return document.querySelector("#providerState")?.dataset.state === "loading";
+    return providerHealthState() === "loading";
   }
 
   function normalizeLocation(value) {
@@ -30,6 +36,60 @@
     if (!selector) return null;
     if (selector.value === "home" && providerHealthStillLoading()) selector.value = PUBLIC_DEFAULT_LOCATION;
     return selectedLocation();
+  }
+
+  function cachedHomeConfigured() {
+    try {
+      const cached = JSON.parse(localStorage.getItem(PROVIDER_HEALTH_CACHE_KEY) || "null");
+      return cached?.payload?.home?.configured === true;
+    } catch (_error) {
+      return false;
+    }
+  }
+
+  function syncHomeLocationAvailability({ emitChange = false } = {}) {
+    const selector = locationSelector();
+    const homeOption = selector?.querySelector('option[value="home"]');
+    if (!selector || !homeOption) return false;
+
+    const state = providerHealthState();
+    const available = state === "fresh" && cachedHomeConfigured();
+    homeOption.disabled = !available;
+    if (available) homeOption.removeAttribute("aria-disabled");
+    else homeOption.setAttribute("aria-disabled", "true");
+
+    if (!available && selector.value === "home") {
+      selector.value = PUBLIC_DEFAULT_LOCATION;
+      if (emitChange && state !== "loading") {
+        selector.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+    }
+    return available;
+  }
+
+  function installHomeLocationAvailabilityObserver() {
+    const state = document.querySelector("#providerState");
+    if (!state) {
+      syncHomeLocationAvailability();
+      return false;
+    }
+    if (homeAvailabilityObserver) homeAvailabilityObserver.disconnect();
+    if (typeof MutationObserver !== "function") {
+      syncHomeLocationAvailability();
+      return false;
+    }
+    homeAvailabilityObserver = new MutationObserver(() => {
+      syncHomeLocationAvailability({ emitChange: true });
+    });
+    homeAvailabilityObserver.observe(state, {
+      attributes: true,
+      childList: true,
+      characterData: true,
+      subtree: true,
+      attributeFilter: ["data-state"],
+    });
+    syncHomeLocationAvailability();
+    return true;
   }
 
   function latestRetrieval(rows) {
@@ -275,6 +335,7 @@
   function start() {
     const selector = locationSelector();
     if (!selector) return;
+    installHomeLocationAvailabilityObserver();
     const locationId = establishPrivacySafeBootstrapLocation();
     if (!locationId) return;
     loadForecastSurfaces(locationId);
@@ -286,6 +347,9 @@
     normalizeLocation,
     selectedLocation,
     establishPrivacySafeBootstrapLocation,
+    cachedHomeConfigured,
+    syncHomeLocationAvailability,
+    installHomeLocationAvailabilityObserver,
     loadRequestLifecycleModule,
     loadForecastSurfaces,
   });

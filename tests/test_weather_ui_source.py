@@ -3,7 +3,7 @@ import re
 
 
 ROOT = Path(__file__).parents[1]
-STATIC = ROOT / "src/rozkalns_weather/static"
+STATIC = ROOT / "src" / "rozkalns_weather" / "static"
 
 
 def test_native_weather_ui_is_loaded_after_base_app_and_has_no_weather_emoji_dependency() -> None:
@@ -78,7 +78,7 @@ def test_pwa_cache_is_versioned_complete_and_atomically_activated() -> None:
     observation = (STATIC / "observation_age.js").read_text()
     lifecycle = (STATIC / "pwa_lifecycle.js").read_text()
 
-    assert 'const CACHE = "rozkalns-weather-v37"' in source
+    assert 'const CACHE = "rozkalns-weather-v38"' in source
     shell_assets = set(re.findall(r'"(/static/[^"?]+)"', source))
     index_assets = set(re.findall(r'(?:src|href)="(/static/[^"?]+)"', index))
     assert index_assets <= shell_assets
