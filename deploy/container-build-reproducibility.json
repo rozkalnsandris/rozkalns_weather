@@ -19,7 +19,7 @@
   ],
   "contract": "container-build-reproducibility-v1",
   "dependency_lock": "deploy/public-runtime.lock",
-  "dependency_lock_sha256": "c822be220427d82011ed57c8fb964a0f2a8dbc95da32e321f61843404b076c92",
+  "dependency_lock_sha256": "a2ea23ad5be0570b69f33555660e600b96f6162508c6c0a5ae891539156ccf37",
   "dockerfile": "Dockerfile",
   "evidence": {
     "build_identity_inputs": [
@@ -49,9 +49,7 @@
     "target_alias": "rozkalns-weather-public-rpi5",
     "weathernext_required": false
   },
-  "forbidden_public_runtime_packages": [
-    "google-cloud-bigquery"
-  ],
+  "forbidden_public_runtime_packages": [],
   "later_live_binding": {
     "requires_deployed_image_digest": true,
     "requires_exact_build_identity_sha256": true,

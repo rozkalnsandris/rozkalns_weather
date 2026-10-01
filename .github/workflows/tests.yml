@@ -111,3 +111,4 @@ jobs:
             --output "$RUNNER_TEMP/container-build-evidence.json" \
             --sbom-output "$RUNNER_TEMP/container-runtime-sbom.json"
           python -c "from rozkalns_weather.app import app; assert app is not None"
+          python -c "from google.cloud import bigquery; assert bigquery.Client is not None"
