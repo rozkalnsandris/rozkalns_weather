@@ -68,6 +68,7 @@ def _fixture(tmp_path: Path, *, theme: str) -> Path:
   <script>
     const proof = document.getElementById('proof');
     const cards = () => [...document.querySelectorAll('[data-weathernext-priority]')];
+    Date.now = () => Date.parse('2026-10-01T11:00:00Z');
     proof.dataset.initialLoading = String(cards().length === 2 && cards().every((card) => card.dataset.state === 'loading'));
     proof.dataset.overviewOrder = String(document.querySelector('#overview').children[1]?.dataset.weathernextPriority === 'overview');
     proof.dataset.modelsOrder = String(document.querySelector('#models').children[1]?.dataset.weathernextPriority === 'models');
