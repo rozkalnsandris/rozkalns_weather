@@ -42,7 +42,9 @@ def test_repository_build_evidence_is_pass_and_deterministic() -> None:
     assert first["build"]["build_identity_sha256"] == second["build"]["build_identity_sha256"]
     assert first["build"]["sbom_sha256"] == second["build"]["sbom_sha256"]
     assert first["sbom"]["dependency_lock_sha256"] == first["build"]["dependency_lock_sha256"]
-    assert len(first["sbom"]["packages"]) == 18
+    assert len(first["sbom"]["packages"]) == 41
+    packages = {item["name"]: item for item in first["sbom"]["packages"]}
+    assert packages["google-cloud-bigquery"]["version"] == "3.45.2"
     assert {item["scope"] for item in first["sbom"]["packages"]} >= {
         "runtime-direct",
         "runtime-transitive",
