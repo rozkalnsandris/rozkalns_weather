@@ -225,8 +225,8 @@ def _validate_ui_contract(index_html: str) -> bool:
     required = (
         'class="panel warning"',
         "DWD official warnings",
-        "DWD warning slānis ir autoritatīvs un atdalīts no modeļiem.",
-        "Radar observed/nowcast nav model forecast.",
+        "DWD warning layer is authoritative and separate from model forecasts.",
+        "Radar observed/nowcast is not a model forecast.",
     )
     return all(token in index_html for token in required)
 
