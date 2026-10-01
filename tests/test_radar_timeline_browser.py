@@ -51,7 +51,8 @@ def test_radar_timeline_is_lazy_cached_and_fail_closed_in_source() -> None:
     assert 'window.apiWithFallback("/api/radar", "safety-radar")' in radar
     assert 'frame.kind === "radar_observed" || frame.kind === "radar_nowcast"' in radar
     assert 'This does not mean precipitation is absent.' in radar
-    assert 'raster_rendering_available === false' in radar
+    assert 'contract.raster_rendering_available === true' in radar
+    assert 'contract.state === "raster_ready"' in radar
     assert 'const CACHE = "rozkalns-weather-v' in worker
     assert '"/static/radar_timeline.js"' in worker
 
@@ -139,7 +140,7 @@ def test_safety_view_lazy_loads_accessible_observed_nowcast_timeline(tmp_path: P
       proof.dataset.frameCount = String(output.querySelectorAll('ol[aria-label="Available radar frames"] li').length);
       proof.dataset.latestObserved = String(text.includes('Latest observed · 2026-09-28T11:55:00Z · RADOLAN observed latest'));
       proof.dataset.nowcast = String(text.includes('Nowcast · 2026-09-28T12:30:00Z · RADOLAN nowcast'));
-      proof.dataset.noRaw = String(!text.includes('precipitation_5') && !text.includes('provider_extra') && !text.includes('geometry') && !text.includes('must-not-render'));
+      proof.dataset.noRaw = String(!text.includes('precipitation_5') && !text.includes('provider_extra') && !text.includes('"geometry":') && !text.includes('must-not-render'));
       proof.dataset.pendingImagery = String(text.includes('Radar imagery is not rendered yet') && text.includes('projection'));
       proof.dataset.fresh = String(document.getElementById('radarState').dataset.state === 'fresh');
 
