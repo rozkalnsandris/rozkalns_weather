@@ -43,7 +43,7 @@ The helper:
 - executes only `dry_run=True` BigQuery jobs;
 - disables client/job retries;
 - never sets `maximum_bytes_billed` on the characterization jobs;
-- emits only sanitized byte estimates, estimate-accuracy classification when available, and query hashes;
+- emits only sanitized byte estimates and estimate-accuracy classification when available;
 - does not emit project ID, dataset ID, coordinates, SQL, credentials, or WeatherNext values;
 - never executes a real query and never touches SQLite.
 

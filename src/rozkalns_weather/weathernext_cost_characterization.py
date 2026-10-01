@@ -3,7 +3,6 @@ from __future__ import annotations
 import argparse
 from dataclasses import dataclass
 from datetime import datetime, timezone
-import hashlib
 import json
 from typing import Any, Callable, Mapping
 
@@ -23,14 +22,12 @@ class ClusteredDryRunEstimate:
     resolution: str
     estimated_bytes: int
     estimate_accuracy: str
-    query_sha256: str
 
     def as_dict(self) -> dict[str, object]:
         return {
             "resolution": self.resolution,
             "estimated_bytes": self.estimated_bytes,
             "estimate_accuracy": self.estimate_accuracy,
-            "query_sha256": self.query_sha256,
         }
 
 
@@ -77,7 +74,7 @@ def characterize_clustered_query_costs(
     pre-execution upper bound before any owner decision about a real-query cap.
 
     It never executes a non-dry-run query, never writes SQLite, and never emits
-    project/dataset identity, coordinates, or SQL.
+    project/dataset identity, coordinates, SQL, or private-derived query hashes.
     """
 
     if init_time.tzinfo is None:
@@ -139,7 +136,6 @@ def characterize_clustered_query_costs(
                 resolution=query.resolution,
                 estimated_bytes=estimated,
                 estimate_accuracy=_estimate_accuracy(job),
-                query_sha256=hashlib.sha256(query.sql.encode("utf-8")).hexdigest(),
             )
         )
 
