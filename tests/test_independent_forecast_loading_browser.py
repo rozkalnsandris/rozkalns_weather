@@ -55,7 +55,7 @@ def test_forecast_loader_is_sibling_module_and_part_of_offline_shell() -> None:
     assert 'selectedLocation() === locationId' in forecast
     assert '"/static/forecast_loading.js"' in worker
     assert '"/static/request_lifecycle.js"' in worker
-    assert 'const CACHE = "rozkalns-weather-v37"' in worker
+    assert 'const CACHE = "rozkalns-weather-v38"' in worker
 
 
 def _write_fixture(tmp_path: Path) -> Path:
