@@ -228,7 +228,11 @@
     if (provider) provider.textContent = "Next-hours forecast unavailable for this location.";
 
     const detail = document.querySelector("#hourlyDetail");
-    if (detail) detail.textContent = "Next-hours details unavailable because the selected location forecast is incomplete.";
+    if (detail) {
+      const replacement = detail.cloneNode(false);
+      replacement.textContent = "Next-hours details unavailable because the selected location forecast is incomplete.";
+      detail.replaceWith(replacement);
+    }
   }
 
   function maybeRenderHourly(sequence, locationId) {
