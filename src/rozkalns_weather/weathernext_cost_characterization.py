@@ -4,7 +4,7 @@ import argparse
 from dataclasses import dataclass
 from datetime import datetime, timezone
 import json
-from typing import Any, Callable, Mapping
+from typing import Any, Callable
 
 from .config import Settings
 from .locations import BENCHMARK_LOCATION
@@ -21,13 +21,11 @@ class WeatherNextCostCharacterizationError(RuntimeError):
 class ClusteredDryRunEstimate:
     resolution: str
     estimated_bytes: int
-    estimate_accuracy: str
 
     def as_dict(self) -> dict[str, object]:
         return {
             "resolution": self.resolution,
             "estimated_bytes": self.estimated_bytes,
-            "estimate_accuracy": self.estimate_accuracy,
         }
 
 
@@ -41,22 +39,6 @@ def _default_job_config() -> Any:
     return bigquery.QueryJobConfig(dry_run=True, use_query_cache=False)
 
 
-def _estimate_accuracy(job: Any) -> str:
-    raw = getattr(job, "_properties", None)
-    if not isinstance(raw, Mapping):
-        return "UNKNOWN"
-    statistics = raw.get("statistics")
-    if not isinstance(statistics, Mapping):
-        return "UNKNOWN"
-    query = statistics.get("query")
-    if not isinstance(query, Mapping):
-        return "UNKNOWN"
-    value = query.get("totalBytesProcessedAccuracy")
-    if value in {"UNKNOWN", "PRECISE", "LOWER_BOUND", "UPPER_BOUND"}:
-        return str(value)
-    return "UNKNOWN"
-
-
 def characterize_clustered_query_costs(
     *,
     client: Any,
@@ -66,12 +48,13 @@ def characterize_clustered_query_costs(
     hours_limit: int = 6,
     job_config_factory: Callable[[], Any] | None = None,
 ) -> dict[str, object]:
-    """Return sanitized uncapped dry-run estimates for the two exact #122 queries.
+    """Return sanitized dry-run estimates for the two exact #122 queries.
 
-    BigQuery geospatial clustering can make pre-execution estimates conservative.
-    This helper intentionally does not set ``maximum_bytes_billed`` because a dry
-    run is uncharged and the purpose of this stage is to learn the provider's
-    pre-execution upper bound before any owner decision about a real-query cap.
+    WeatherNext tables are clustered geospatially, so BigQuery documents the
+    pre-execution estimate as a conservative upper bound that can exceed actual
+    billed bytes after block pruning. This helper deliberately sets no per-job
+    ``maximum_bytes_billed`` value because the purpose of this separately gated
+    dry run is to characterize that upper bound before any real-query decision.
 
     It never executes a non-dry-run query, never writes SQLite, and never emits
     project/dataset identity, coordinates, SQL, or private-derived query hashes.
@@ -117,7 +100,7 @@ def characterize_clustered_query_costs(
             raise WeatherNextCostCharacterizationError("cost characterization must be dry-run only")
         if getattr(config, "maximum_bytes_billed", None) is not None:
             raise WeatherNextCostCharacterizationError(
-                "cost characterization must not set maximum_bytes_billed"
+                "cost characterization must not set per-job maximum_bytes_billed"
             )
         job = client.query(
             query.sql,
@@ -135,7 +118,6 @@ def characterize_clustered_query_costs(
             ClusteredDryRunEstimate(
                 resolution=query.resolution,
                 estimated_bytes=estimated,
-                estimate_accuracy=_estimate_accuracy(job),
             )
         )
 
@@ -148,7 +130,8 @@ def characterize_clustered_query_costs(
         "selected_init_time_utc": init_time.isoformat().replace("+00:00", "Z"),
         "hours_limit": hours_limit,
         "dry_run": [item.as_dict() for item in estimates],
-        "maximum_bytes_billed_applied": False,
+        "estimate_semantics": "pre_execution_upper_bound_for_clustered_table",
+        "per_job_maximum_bytes_billed_applied": False,
         "actual_query_performed": False,
         "cost_incurred": False,
         "coordinates_exposed": False,

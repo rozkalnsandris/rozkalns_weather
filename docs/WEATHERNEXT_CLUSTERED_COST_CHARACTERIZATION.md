@@ -11,7 +11,7 @@ The WeatherNext 3 BigQuery guide recommends the same core query shape already us
 - a spatial predicate against `geography_polygon`;
 - bounded forecast hours.
 
-WeatherNext documents the spatial path as using BigQuery GIS clustering. BigQuery separately documents an important cost-control limitation: for clustered tables, the pre-execution bytes estimate is an upper bound because the storage blocks that can be pruned are not known until execution. As a result, `maximum_bytes_billed` can reject a clustered query even when its eventual billed bytes would be lower.
+WeatherNext documents the tables as partitioned by `init_time` and spatially clustered. BigQuery separately documents an important cost-control limitation: for clustered tables, the pre-execution bytes estimate is an upper bound because the storage blocks that can be pruned are not known until execution. As a result, `maximum_bytes_billed` can reject a clustered query even when its eventual billed bytes would be lower.
 
 References:
 
@@ -27,7 +27,7 @@ Therefore the #122 failure is not evidence that the point SQL lost its partition
 
 Do not raise the 1 GiB real-query ceiling by guesswork.
 
-First run a separately owner-authorized **dry-run-only characterization** using the exact two #122 queries but with no `maximum_bytes_billed` value on the dry-run jobs. BigQuery documents dry runs as uncharged. The helper added for this purpose is:
+First run a separately owner-authorized **dry-run-only characterization** using the exact two #122 queries with no per-job `maximum_bytes_billed` value. BigQuery documents dry runs as uncharged. A project-level default, if configured, remains an independent provider-side control and is not bypassed by this helper. The helper added for this purpose is:
 
 ```bash
 python -m rozkalns_weather.weathernext_cost_characterization \
@@ -42,14 +42,14 @@ The helper:
 - keeps the spatial predicate and selected-column query contract;
 - executes only `dry_run=True` BigQuery jobs;
 - disables client/job retries;
-- never sets `maximum_bytes_billed` on the characterization jobs;
-- emits only sanitized byte estimates and estimate-accuracy classification when available;
+- never sets a per-job `maximum_bytes_billed` on the characterization jobs;
+- emits only sanitized byte estimates plus an explicit `pre_execution_upper_bound_for_clustered_table` interpretation;
 - does not emit project ID, dataset ID, coordinates, SQL, credentials, or WeatherNext values;
 - never executes a real query and never touches SQLite.
 
 ## What the characterization can and cannot prove
 
-The resulting `total_bytes_processed` value is the BigQuery pre-execution estimate. For a clustered table it can be an upper bound rather than the actual billed bytes after spatial block pruning.
+The resulting `total_bytes_processed` value is the BigQuery pre-execution estimate. For a clustered table it is a conservative upper bound and can exceed the actual billed bytes after spatial block pruning.
 
 The result is sufficient to answer the next policy question: what explicit pre-execution cap would BigQuery require for the exact query shape? It is **not** sufficient to claim that the same number would actually be billed.
 

@@ -11,13 +11,8 @@ from rozkalns_weather.weathernext_cost_characterization import (
 
 
 class FakeJob:
-    def __init__(self, estimated_bytes: int, accuracy: str = "UPPER_BOUND") -> None:
+    def __init__(self, estimated_bytes: int) -> None:
         self.total_bytes_processed = estimated_bytes
-        self._properties = {
-            "statistics": {
-                "query": {"totalBytesProcessedAccuracy": accuracy},
-            }
-        }
 
 
 class FakeClient:
@@ -38,7 +33,7 @@ def _dry_run_config():
     )
 
 
-def test_characterization_is_uncapped_dry_run_only_and_sanitized() -> None:
+def test_characterization_has_no_per_job_cap_is_dry_run_only_and_sanitized() -> None:
     client = FakeClient()
     payload = characterize_clustered_query_costs(
         client=client,
@@ -51,17 +46,14 @@ def test_characterization_is_uncapped_dry_run_only_and_sanitized() -> None:
 
     assert payload["state"] == "clustered_cost_characterized"
     assert payload["location_id"] == BENCHMARK_LOCATION.id == "station_05480"
-    assert payload["maximum_bytes_billed_applied"] is False
+    assert payload["per_job_maximum_bytes_billed_applied"] is False
     assert payload["actual_query_performed"] is False
     assert payload["cost_incurred"] is False
     assert payload["requires_owner_real_query_cost_decision"] is True
+    assert payload["estimate_semantics"] == "pre_execution_upper_bound_for_clustered_table"
     assert [item["estimated_bytes"] for item in payload["dry_run"]] == [
         2_000_000_000,
         20_000_000_000,
-    ]
-    assert [item["estimate_accuracy"] for item in payload["dry_run"]] == [
-        "UPPER_BOUND",
-        "UPPER_BOUND",
     ]
 
     rendered = str(payload)
@@ -81,7 +73,7 @@ def test_characterization_is_uncapped_dry_run_only_and_sanitized() -> None:
         assert "f.hours <= 6" in sql
 
 
-def test_characterization_rejects_a_capped_job_config() -> None:
+def test_characterization_rejects_a_per_job_cap() -> None:
     client = FakeClient()
 
     def capped_config():
