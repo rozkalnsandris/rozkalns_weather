@@ -219,3 +219,30 @@ Canonical source-only evaluation: `deploy/weathernext-access-surface-evaluation.
 - This evaluation does not switch the runtime transport, contact Google, authorize a GCS/Earth Engine probe, or authorize production data writes.
 
 Any GCS implementation must first be fixture-driven and preserve `station_05480`, bounded lead hours, the six existing summary statistics and complete WeatherNext provenance. A later real GCS access remains a separate exact private gate.
+
+
+## GCS statistics candidate contract
+
+The 2026-10-02 access-surface decision now has a fixture-driven GCS statistics
+adapter contract at `deploy/weathernext-gcs-statistics-first-access.json` with
+pure source helpers in `weathernext_gcs.py`.
+
+This does not replace the historical BigQuery first-access contract or authorize
+Google access. It defines the bounded alternative that may be used by a future
+exact private GCS gate:
+
+- canonical location remains `station_05480`;
+- one explicit init and one explicit validated operational run-directory token;
+- maximum 24 continuous hourly lead steps;
+- required six precomputed statistics for the 0.05° station head and selected
+  0.1° surface variables;
+- nearest-grid point selection with 0–360 longitude handling delegated to the
+  later live selector without emitting coordinates;
+- source provenance maps to `Google Cloud Storage/Zarr`;
+- no full-ensemble bucket fallback, no full-dataset load, no alternate-prefix
+  retry and no production SQLite write.
+
+Google documents the operational directory shape as
+`<YYYYMMDD_HHhr_XX_preds>/predictions.zarr` but does not define the `XX`
+semantics in the access guide. The source contract therefore validates a
+separately supplied directory token instead of fabricating one.

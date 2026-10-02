@@ -33,7 +33,14 @@
       "bucket": "gs://weathernext3_statistics_spatial/weathernext_3_0_0_statistics/zarr/",
       "requester_pays": false,
       "billing_project_header_required": false,
-      "statistics": ["mean", "p10", "p25", "p50", "p75", "p90"],
+      "statistics": [
+        "mean",
+        "p10",
+        "p25",
+        "p50",
+        "p75",
+        "p90"
+      ],
       "lead_time_axis": "continuous_1_hour",
       "supports_0p05_station_surface": true,
       "supports_0p1_gridded_surface": true,
@@ -57,10 +64,14 @@
   "decision": {
     "preferred_candidate": "gcs_statistics_zarr",
     "runtime_transport_changed_by_this_contract": false,
-    "next_source_step": "fixture-driven bounded GCS statistics adapter contract for station_05480",
+    "next_source_step": "review and merge the fixture-driven bounded GCS statistics adapter contract, then design a separate exact private read-only GCS access gate",
     "bigquery_contract_deleted": false,
     "earth_engine_selected": false,
-    "live_probe_authorized": false
+    "live_probe_authorized": false,
+    "gcs_adapter_contract_path": "deploy/weathernext-gcs-statistics-first-access.json",
+    "gcs_adapter_module": "src/rozkalns_weather/weathernext_gcs.py",
+    "run_directory_suffix_semantics_assumed": false,
+    "run_directory_must_be_explicitly_supplied_and_validated": true
   },
   "privacy_and_authority": {
     "forbid_repo_values": [
