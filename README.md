@@ -23,13 +23,15 @@ Pirmais reāli lietojamais public-only Weather Web UI milestone (#136) ir pabeig
 - DWD paliek official warning authority;
 - private home un WeatherNext private access nav pirmā public-only UI prerequisite.
 
-## Operational priority after #315 audit
+## Operational private-home acceptance
 
-The operational product goal is **private-home forecast + DWD warnings/radar**, and it is independent of WeatherNext research.
+The operational **private-home forecast + DWD warnings/radar** lane is completed and remains independent of WeatherNext research.
 
-- `private-home` runtime mode uses runtime-only `HOME_LAT` / `HOME_LON`;
-- public forecast ingest already collects home-scoped ICON-D2, ECMWF IFS and ECMWF AIFS when home is configured;
-- DWD warnings and DWD/Bright Sky radar use the private home point when configured;
+- production runtime is `private-home` with runtime-only `HOME_LAT` / `HOME_LON`; exact values remain outside GitHub;
+- recurring public ingest is enabled and home-scoped ICON-D2, ECMWF IFS and ECMWF AIFS are present;
+- `/api/hourly?location_id=home` and `/api/daily?location_id=home` are accepted with all three public forecast providers;
+- `/api/warnings` preserves DWD as official warning authority and uses the configured private-home reference;
+- `/api/radar` provides DWD/Bright Sky observed + nowcast context centered on the private-home reference without exposing coordinates, geometry or raw upstream payload;
 - Google/WeatherNext credentials are not required for this operational mode;
 - `station_05480` remains the measured verification benchmark; `home` remains forecast/radar display only until a defensible home observation truth source exists;
 - WeatherNext #122 is a separate research/cost-control lane and must not block operational home weather.

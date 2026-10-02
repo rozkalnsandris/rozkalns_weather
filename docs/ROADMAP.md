@@ -20,15 +20,16 @@ Current public baseline:
 - [x] `/health`, `/ready`, `/api/readiness` and provider-health runtime contracts.
 - [x] DWD official warning authority preserved.
 
-## Current operational P0 — private-home forecast + radar
+## Current operational P0 — private-home forecast + radar — completed
 
-Audit #315 separates the operational weather product from WeatherNext research.
+Audit #315 separates the operational weather product from WeatherNext research. The private-home source, runtime, data and safety acceptance path is now complete.
 
 - [x] Merge source support for `WEATHER_RUNTIME_MODE=private-home` with runtime-only home coordinates and no Google/WeatherNext dependency.
 - [x] Make `DATABASE_INIT_MODE=require-existing` application startup DB-read-only; location materialization remains on explicit write/ingest paths.
-- [ ] Under a later exact LIVE gate, configure private home coordinates without committing them.
-- [ ] Run the existing public ingest for home-scoped ICON-D2 / ECMWF IFS / ECMWF AIFS forecasts.
-- [ ] Verify DWD official warnings and DWD/Bright Sky observed/nowcast radar centered on the private home point.
+- [x] Configure private home coordinates under exact LIVE authority without committing or exposing them.
+- [x] Run and verify home-scoped ICON-D2 / ECMWF IFS / ECMWF AIFS forecast ingest, then activate recurring ingest under a separate production-data/systemd gate.
+- [x] Verify `/api/hourly` and `/api/daily` for `home` with all three public providers.
+- [x] Verify DWD official warnings and DWD/Bright Sky observed/nowcast radar centered on the private-home reference with coordinate/geometry/raw-payload exposure disabled.
 - [ ] Keep `station_05480` as measured verification truth; do not claim measured home accuracy.
 
 WeatherNext #122 remains a separate research lane and is not an operational-home prerequisite.
@@ -136,7 +137,7 @@ DB/schema/corpus mutation, private-provider access, credentials, Cloudflare/netw
 - [x] DWD authority separation.
 - [x] public-only Warnings/Radar reference without private coordinates.
 - [x] radar observed/nowcast contract.
-- [ ] optional later private-home centered map validation after private-home activation is explicitly authorized.
+- [x] private-home centered warnings/radar validation completed after separately authorized private-home activation.
 
 ## Phase 6 — WeatherNext evolution
 
