@@ -22,7 +22,7 @@ GCS_ZARR_LEAF = "predictions.zarr"
 GCS_FULL_ENSEMBLE_BUCKET = "weathernext3_spatial"
 MAX_GCS_FIRST_ACCESS_HOURS = 24
 RUN_DIRECTORY_RE = re.compile(
-    r"^(?P<date>\\d{8})_(?P<hour>\\d{2})hr_(?P<sequence>\\d{2})_preds$"
+    r"^(?P<date>\d{8})_(?P<hour>\d{2})hr_(?P<sequence>\d{2})_preds$"
 )
 
 REQUIRED_COORDINATES = frozenset({
@@ -56,6 +56,67 @@ SURFACE_STATISTIC_VARIABLES = _statistic_variables(SURFACE_FIELDS)
 REQUIRED_STATISTIC_VARIABLES = frozenset(
     STATION_STATISTIC_VARIABLES + SURFACE_STATISTIC_VARIABLES
 )
+
+
+def normalize_longitude_360(value: float) -> float:
+    numeric = float(value)
+    if not isfinite(numeric):
+        raise ValueError("longitude must be finite")
+    return numeric % 360.0
+
+
+def nearest_grid_index(
+    coordinates: Iterable[float],
+    *,
+    target: float,
+    resolution_degrees: float,
+    cyclic: bool = False,
+) -> int:
+    values = tuple(float(item) for item in coordinates)
+    if not values or any(not isfinite(item) for item in values):
+        raise ValueError("grid coordinates must be a non-empty finite sequence")
+    numeric_target = float(target)
+    if not isfinite(numeric_target):
+        raise ValueError("grid target must be finite")
+    resolution = float(resolution_degrees)
+    if not isfinite(resolution) or resolution <= 0.0:
+        raise ValueError("grid resolution must be positive")
+
+    def distance(item: float) -> float:
+        delta = abs(item - numeric_target)
+        return min(delta, 360.0 - delta) if cyclic else delta
+
+    index = min(range(len(values)), key=lambda item: distance(values[item]))
+    if distance(values[index]) > resolution / 2.0 + 1e-9:
+        raise ValueError("nearest grid coordinate exceeds half-cell tolerance")
+    return index
+
+
+def nearest_gcs_grid_indices(
+    *,
+    latitudes: Iterable[float],
+    longitudes: Iterable[float],
+    lat: float,
+    lon: float,
+    resolution_degrees: float,
+) -> dict[str, int]:
+    latitude = float(lat)
+    if not isfinite(latitude) or not -90.0 <= latitude <= 90.0:
+        raise ValueError("latitude must be finite and between -90 and 90")
+    longitude = normalize_longitude_360(lon)
+    return {
+        "lat_index": nearest_grid_index(
+            latitudes,
+            target=latitude,
+            resolution_degrees=resolution_degrees,
+        ),
+        "lon_index": nearest_grid_index(
+            longitudes,
+            target=longitude,
+            resolution_degrees=resolution_degrees,
+            cyclic=True,
+        ),
+    }
 
 
 def statistics_run_prefix(*, init_time: datetime, run_directory: str) -> str:
@@ -132,6 +193,7 @@ def build_statistics_selection_plan(
         "surface_grid": "0.1deg",
         "longitude_convention": "0_to_360",
         "spatial_selection": "nearest_on_declared_grid",
+        "nearest_grid_max_distance": "half_cell",
         "slice_before_materialization": True,
         "full_dataset_load_allowed": False,
         "full_ensemble_bucket_allowed": False,

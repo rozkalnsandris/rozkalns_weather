@@ -9,7 +9,7 @@
     "bucket": "weathernext3_statistics_spatial",
     "root_prefix": "weathernext_3_0_0_statistics/zarr/2026_to_present",
     "zarr_leaf": "predictions.zarr",
-    "run_directory_pattern": "^\\\\d{8}_\\\\d{2}hr_\\\\d{2}_preds$",
+    "run_directory_pattern": "^\\d{8}_\\d{2}hr_\\d{2}_preds$",
     "run_directory_discovery": "later_private_gate_supplies_one_explicit_directory_token",
     "run_directory_suffix_semantics_assumed": false,
     "alternate_prefix_fallback_allowed": false,
@@ -56,7 +56,8 @@
     "point_selection": "nearest_on_declared_grid",
     "max_first_access_hours": 24,
     "slice_before_materialization": true,
-    "full_dataset_load_forbidden": true
+    "full_dataset_load_forbidden": true,
+    "nearest_grid_max_distance": "half_cell"
   },
   "provenance": {
     "provider": "weathernext3",

@@ -12,6 +12,8 @@ from rozkalns_weather.weathernext_gcs import (
     STATION_STATISTIC_VARIABLES,
     SURFACE_STATISTIC_VARIABLES,
     build_statistics_selection_plan,
+    nearest_gcs_grid_indices,
+    normalize_longitude_360,
     statistics_point_records_to_run,
     statistics_run_prefix,
     validate_statistics_schema,
@@ -24,42 +26,51 @@ def _schema_fixture() -> dict:
     )
 
 
-def _stat_values(base: float) -> dict[str, float]:
-    offsets = {
-        "mean": 0.0,
-        "p10": -2.0,
-        "p25": -1.0,
-        "p50": 0.0,
-        "p75": 1.0,
-        "p90": 2.0,
+def _ordered_values(mean: float, spread: float) -> dict[str, float]:
+    return {
+        "mean": mean,
+        "p10": mean - 2.0 * spread,
+        "p25": mean - spread,
+        "p50": mean,
+        "p75": mean + spread,
+        "p90": mean + 2.0 * spread,
     }
-    return {stat: base + offsets[stat] for stat in STATS}
+
+
+def _field_values(field: str) -> dict[str, float]:
+    if field == "station_head_temperature_2m" or field == "temperature_2m":
+        return _ordered_values(293.15, 1.0)
+    if field == "station_head_dewpoint_temperature_2m" or field == "dewpoint_temperature_2m":
+        return _ordered_values(288.15, 1.0)
+    if field == "wind_speed_10m":
+        return _ordered_values(5.0, 1.0)
+    if field == "mean_sea_level_pressure":
+        return _ordered_values(101325.0, 250.0)
+    if field == "total_cloud_cover":
+        return {
+            "mean": 0.50,
+            "p10": 0.10,
+            "p25": 0.25,
+            "p50": 0.50,
+            "p75": 0.75,
+            "p90": 0.90,
+        }
+    if field == "total_precipitation_1hr":
+        return {
+            "mean": 0.0010,
+            "p10": 0.0001,
+            "p25": 0.0004,
+            "p50": 0.0008,
+            "p75": 0.0014,
+            "p90": 0.0020,
+        }
+    raise AssertionError(f"unhandled fixture field: {field}")
 
 
 def _record(fields: dict, *, lead_hour: int) -> dict[str, float | int]:
     record: dict[str, float | int] = {"lead_hour": lead_hour}
-    for index, field in enumerate(fields):
-        if field == "total_precipitation_1hr":
-            values = {
-                "mean": 0.0010,
-                "p10": 0.0001,
-                "p25": 0.0004,
-                "p50": 0.0008,
-                "p75": 0.0014,
-                "p90": 0.0020,
-            }
-        elif field == "total_cloud_cover":
-            values = {
-                "mean": 0.50,
-                "p10": 0.10,
-                "p25": 0.25,
-                "p50": 0.50,
-                "p75": 0.75,
-                "p90": 0.90,
-            }
-        else:
-            values = _stat_values(280.0 + index * 5.0)
-        for stat, value in values.items():
+    for field in fields:
+        for stat, value in _field_values(field).items():
             record[f"{field}_{stat}"] = value
     return record
 
@@ -95,6 +106,33 @@ def test_fixture_matches_precomputed_statistics_contract() -> None:
     broken = {**schema, "variables": schema["variables"][:-1]}
     errors = validate_statistics_schema(broken)
     assert errors == ("missing_variable:total_precipitation_1hr_p90",)
+
+
+    forbidden = {**schema, "dimensions": [*schema["dimensions"], "lead_subtime"]}
+    assert validate_statistics_schema(forbidden) == (
+        "forbidden_statistics_dimension:lead_subtime",
+    )
+
+
+def test_nearest_grid_selection_normalizes_longitude_and_enforces_half_cell() -> None:
+    assert normalize_longitude_360(-0.02) == pytest.approx(359.98)
+    indices = nearest_gcs_grid_indices(
+        latitudes=[9.95, 10.00, 10.05],
+        longitudes=[0.00, 0.05, 359.95],
+        lat=10.04,
+        lon=-0.02,
+        resolution_degrees=0.1,
+    )
+    assert indices == {"lat_index": 2, "lon_index": 0}
+
+    with pytest.raises(ValueError, match="half-cell tolerance"):
+        nearest_gcs_grid_indices(
+            latitudes=[0.0, 1.0],
+            longitudes=[0.0, 1.0],
+            lat=0.4,
+            lon=0.4,
+            resolution_degrees=0.1,
+        )
 
 
 def test_selection_plan_is_bounded_sanitized_and_never_uses_full_ensemble() -> None:
@@ -166,7 +204,7 @@ def test_fixture_point_records_map_to_existing_forecast_run_provenance() -> None
         for value in run.values
         if value.variable == "temperature_2m" and value.statistic == "mean"
     )
-    assert round(temp_mean.value, 2) == 6.85
+    assert round(temp_mean.value, 2) == 20.0
     precip_mean = next(
         value
         for value in run.values
