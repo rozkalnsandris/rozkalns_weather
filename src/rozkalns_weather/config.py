@@ -5,7 +5,7 @@ import os
 
 from .semantics import DEFAULT_PRECIP_EVENT_THRESHOLD_MM
 
-RUNTIME_MODES = frozenset({"public-only", "private-research"})
+RUNTIME_MODES = frozenset({"public-only", "private-home", "private-research"})
 DATABASE_INIT_MODES = frozenset({"auto", "require-existing"})
 
 

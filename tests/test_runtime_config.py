@@ -27,6 +27,65 @@ def test_public_deployment_passes_without_private_inputs() -> None:
     assert payload["authority"]["live_authority_granted"] is False
 
 
+
+def test_private_home_deployment_passes_without_google_inputs() -> None:
+    env = {
+        "WEATHER_RUNTIME_MODE": "private-home",
+        "WEATHER_CONFIG_PROFILE": "deployment",
+        "WEATHER_CONFIG_SCHEMA_VERSION": "1",
+        "DATABASE_INIT_MODE": "require-existing",
+        "DATABASE_URL": "sqlite:///data/weather.db",
+        "HOME_LAT": "51.500001",
+        "HOME_LON": "7.600001",
+        "HOME_LABEL": "Private home",
+    }
+    payload = validate_runtime_config(env)
+    serialized = json.dumps(payload, sort_keys=True)
+    assert payload["state"] == "PASS"
+    assert payload["runtime_mode"] == "private-home"
+    assert payload["presence"] == {
+        "database_url": True,
+        "home_coordinates": True,
+        "google_project_and_dataset": False,
+        "google_auth": False,
+    }
+    assert "51.500001" not in serialized
+    assert "7.600001" not in serialized
+
+
+def test_private_home_requires_coordinates() -> None:
+    payload = validate_runtime_config(
+        {
+            "WEATHER_RUNTIME_MODE": "private-home",
+            "WEATHER_CONFIG_PROFILE": "deployment",
+            "WEATHER_CONFIG_SCHEMA_VERSION": "1",
+            "DATABASE_INIT_MODE": "require-existing",
+            "DATABASE_URL": "sqlite:///data/weather.db",
+        }
+    )
+    assert payload["state"] == "BLOCKED"
+    assert payload["reason_codes"] == ["PRIVATE_HOME_REQUIRED"]
+
+
+def test_private_home_rejects_weather_next_private_access_inputs() -> None:
+    payload = validate_runtime_config(
+        {
+            "WEATHER_RUNTIME_MODE": "private-home",
+            "WEATHER_CONFIG_PROFILE": "deployment",
+            "WEATHER_CONFIG_SCHEMA_VERSION": "1",
+            "DATABASE_INIT_MODE": "require-existing",
+            "DATABASE_URL": "sqlite:///data/weather.db",
+            "HOME_LAT": "51.500001",
+            "HOME_LON": "7.600001",
+            "GOOGLE_CLOUD_PROJECT": "private-project-name",
+            "WEATHERNEXT_BIGQUERY_DATASET": "private-dataset-name",
+            "GOOGLE_AUTH_PRESENT": "true",
+        }
+    )
+    assert payload["state"] == "BLOCKED"
+    assert payload["reason_codes"] == ["PRIVATE_HOME_GOOGLE_ACCESS_UNSUPPORTED"]
+
+
 def test_deployment_implicit_database_init_is_blocked() -> None:
     env = {**PUBLIC_DEPLOYMENT, "DATABASE_INIT_MODE": "auto"}
     payload = validate_runtime_config(env)

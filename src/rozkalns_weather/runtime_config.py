@@ -26,6 +26,25 @@ RUNTIME_CONFIG_CONTRACT: dict[str, Any] = {
             "private_home_required": False,
             "google_auth_required": False,
         },
+        "private-home": {
+            "required": [
+                "WEATHER_RUNTIME_MODE",
+                "DATABASE_INIT_MODE",
+                "DATABASE_URL",
+                "HOME_LAT",
+                "HOME_LON",
+            ],
+            "optional": [
+                "HOME_TIMEZONE",
+                "HOME_LABEL",
+                "INGEST_TIMEOUT_SECONDS",
+                "INGEST_RETRIES",
+                "PRECIP_EVENT_THRESHOLD_MM",
+            ],
+            "deployment_database_init_mode": "require-existing",
+            "private_home_required": True,
+            "google_auth_required": False,
+        },
         "private-research": {
             "required": [
                 "WEATHER_RUNTIME_MODE",
@@ -134,6 +153,15 @@ def validate_runtime_config(
             reasons.append("PUBLIC_RUNTIME_PRIVATE_ACCESS_UNSUPPORTED")
         if profile == "development" and settings.database_init_mode == "auto":
             warnings.append("DEVELOPMENT_IMPLICIT_DATABASE_INITIALIZATION")
+    elif settings.runtime_mode == "private-home":
+        if not settings.home_configured:
+            reasons.append("PRIVATE_HOME_REQUIRED")
+        if (
+            _present(env, "GOOGLE_CLOUD_PROJECT")
+            or _present(env, "WEATHERNEXT_BIGQUERY_DATASET")
+            or auth_flag is True
+        ):
+            reasons.append("PRIVATE_HOME_GOOGLE_ACCESS_UNSUPPORTED")
     elif settings.runtime_mode == "private-research":
         if not settings.home_configured:
             reasons.append("PRIVATE_HOME_REQUIRED")

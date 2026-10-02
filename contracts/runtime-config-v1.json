@@ -41,6 +41,25 @@
         "DATABASE_INIT_MODE",
         "DATABASE_URL"
       ]
+    },
+    "private-home": {
+      "deployment_database_init_mode": "require-existing",
+      "google_auth_required": false,
+      "optional": [
+        "HOME_TIMEZONE",
+        "HOME_LABEL",
+        "INGEST_TIMEOUT_SECONDS",
+        "INGEST_RETRIES",
+        "PRECIP_EVENT_THRESHOLD_MM"
+      ],
+      "private_home_required": true,
+      "required": [
+        "WEATHER_RUNTIME_MODE",
+        "DATABASE_INIT_MODE",
+        "DATABASE_URL",
+        "HOME_LAT",
+        "HOME_LON"
+      ]
     }
   },
   "schema": "runtime-config-v1",

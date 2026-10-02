@@ -1,4 +1,23 @@
-# Private home + WeatherNext runtime activation
+# Private runtime activation contracts
+
+## Operational private-home mode — current product path
+
+Audit #315 separates private-home operational weather from WeatherNext research.
+
+`WEATHER_RUNTIME_MODE=private-home` is the operational mode for the private dashboard:
+
+- requires runtime-only `HOME_LAT` + `HOME_LON`;
+- does **not** require `GOOGLE_CLOUD_PROJECT`, `WEATHERNEXT_BIGQUERY_DATASET` or Google authentication;
+- uses the existing public ingest path for home-scoped ICON-D2, ECMWF IFS and ECMWF AIFS;
+- lets DWD official warnings and DWD/Bright Sky radar use the configured private home point;
+- keeps `station_05480` as the measured verification benchmark;
+- never labels private-home forecast output as measured home accuracy without a separate home observation-truth source.
+
+The executable source gate for this mode is `runtime-config-v1`. Enabling it on RPi5 remains a separate exact LIVE/config authorization because the real coordinate pair is runtime-only.
+
+## Legacy combined WeatherNext research activation
+
+The machine contract below, `private-home-weathernext-runtime-activation.v1`, is retained for WeatherNext research compatibility. It is **not** a prerequisite for operational private-home forecast/radar and must not be used to make #122 block the operational dashboard.
 
 Issue #52 prepares the **source-side eligibility contract** for a later private-home + WeatherNext runtime. It does not activate runtime, credentials, BigQuery access, production data writes, scheduler state, Cloudflare or RPi5 services.
 
