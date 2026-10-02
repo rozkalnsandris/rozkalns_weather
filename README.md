@@ -25,7 +25,7 @@ Pirmais reāli lietojamais public-only Weather Web UI milestone (#136) ir pabeig
 
 ## Operational private-home acceptance
 
-The operational **private-home forecast + DWD warnings/radar** lane is completed and remains independent of WeatherNext research.
+Audit #315 realigned operational home weather away from WeatherNext research. The operational **private-home forecast + DWD warnings/radar** lane is completed and remains independent of WeatherNext research.
 
 - production runtime is `private-home` with runtime-only `HOME_LAT` / `HOME_LON`; exact values remain outside GitHub;
 - recurring public ingest is enabled and home-scoped ICON-D2, ECMWF IFS and ECMWF AIFS are present;
