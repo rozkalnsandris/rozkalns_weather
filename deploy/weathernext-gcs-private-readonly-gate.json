@@ -112,6 +112,45 @@
     "https://developers.google.com/weathernext/guides/gcs",
     "https://developers.google.com/weathernext/guides/access-forecast",
     "https://docs.cloud.google.com/storage/docs/listing-objects",
-    "https://docs.cloud.google.com/storage/docs/reading-objects"
-  ]
+    "https://docs.cloud.google.com/storage/docs/reading-objects",
+    "https://docs.xarray.dev/en/latest/generated/xarray.open_zarr.html",
+    "https://developmentseed.org/obstore/"
+  ],
+  "transport": {
+    "implementation": "src/rozkalns_weather/weathernext_gcs_transport.py",
+    "dependency_extra": "weathernext-gcs",
+    "stack": [
+      "obstore",
+      "zarr",
+      "xarray"
+    ],
+    "discovery": {
+      "api": "Cloud Storage JSON objects.list",
+      "endpoint_class": "fixed_bucket_objects_list",
+      "prefix_is_exact_partial_run_segment": true,
+      "delimiter": "/",
+      "max_results": 5,
+      "projection": "noAcl",
+      "pagination_allowed": false,
+      "automatic_retry_allowed": false,
+      "broad_parent_listing_allowed": false
+    },
+    "zarr_open": {
+      "obstore_retry_max_retries": 0,
+      "xarray_chunks": null,
+      "create_default_indexes": false,
+      "zarr_format": 3,
+      "dataset_load_allowed": false
+    },
+    "authentication": {
+      "explicit_credential_provider_required": true,
+      "ambient_adc_allowed": false,
+      "credential_file_read_by_weather_source": false,
+      "billing_project_header_required": false
+    },
+    "execution": {
+      "real_request_authorized_by_source_merge": false,
+      "production_write_authorized": false
+    }
+  }
 }

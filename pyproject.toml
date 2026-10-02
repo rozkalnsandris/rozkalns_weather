@@ -18,6 +18,11 @@ dependencies = [
 weathernext = [
   "google-cloud-bigquery>=3.36,<4",
 ]
+weathernext-gcs = [
+  "obstore>=0.11.1,<0.12",
+  "xarray>=2026.9,<2027",
+  "zarr>=3.4,<4",
+]
 test = [
   "playwright>=1.55,<2",
   "pytest>=8.4,<9",
