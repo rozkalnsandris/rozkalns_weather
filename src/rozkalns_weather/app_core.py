@@ -162,7 +162,9 @@ def create_app(settings: Settings | None = None, database: Database | None = Non
         database.initialize()
 
     schema = database_schema_state(database)
-    if schema["state"] == "ready":
+    # Production require-existing startup must stay DB-read-only. Location
+    # materialization belongs to explicit schema/init or ingest write paths.
+    if settings.database_init_mode == "auto" and schema["state"] == "ready":
         database.ensure_location(
             location_id=DWD_10416.id,
             label=DWD_10416.label,

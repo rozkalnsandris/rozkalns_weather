@@ -18,6 +18,32 @@ def _client(tmp_path, *, with_home: bool = True) -> tuple[TestClient, Database]:
     return TestClient(create_app(settings=settings, database=database)), database
 
 
+def test_require_existing_private_home_startup_is_db_read_only(tmp_path) -> None:
+    database_url = f"sqlite:///{tmp_path / 'weather.db'}"
+    database = Database(database_url)
+    database.initialize()
+    settings = Settings.from_env(
+        {
+            "DATABASE_URL": database_url,
+            "DATABASE_INIT_MODE": "require-existing",
+            "WEATHER_RUNTIME_MODE": "private-home",
+            "HOME_LAT": "51.5",
+            "HOME_LON": "7.6",
+        }
+    )
+
+    with database.connect() as connection:
+        before = connection.execute("SELECT id,label,lat,lon,timezone FROM locations ORDER BY id").fetchall()
+
+    create_app(settings=settings, database=database)
+
+    with database.connect() as connection:
+        after = connection.execute("SELECT id,label,lat,lon,timezone FROM locations ORDER BY id").fetchall()
+
+    assert before == []
+    assert after == before
+
+
 def _ensure_cdc_benchmark(database: Database) -> None:
     database.ensure_location(
         location_id=DWD_CDC_05480.id,
