@@ -11,10 +11,14 @@ from rozkalns_weather.weathernext_gcs import (
     GCS_STATISTICS_BUCKET,
     STATION_STATISTIC_VARIABLES,
     SURFACE_STATISTIC_VARIABLES,
+    build_private_readonly_gate_plan,
     build_statistics_selection_plan,
+    finalize_private_readonly_gate_plan,
     nearest_gcs_grid_indices,
     normalize_longitude_360,
+    resolve_statistics_run_directory,
     statistics_point_records_to_run,
+    statistics_run_discovery_prefix,
     statistics_run_prefix,
     validate_statistics_schema,
 )
@@ -239,3 +243,84 @@ def test_point_mapping_fails_closed_on_missing_statistic_or_mismatched_leads() -
             run_directory="20260826_00hr_01_preds",
             hours_limit=6,
         )
+
+
+def test_private_readonly_gate_plan_is_exact_bounded_and_source_only() -> None:
+    init = datetime(2026, 10, 1, 23, tzinfo=timezone.utc)
+    plan = build_private_readonly_gate_plan(init_time=init)
+
+    assert plan["contract"] == "weathernext3-gcs-private-readonly-gate.v1"
+    assert plan["state"] == "awaiting_private_run_directory_discovery"
+    assert plan["location_id"] == "station_05480"
+    assert plan["bucket"] == GCS_STATISTICS_BUCKET
+    assert plan["discovery_prefix"].endswith("/20261001_23hr_")
+    assert plan["discovery_requires_exactly_one"] is True
+    assert plan["hours_limit"] == 6
+    assert plan["materialized_scalar_ceiling"] == 288
+    assert plan["required_gcs_permissions"] == [
+        "storage.objects.list",
+        "storage.objects.get",
+    ]
+    assert plan["requester_pays"] is False
+    assert plan["full_dataset_load_allowed"] is False
+    assert plan["persistent_object_download_allowed"] is False
+    assert plan["full_ensemble_bucket_allowed"] is False
+    assert plan["alternate_prefix_fallback_allowed"] is False
+    assert plan["alternate_init_fallback_allowed"] is False
+    assert plan["automatic_retry_allowed"] is False
+    assert plan["private_home_scope_allowed"] is False
+    assert plan["iam_mutation_authorized"] is False
+    assert plan["credential_mutation_authorized"] is False
+    assert plan["production_write_authorized"] is False
+    assert plan["live_access_performed"] is False
+    rendered = json.dumps(plan)
+    assert "HOME_LAT" not in rendered
+    assert "HOME_LON" not in rendered
+
+    with pytest.raises(ValueError, match="fixed to six"):
+        build_private_readonly_gate_plan(init_time=init, hours_limit=12)
+
+
+def test_private_run_directory_discovery_fails_closed_on_zero_many_or_wrong_init() -> None:
+    init = datetime(2026, 10, 1, 23, tzinfo=timezone.utc)
+    assert statistics_run_discovery_prefix(init_time=init).endswith(
+        "/20261001_23hr_"
+    )
+    token = resolve_statistics_run_directory(
+        init_time=init,
+        candidates=["20261001_23hr_07_preds"],
+    )
+    assert token == "20261001_23hr_07_preds"
+
+    with pytest.raises(ValueError, match="exactly one"):
+        resolve_statistics_run_directory(init_time=init, candidates=[])
+    with pytest.raises(ValueError, match="exactly one"):
+        resolve_statistics_run_directory(
+            init_time=init,
+            candidates=[
+                "20261001_23hr_07_preds",
+                "20261001_23hr_08_preds",
+            ],
+        )
+    with pytest.raises(ValueError, match="does not match init_time"):
+        resolve_statistics_run_directory(
+            init_time=init,
+            candidates=["20261002_00hr_07_preds"],
+        )
+
+
+def test_private_gate_finalization_binds_only_the_discovered_token() -> None:
+    init = datetime(2026, 10, 1, 23, tzinfo=timezone.utc)
+    plan = finalize_private_readonly_gate_plan(
+        init_time=init,
+        discovered_run_directory="20261001_23hr_07_preds",
+    )
+
+    assert plan["state"] == "ready_for_private_gcs_read"
+    assert plan["run_directory"] == "20261001_23hr_07_preds"
+    assert plan["zarr_prefix"].endswith(
+        "/20261001_23hr_07_preds/predictions.zarr"
+    )
+    assert plan["hours_limit"] == 6
+    assert plan["materialized_scalar_ceiling"] == 288
+    assert plan["live_access_performed"] is False
