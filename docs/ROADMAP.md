@@ -24,7 +24,8 @@ Current public baseline:
 
 Audit #315 separates the operational weather product from WeatherNext research.
 
-- [ ] Merge source support for `WEATHER_RUNTIME_MODE=private-home` with runtime-only home coordinates and no Google/WeatherNext dependency.
+- [x] Merge source support for `WEATHER_RUNTIME_MODE=private-home` with runtime-only home coordinates and no Google/WeatherNext dependency.
+- [x] Make `DATABASE_INIT_MODE=require-existing` application startup DB-read-only; location materialization remains on explicit write/ingest paths.
 - [ ] Under a later exact LIVE gate, configure private home coordinates without committing them.
 - [ ] Run the existing public ingest for home-scoped ICON-D2 / ECMWF IFS / ECMWF AIFS forecasts.
 - [ ] Verify DWD official warnings and DWD/Bright Sky observed/nowcast radar centered on the private home point.

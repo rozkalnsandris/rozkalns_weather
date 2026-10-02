@@ -138,7 +138,7 @@ rozkalns-weather report-monthly --month YYYY-MM
 rozkalns-weather verification-drilldown --month YYYY-MM
 ```
 
-`init-database` un production corpus/backfill commands ir explicit write operations. Production runtime izmanto `DATABASE_INIT_MODE=require-existing`; app startup pats neizveido schema un neveic hidden backfill/migration.
+`init-database` un production corpus/backfill/ingest commands ir explicit write operations. Production runtime izmanto `DATABASE_INIT_MODE=require-existing`; app startup ir DB-read-only — tas neveido schema, neveic hidden backfill/migration un vairs neveic location seed/upsert. Private `home` location row tiek materializēts tikai explicit ingest/write ceļā.
 
 ## Privacy and safety invariants
 
