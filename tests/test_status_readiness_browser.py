@@ -110,18 +110,22 @@ def _write_fixture(tmp_path: Path) -> Path:
     }};
     setTimeout(()=>{{
       document.querySelector('[data-view="status"]').click();
-      setTimeout(()=>{{
+      const proofInterval=setInterval(()=>{{
+        const state=document.querySelector('#statusWeatherNext').dataset.state;
+        const publicSourceCount=document.querySelectorAll('#statusSources .status-source-row').length;
+        if(calls.length!==3 || publicSourceCount!==5 || state==='loading') return;
+        clearInterval(proofInterval);
         const proof=document.querySelector('#proof');
         proof.dataset.scenario=scenario;
         proof.dataset.calls=String(calls.length);
         proof.dataset.forecast=document.querySelector('#statusWeatherNextForecast').textContent;
         proof.dataset.verification=document.querySelector('#statusWeatherNextVerification').textContent;
-        proof.dataset.state=document.querySelector('#statusWeatherNext').dataset.state;
+        proof.dataset.state=state;
         proof.dataset.weathernextInPublicSources=String(document.querySelector('#statusSources').textContent.includes('WeatherNext'));
-        proof.dataset.publicSourceCount=String(document.querySelectorAll('#statusSources .status-source-row').length);
+        proof.dataset.publicSourceCount=String(publicSourceCount);
         proof.dataset.noOverflow=String(document.documentElement.scrollWidth<=document.documentElement.clientWidth+1);
         proof.dataset.ready='true';
-      }},250);
+      }},20);
     }},40);
   </script>
   <script src="{NAVIGATION.as_uri()}"></script>
