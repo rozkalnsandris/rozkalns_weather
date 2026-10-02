@@ -324,3 +324,56 @@ sanitized evidence only; STOP on permission/auth/schema/discovery/selection/prov
 
 That authorization would permit the bounded private read only. It would still
 not authorize persistence of the first WeatherNext snapshot.
+
+
+## Fixture-driven GCS transport implementation
+
+The GCS gate now has a source transport implementation in
+`weathernext_gcs_transport.py`. It remains execution-disabled by authority:
+importing or merging the module does not contact Google.
+
+The implementation follows Google's current WeatherNext 3 GCS guidance:
+`obstore + zarr + xarray` for Zarr v3 reads. The private runtime dependency
+extra is `weathernext-gcs`; these packages are not added to the ordinary public
+runtime.
+
+Run-directory discovery intentionally does **not** use a broad Obstore directory
+listing. Obstore/object_store prefix semantics operate on path segments, while
+the WeatherNext operational suffix is undocumented and the gate needs the
+partial segment prefix `YYYYMMDD_HHhr_`. The source therefore uses exactly one
+Cloud Storage JSON `objects.list` request with:
+
+- bucket fixed to `weathernext3_statistics_spatial`;
+- `prefix=<root>/<YYYYMMDD_HHhr_>`;
+- `delimiter=/`;
+- `maxResults=5` so more than four candidates fails closed;
+- `projection=noAcl` and a narrow response-field selector;
+- no pagination, retry or fallback.
+
+The response must contain exactly one validated directory and no direct objects.
+A `nextPageToken`, zero candidates, multiple candidates, malformed prefix or
+unexpected object causes STOP.
+
+The exact `predictions.zarr` store is then opened through `obstore.GCSStore`
+with `retry_config={"max_retries": 0}`, wrapped in
+`zarr.storage.ObjectStore`, and opened with
+`xarray.open_zarr(..., chunks=None, create_default_indexes=False,
+zarr_format=3)`.
+
+The transport requires an explicit credential-provider callback. It never
+discovers ambient ADC, reads credential files, accepts a project/dataset
+selector, or constructs a billing-project header. The later trusted RPi5
+boundary must supply the already-reviewed credential object in memory.
+
+Before forecast values are read, the module validates schema/dimensions,
+the exact init, continuous 1..6 hour lead indices, and the nearest declared
+0.05°/0.1° grid cells. It then materializes only the 48 required statistic
+variables at one point over six hours (288 scalar forecast values total).
+It never calls dataset-level `.load()`, writes objects/files/SQLite, or emits
+coordinates/raw WeatherNext values in sanitized evidence.
+
+Official references:
+- WeatherNext 3 GCS Zarr guide: https://developers.google.com/weathernext/guides/gcs
+- Cloud Storage JSON objects.list: https://docs.cloud.google.com/storage/docs/json_api/v1/objects/list
+- Xarray open_zarr: https://docs.xarray.dev/en/latest/generated/xarray.open_zarr.html
+- Obstore Google Cloud Storage/API docs: https://developmentseed.org/obstore/
