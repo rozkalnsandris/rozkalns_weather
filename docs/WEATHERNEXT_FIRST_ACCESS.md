@@ -205,3 +205,17 @@ paths are not first-access entrypoints. Production schema must already be ready.
 SDK retry controls were checked against the official Python BigQuery
 [Client reference](https://docs.cloud.google.com/python/docs/reference/bigquery/latest/google.cloud.bigquery.client.Client)
 and [QueryJob reference](https://docs.cloud.google.com/python/docs/reference/bigquery/latest/google.cloud.bigquery.job.QueryJob).
+
+
+## 2026-10-02 access-surface evaluation
+
+The BigQuery contract above remains the canonical description of the **BigQuery** first-access path, but its real-query stage is currently blocked by #122 cost control. The observed clustered-table dry-run values are multi-TiB pre-execution upper bounds and do not justify raising the retained 1 GiB real-query ceiling.
+
+Canonical source-only evaluation: `deploy/weathernext-access-surface-evaluation.json` and `docs/WEATHERNEXT_ACCESS_SURFACES.md`.
+
+- BigQuery real-query path remains blocked; no retry or cap increase is implied.
+- Preferred source candidate: **GCS precomputed statistics Zarr**.
+- Earth Engine remains a secondary candidate requiring its own Cloud-project/API/quota gate.
+- This evaluation does not switch the runtime transport, contact Google, authorize a GCS/Earth Engine probe, or authorize production data writes.
+
+Any GCS implementation must first be fixture-driven and preserve `station_05480`, bounded lead hours, the six existing summary statistics and complete WeatherNext provenance. A later real GCS access remains a separate exact private gate.
