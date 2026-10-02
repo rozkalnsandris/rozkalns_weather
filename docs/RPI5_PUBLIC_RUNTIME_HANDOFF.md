@@ -130,6 +130,18 @@ It does **not** authorize:
 
 Those remain separate exact owner gates where applicable.
 
+## Operational private-home continuation
+
+Audit #315 separates the operational home dashboard from WeatherNext research.
+
+- future `WEATHER_RUNTIME_MODE=private-home` requires runtime-only home coordinates but no Google/WeatherNext credentials;
+- the existing public ingest already supports home-scoped ICON-D2 / ECMWF IFS / ECMWF AIFS;
+- DWD official warnings and DWD/Bright Sky observed/nowcast radar use the home point when configured;
+- `station_05480` remains the measured verification benchmark; home remains forecast/radar display only;
+- WeatherNext #122 is a separate research/cost-control lane and is non-blocking for operational private-home weather.
+
+Actual RPi5 coordinate/config activation remains a separate exact LIVE gate.
+
 ## WeatherNext private continuation
 
 The public runtime is no longer blocked by WeatherNext.

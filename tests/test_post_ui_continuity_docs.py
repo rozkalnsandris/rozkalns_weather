@@ -46,7 +46,7 @@ def test_stale_pre_cutover_claims_do_not_return() -> None:
         assert phrase not in lowered
 
 
-def test_post_ui_milestones_and_weathernext_sequence_are_explicit() -> None:
+def test_post_ui_milestones_and_operational_research_split_are_explicit() -> None:
     readme = _text(ROOT / "README.md")
     roadmap = _text(ROOT / "docs" / "ROADMAP.md")
     status = _text(ROOT / "docs" / "IMPLEMENTATION_STATUS.md")
@@ -60,4 +60,10 @@ def test_post_ui_milestones_and_weathernext_sequence_are_explicit() -> None:
     for text in (readme, roadmap, status, handoff):
         assert "#168" in text
         assert "#122" in text
-        assert text.index("#168") < text.index("#122")
+        assert "#315" in text
+        assert "private-home" in text
+        assert "non-blocking" in text.lower()
+
+    for text in (readme, roadmap, status):
+        assert "#224" in text
+        assert "completed" in text.lower()
