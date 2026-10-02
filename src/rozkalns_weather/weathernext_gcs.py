@@ -21,6 +21,15 @@ GCS_STATISTICS_ROOT = "weathernext_3_0_0_statistics/zarr/2026_to_present"
 GCS_ZARR_LEAF = "predictions.zarr"
 GCS_FULL_ENSEMBLE_BUCKET = "weathernext3_spatial"
 MAX_GCS_FIRST_ACCESS_HOURS = 24
+GCS_FIRST_PRIVATE_READ_HOURS = 6
+GCS_DISCOVERY_MAX_CANDIDATES = 4
+GCS_PRIVATE_READONLY_STAGES = (
+    "run_directory_discovery",
+    "zarr_metadata_open",
+    "schema_validate",
+    "bounded_point_slice",
+    "provenance_validate",
+)
 RUN_DIRECTORY_RE = re.compile(
     r"^(?P<date>\d{8})_(?P<hour>\d{2})hr_(?P<sequence>\d{2})_preds$"
 )
@@ -141,6 +150,122 @@ def statistics_run_prefix(*, init_time: datetime, run_directory: str) -> str:
     if match.group("date") != expected_date or match.group("hour") != expected_hour:
         raise ValueError("WeatherNext GCS run directory does not match init_time")
     return f"{GCS_STATISTICS_ROOT}/{run_directory}/{GCS_ZARR_LEAF}"
+
+
+def statistics_run_discovery_prefix(*, init_time: datetime) -> str:
+    """Return the only prefix a first-access run-directory listing may inspect."""
+
+    init_time = ensure_utc(init_time)
+    if init_time.minute or init_time.second or init_time.microsecond:
+        raise ValueError("WeatherNext init_time must be aligned to an exact UTC hour")
+    if init_time.year < 2026:
+        raise ValueError("operational GCS run paths require 2026_to_present")
+    return f"{GCS_STATISTICS_ROOT}/{init_time.strftime('%Y%m%d_%H')}hr_"
+
+
+def resolve_statistics_run_directory(
+    *,
+    init_time: datetime,
+    candidates: Iterable[str],
+) -> str:
+    """Resolve one bounded discovery result without guessing the suffix token."""
+
+    unique: list[str] = []
+    for raw in candidates:
+        token = str(raw).strip().strip("/")
+        if not token or token in unique:
+            continue
+        unique.append(token)
+    if len(unique) > GCS_DISCOVERY_MAX_CANDIDATES:
+        raise ValueError("run-directory discovery exceeded candidate bound")
+    for token in unique:
+        statistics_run_prefix(init_time=init_time, run_directory=token)
+    if len(unique) != 1:
+        raise ValueError("run-directory discovery must resolve exactly one candidate")
+    return unique[0]
+
+
+def build_private_readonly_gate_plan(
+    *,
+    init_time: datetime,
+    hours_limit: int = GCS_FIRST_PRIVATE_READ_HOURS,
+) -> dict[str, object]:
+    """Build the source-only envelope for a later exact private GCS authorization."""
+
+    if hours_limit != GCS_FIRST_PRIVATE_READ_HOURS:
+        raise ValueError("first private GCS read is fixed to six forecast hours")
+    discovery_prefix = statistics_run_discovery_prefix(init_time=init_time)
+    materialized_scalar_ceiling = hours_limit * (
+        len(STATION_STATISTIC_VARIABLES) + len(SURFACE_STATISTIC_VARIABLES)
+    )
+    return {
+        "schema_version": 1,
+        "contract": "weathernext3-gcs-private-readonly-gate.v1",
+        "state": "awaiting_private_run_directory_discovery",
+        "provider": "weathernext3",
+        "model_version": "3.0.0",
+        "location_id": BENCHMARK_LOCATION.id,
+        "bucket": GCS_STATISTICS_BUCKET,
+        "root_prefix": GCS_STATISTICS_ROOT,
+        "discovery_prefix": discovery_prefix,
+        "discovery_delimiter": "/",
+        "discovery_max_candidate_directories": GCS_DISCOVERY_MAX_CANDIDATES,
+        "discovery_requires_exactly_one": True,
+        "run_directory_suffix_semantics_assumed": False,
+        "hours_limit": hours_limit,
+        "materialized_scalar_ceiling": materialized_scalar_ceiling,
+        "required_gcs_permissions": ["storage.objects.list", "storage.objects.get"],
+        "requester_pays": False,
+        "billing_project_header_required": False,
+        "ordered_stages": list(GCS_PRIVATE_READONLY_STAGES),
+        "slice_before_materialization": True,
+        "full_dataset_load_allowed": False,
+        "persistent_object_download_allowed": False,
+        "full_ensemble_bucket_allowed": False,
+        "alternate_prefix_fallback_allowed": False,
+        "alternate_init_fallback_allowed": False,
+        "automatic_retry_allowed": False,
+        "private_home_scope_allowed": False,
+        "iam_mutation_authorized": False,
+        "credential_mutation_authorized": False,
+        "production_write_authorized": False,
+        "coordinates_exposed": False,
+        "raw_values_exposed": False,
+        "live_access_performed": False,
+    }
+
+
+def finalize_private_readonly_gate_plan(
+    *,
+    init_time: datetime,
+    discovered_run_directory: str,
+    hours_limit: int = GCS_FIRST_PRIVATE_READ_HOURS,
+) -> dict[str, object]:
+    """Bind one unique discovery token to the bounded selection plan."""
+
+    plan = build_private_readonly_gate_plan(
+        init_time=init_time,
+        hours_limit=hours_limit,
+    )
+    run_directory = resolve_statistics_run_directory(
+        init_time=init_time,
+        candidates=(discovered_run_directory,),
+    )
+    selection = build_statistics_selection_plan(
+        init_time=init_time,
+        run_directory=run_directory,
+        hours_limit=hours_limit,
+    )
+    return {
+        **plan,
+        "state": "ready_for_private_gcs_read",
+        "run_directory": run_directory,
+        "zarr_prefix": selection["prefix"],
+        "station_variables": selection["station_variables"],
+        "surface_variables": selection["surface_variables"],
+        "station_grid": selection["station_grid"],
+        "surface_grid": selection["surface_grid"],
+    }
 
 
 def validate_statistics_schema(schema: Mapping[str, Any]) -> tuple[str, ...]:

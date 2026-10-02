@@ -246,3 +246,81 @@ Google documents the operational directory shape as
 `<YYYYMMDD_HHhr_XX_preds>/predictions.zarr` but does not define the `XX`
 semantics in the access guide. The source contract therefore validates a
 separately supplied directory token instead of fabricating one.
+
+
+## Exact private read-only GCS gate design
+
+The first real GCS attempt is intentionally narrower than the generic 24-hour
+adapter contract. Source planning fixes it to one explicit init, the canonical
+`station_05480`, and exactly six continuous hourly lead steps.
+
+Machine contract:
+`deploy/weathernext-gcs-private-readonly-gate.json`.
+
+The later owner-authorized private gate is ordered as:
+
+1. `run_directory_discovery` — list only the exact
+   `<root>/<YYYYMMDD_HHhr_>` prefix with delimiter `/`;
+2. require exactly one validated run-directory token and STOP on zero or
+   multiple candidates;
+3. `zarr_metadata_open` — lazily open only that
+   `predictions.zarr` store;
+4. `schema_validate` — verify the fixture-driven dimensions, coordinates and
+   required statistic variables before values are materialized;
+5. `bounded_point_slice` — select the declared variables, one nearest
+   `station_05480` point on each declared grid and six lead hours before any
+   values are materialized;
+6. `provenance_validate` — validate the in-memory WeatherNext run without a
+   SQLite write.
+
+The six-hour envelope materializes at most 288 required scalar statistic values:
+two station-head fields plus six surface fields, each with six statistics over
+six lead hours. This is an output/materialization bound, not a claim about
+compressed Zarr chunk transfer size.
+
+Google documents `storage.objects.list` for object listing and
+`storage.objects.get` for object reads. Those are the only GCS permissions the
+source gate requires. The source contract does not grant or modify IAM and does
+not require a billing-project header for the statistics bucket.
+
+The first private gate forbids:
+
+- listing unrelated init prefixes or enumerating the full bucket;
+- guessing the undocumented run-directory suffix;
+- alternate init/bucket/prefix fallback;
+- the full 64-member Requester Pays bucket;
+- dataset-level `.load()` or persistent object downloads;
+- automatic retry after any private request begins;
+- private-home scope;
+- credential/IAM/quota changes;
+- production SQLite/corpus writes;
+- emitting coordinates, credentials or raw WeatherNext values into GitHub
+  evidence.
+
+A future exact owner authorization must freshly bind the reviewed Weather
+`main` SHA, trusted RPi5 source/runtime SHA, live Weather image revision,
+runtime-only credential/config presence, one selected init and this exact
+`read_only_private_gcs` class. Source merge alone grants none of those
+authorities.
+
+Template:
+
+```text
+AUTHORIZE WEATHER #122 READ_ONLY_PRIVATE_GCS FIRST ACCESS —
+weather_sha=<fresh reviewed main SHA>;
+rpi5_sha=<fresh reviewed trusted runtime SHA>;
+live_weather_revision=<must equal weather_sha>;
+selected_init_utc=<one exact UTC hour>;
+location=station_05480;
+hours=6;
+bucket=weathernext3_statistics_spatial;
+discovery=one exact YYYYMMDD_HHhr_ prefix, delimiter "/", exactly one candidate;
+permissions=storage.objects.list,storage.objects.get only;
+stages=run_directory_discovery,zarr_metadata_open,schema_validate,bounded_point_slice,provenance_validate;
+NO_RETRY; NO_FALLBACK; NO_FULL_ENSEMBLE; NO_HOME_SCOPE;
+NO_CREDENTIAL_IAM_QUOTA_MUTATION; NO_PRODUCTION_WRITE;
+sanitized evidence only; STOP on permission/auth/schema/discovery/selection/provenance ambiguity.
+```
+
+That authorization would permit the bounded private read only. It would still
+not authorize persistence of the first WeatherNext snapshot.

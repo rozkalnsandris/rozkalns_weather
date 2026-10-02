@@ -1,0 +1,117 @@
+{
+  "schema_version": 1,
+  "contract": "weathernext3-gcs-private-readonly-gate.v1",
+  "issue": 122,
+  "source_only": true,
+  "execution_authority_required": "read_only_private_gcs",
+  "source_merge_authorizes_execution": false,
+  "source": {
+    "bucket": "weathernext3_statistics_spatial",
+    "root_prefix": "weathernext_3_0_0_statistics/zarr/2026_to_present",
+    "requester_pays": false,
+    "billing_project_header_required": false,
+    "full_ensemble_bucket_allowed": false
+  },
+  "scope": {
+    "location_id": "station_05480",
+    "init": "one explicit exact UTC hour",
+    "forecast_hours": 6,
+    "materialized_scalar_ceiling": 288,
+    "private_home_scope_allowed": false
+  },
+  "runtime_bindings_required": [
+    "fresh reviewed merged Weather main SHA",
+    "fresh trusted RPi5 source SHA",
+    "live Weather image revision equal to Weather SHA",
+    "runtime-only credential/config presence without exposing values"
+  ],
+  "gcs_permissions": {
+    "required": [
+      "storage.objects.list",
+      "storage.objects.get"
+    ],
+    "iam_mutation_authorized": false,
+    "credential_mutation_authorized": false,
+    "quota_mutation_authorized": false
+  },
+  "ordered_stages": [
+    "run_directory_discovery",
+    "zarr_metadata_open",
+    "schema_validate",
+    "bounded_point_slice",
+    "provenance_validate"
+  ],
+  "discovery": {
+    "prefix_shape": "<root_prefix>/<YYYYMMDD_HHhr_>",
+    "delimiter": "/",
+    "max_candidate_directories": 4,
+    "require_exactly_one_validated_candidate": true,
+    "suffix_semantics_assumed": false,
+    "alternate_init_fallback_allowed": false,
+    "alternate_prefix_fallback_allowed": false,
+    "full_bucket_enumeration_allowed": false
+  },
+  "read_bounds": {
+    "zarr_version": 3,
+    "lead_time_axis": "continuous_1_hour",
+    "statistics": [
+      "mean",
+      "p10",
+      "p25",
+      "p50",
+      "p75",
+      "p90"
+    ],
+    "station_grid": "0.05deg",
+    "surface_grid": "0.1deg",
+    "slice_before_materialization": true,
+    "full_dataset_load_allowed": false,
+    "persistent_object_download_allowed": false,
+    "automatic_retry_allowed": false
+  },
+  "evidence": {
+    "sanitized_only": true,
+    "allowed": [
+      "exact Weather/RPi5 SHA bindings",
+      "selected init",
+      "resolved run-directory token",
+      "schema pass/fail",
+      "selected lead count",
+      "required variable/statistic presence",
+      "provenance pass/fail"
+    ],
+    "forbidden": [
+      "credentials",
+      "tokens",
+      "private filesystem paths",
+      "HOME_LAT",
+      "HOME_LON",
+      "coordinates",
+      "raw WeatherNext values",
+      "raw provider payloads"
+    ]
+  },
+  "authority": {
+    "google_private_request_authorized_by_source_merge": false,
+    "production_sqlite_write_authorized": false,
+    "runtime_or_systemd_mutation_authorized": false,
+    "cloudflare_or_network_mutation_authorized": false
+  },
+  "failure_semantics": {
+    "zero_discovery_candidates": "STOP",
+    "multiple_discovery_candidates": "STOP",
+    "invalid_or_mismatched_run_directory": "STOP",
+    "permission_or_auth_error": "STOP",
+    "schema_or_dimension_drift": "STOP",
+    "selection_bound_violation": "STOP",
+    "provenance_error": "STOP",
+    "retry_after_private_request": false,
+    "fallback_after_private_request": false
+  },
+  "official_references": [
+    "https://developers.google.com/weathernext/guides/gcs",
+    "https://developers.google.com/weathernext/guides/access-forecast",
+    "https://docs.cloud.google.com/storage/docs/listing-objects",
+    "https://docs.cloud.google.com/storage/docs/reading-objects"
+  ]
+}
