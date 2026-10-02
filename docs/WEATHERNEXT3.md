@@ -50,20 +50,15 @@ Real-time operational datasets ir allowlist režīmā. Google Quick Start norād
 - nav obligāts jau esošs paid Google Cloud līgums;
 - viena allowlist pieeja dod piekļuvi BigQuery, Earth Engine un GCS.
 
-MVP izvēle: **BigQuery**.
+Sākotnējais first-access implementation surface bija **BigQuery**, jo tas deva point lookup ar GIS un precomputed ensemble statistics. #122 clustered-table cost characterization parādīja, ka BigQuery pre-execution upper bound nav savietojams ar saglabāto 1 GiB real-query guard, tāpēc BigQuery real query pašlaik ir bloķēts un limits netiek celts uz multi-TiB.
 
-Pamatojums:
+2026-10-02 source-only access-surface evaluation izvēlējās **GCS precomputed statistics Zarr** kā preferred source candidate nākamajam fixture-driven adapter contract. Google šo statistics bucket dokumentē ar Requester Pays OFF, precomputed `mean/p10/p25/p50/p75/p90`, 0.05° + 0.1° surface products un continuous 1-hour `lead_time`. Earth Engine paliek secondary candidate, jo tas ievieš atsevišķu registered-project/API/EECU quota control plane.
 
-- point lookup ar BigQuery GIS;
-- precomputed ensemble statistics;
-- nav jālejupielādē pilns globālais Zarr;
-- vienai mājas lokācijai ir vienkāršāks ingestion ceļš.
-
-Pirmās piekļuves source contract ir `deploy/weathernext-first-access.json` un `docs/WEATHERNEXT_FIRST_ACCESS.md`. Tas gatavo drošu linked-dataset/schema/dry-run/canary/provenance plūsmu, bet source merge pats nedod Google Cloud, BigQuery vai production SQLite authority.
+Pirmās BigQuery piekļuves source contract paliek `deploy/weathernext-first-access.json` un `docs/WEATHERNEXT_FIRST_ACCESS.md`; access-surface decision ir `deploy/weathernext-access-surface-evaluation.json` un `docs/WEATHERNEXT_ACCESS_SURFACES.md`. Neviens no šiem source merge pats nedod Google Cloud/GCS/Earth Engine vai production SQLite authority.
 
 Sustained collection source contract ir `deploy/weathernext-sustained-collection.json` un `docs/WEATHERNEXT_SUSTAINED_COLLECTION.md`. Tas sākas tikai pēc validēta first-access canary/snapshot admission un definē deterministic cadence, dedupe, missing-run ledger/recovery, model/schema boundaries, freshness health un first-month verification readiness. Tas pats neveic nevienu real BigQuery query, production SQLite write vai scheduler activation.
 
-Version-evolution source contract ir `deploy/weathernext-version-evolution.json` un `docs/WEATHERNEXT_VERSION_EVOLUTION.md`. Tas sagatavo verificētas WeatherNext 3 model/schema boundary salīdzinājumu ar deterministic before/after windows, strict `station_10416` common samples, skill/quantile/freshness deltas, deterministic notable cases un privacy-safe report payload. Source merge pats nelasa production corpus un neapgalvo, ka reāls version boundary ir jau novērots lokāli.
+Version-evolution source contract ir `deploy/weathernext-version-evolution.json` un `docs/WEATHERNEXT_VERSION_EVOLUTION.md`. Tas sagatavo verificētas WeatherNext 3 model/schema boundary salīdzinājumu ar deterministic before/after windows, strict `station_05480` common samples, skill/quantile/freshness deltas, deterministic notable cases un privacy-safe report payload. Source merge pats nelasa production corpus un neapgalvo, ka reāls version boundary ir jau novērots lokāli.
 
 ## BigQuery query discipline
 
@@ -73,7 +68,7 @@ Google iesaka:
 - atlasīt tikai nepieciešamās kolonnas, nevis `SELECT *`;
 - point/spatial selection izmantot BigQuery GIS (`ST_INTERSECTS`, `ST_DWITHIN` u.c.).
 
-Mūsu first-access contract papildus prasa BigQuery dry-run pirms bounded canary query un explicit `maximum_bytes_billed` limitu katram 0.05°/0.1° query. Pirmais canary izmanto reproducējamo `station_10416` benchmark punktu, vienu init un ne vairāk kā 24 forecast stundas. Private home point paliek vēlākai runtime-only aktivācijai.
+Mūsu first-access contract papildus prasa BigQuery dry-run pirms bounded canary query un explicit `maximum_bytes_billed` limitu katram 0.05°/0.1° query. Pirmais canary izmanto canonical `station_05480` benchmark punktu, vienu init un ne vairāk kā 24 forecast stundas. Private home point paliek vēlākai runtime-only aktivācijai.
 
 Mūsu adapterim privātam home režīmam jāsaņem precīzs home point tikai no runtime config un jāizvēlas atbilstošais WeatherNext spatial element.
 
@@ -165,7 +160,7 @@ Mēs vērtējam lokāli:
 - season;
 - convective vs stratiform/rainy events, kad datu apjoms to atļauj.
 
-Pirmā mēneša WeatherNext measured eligibility ir stingri `station_10416` + DWD WMO 10416 truth, tikai explicit common valid-times, atsevišķi pa `model_version` un lead bucket. MAE/RMSE/bias tiek saukti par meaningful tikai slice ar `n >= 30`; private `home` šajā measured station accuracy netiek iekļauts.
+Pirmā mēneša WeatherNext measured eligibility ir stingri `station_05480` + DWD CDC 05480 truth, tikai explicit common valid-times, atsevišķi pa `model_version` un lead bucket. MAE/RMSE/bias tiek saukti par meaningful tikai slice ar `n >= 30`; private `home` šajā measured station accuracy netiek iekļauts.
 
 Salīdzinājuma provider minimum:
 
@@ -186,7 +181,7 @@ Saglabājam model version/provider metadata. Ja Google maina WeatherNext versiju
 
 Sustained collection contract model version un schema fingerprint tur kā atsevišķus collection dimensions. Jebkura neatbilstība rada `version_boundary`; current source atbalsts ir `3.0.0`, un unknown future version neprasa automātisku coercion — tas prasa explicit adapter/version lēmumu.
 
-Version-evolution contract šo boundary analizē tikai tad, ja release/model metadata ir verificēta un before/after versijas ir explicit. Comparison windows tiek izvēlēti pēc fiksēta kalendāra ap boundary, nevis pēc forecast rezultātiem. Measured skill intersecto tikai semantiski identiskus `station_10416` samples un saglabā `n` katrai pusei + common `n`; lead bucket un run class netiek pooloti. Report rāda absolūtos/relatīvos MAE/RMSE/bias deltas, summary-quantile calibration un freshness/latency izmaiņas, bet neizdod globālu “winner”. Reāls report pret production corpus prasa atsevišķu read-only owner gate.
+Version-evolution contract šo boundary analizē tikai tad, ja release/model metadata ir verificēta un before/after versijas ir explicit. Comparison windows tiek izvēlēti pēc fiksēta kalendāra ap boundary, nevis pēc forecast rezultātiem. Measured skill intersecto tikai semantiski identiskus `station_05480` samples un saglabā `n` katrai pusei + common `n`; lead bucket un run class netiek pooloti. Report rāda absolūtos/relatīvos MAE/RMSE/bias deltas, summary-quantile calibration un freshness/latency izmaiņas, bet neizdod globālu “winner”. Reāls report pret production corpus prasa atsevišķu read-only owner gate.
 
 ## Official references
 
