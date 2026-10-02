@@ -1,4 +1,7 @@
 from datetime import datetime, timedelta, timezone
+import json
+from pathlib import Path
+import tomllib
 
 import pytest
 
@@ -23,6 +26,7 @@ from rozkalns_weather.weathernext_gcs_transport import (
 INIT = datetime(2026, 10, 1, 23, tzinfo=timezone.utc)
 RETRIEVED = datetime(2026, 10, 2, 7, 30, tzinfo=timezone.utc)
 RUN_DIRECTORY = "20261001_23hr_07_preds"
+ROOT = Path(__file__).resolve().parents[1]
 
 
 class _Response:
@@ -245,3 +249,61 @@ def test_first_access_fails_closed_on_schema_drift_without_fallback() -> None:
             dataset_opener=lambda store: dataset,
         )
     assert dataset.closed is True
+
+
+def test_gcs_optional_extra_declares_explicit_auth_runtime_without_public_runtime_drift() -> None:
+    project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    optional = project["project"]["optional-dependencies"]
+    gcs = tuple(optional["weathernext-gcs"])
+    assert gcs == (
+        "google-auth>=2.59.1,<3",
+        "obstore>=0.11.1,<0.12",
+        "requests>=2.34.2,<3",
+        "xarray>=2026.9,<2027",
+        "zarr>=3.4,<4",
+    )
+    assert tuple(project["project"]["dependencies"]) == (
+        "fastapi>=0.116,<1",
+        "httpx>=0.28,<1",
+        "uvicorn>=0.35,<1",
+    )
+    assert "google-cloud-bigquery>=3.36,<4" not in gcs
+
+
+def test_gcs_machine_contract_requires_explicit_non_adc_host_credential_provider() -> None:
+    gate = json.loads(
+        (ROOT / "deploy/weathernext-gcs-private-readonly-gate.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    auth = gate["transport"]["authentication"]
+    assert auth == {
+        "explicit_credential_provider_required": True,
+        "provider_class": "obstore.auth.google.GoogleCredentialProvider",
+        "explicit_credentials_object_required": True,
+        "ambient_adc_allowed": False,
+        "credential_file_read_by_weather_source": False,
+        "billing_project_header_required": False,
+        "runtime_dependencies": [
+            "google-auth>=2.59.1,<3",
+            "requests>=2.34.2,<3",
+        ],
+    }
+
+
+def test_gcs_transport_source_stays_callback_only_and_does_not_load_credentials() -> None:
+    source = (
+        ROOT / "src/rozkalns_weather/weathernext_gcs_transport.py"
+    ).read_text(encoding="utf-8")
+    forbidden = (
+        "google.auth",
+        "from_service_account_file",
+        "GOOGLE_APPLICATION_CREDENTIALS",
+        "google.auth.default",
+        "load_credentials_from_file",
+        "service_account.Credentials",
+    )
+    for token in forbidden:
+        assert token not in source
+    assert "explicit GCS credential provider is required" in source
+    assert "credential_provider=credential_provider" in source

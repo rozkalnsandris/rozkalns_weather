@@ -377,3 +377,48 @@ Official references:
 - Cloud Storage JSON objects.list: https://docs.cloud.google.com/storage/docs/json_api/v1/objects/list
 - Xarray open_zarr: https://docs.xarray.dev/en/latest/generated/xarray.open_zarr.html
 - Obstore Google Cloud Storage/API docs: https://developmentseed.org/obstore/
+
+
+## Explicit GCS credential-provider runtime prerequisite
+
+The bounded GCS transport remains callback-only: Weather source still requires
+an explicit in-memory `credential_provider` and does not read credential files,
+discover ADC, select a project/dataset, or construct a billing-project header.
+
+The trusted RPi5 boundary needs a supported implementation for that callback.
+Obstore's documented synchronous provider is
+`obstore.auth.google.GoogleCredentialProvider`. Its implementation uses
+`google-auth` and `requests`, and when an explicit `credentials=...` object
+is supplied it does not need to fall back to `google.auth.default()`.
+
+The private-only `weathernext-gcs` extra therefore declares:
+
+- `google-auth>=2.59.1,<3`;
+- `obstore>=0.11.1,<0.12`;
+- `requests>=2.34.2,<3`;
+- `xarray>=2026.9,<2027`;
+- `zarr>=3.4,<4`.
+
+These dependencies are not added to the ordinary public Weather runtime. The
+trusted host binder, under a later protected credential/LIVE gate, must construct
+the explicit Google credentials object from the already-authorized runtime-only
+credential reference and pass
+`GoogleCredentialProvider(credentials=...)` into the Weather callback boundary.
+Weather source itself must never receive a credential filename or credential
+contents.
+
+This source change invalidates the previously generated RPi5 GCS wheelhouse
+closure as a complete runtime for first access. After this Weather source is
+merged, `RPi5_main` must regenerate its deterministic GCS runtime closure from
+the updated `weathernext-gcs` extra before GCS host wiring or private preflight
+can be considered Ready.
+
+Current package compatibility evidence on 2026-10-02:
+
+- PyPI `google-auth 2.59.1` supports Python 3.13;
+- PyPI `requests 2.34.2` supports Python 3.13;
+- Obstore documents that `GoogleCredentialProvider` uses `google-auth` and
+  `requests`.
+
+No Google request, credential read, RPi5 package mutation or private access is
+performed by this source contract.
