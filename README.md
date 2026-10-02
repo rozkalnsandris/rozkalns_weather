@@ -23,6 +23,17 @@ Pirmais reāli lietojamais public-only Weather Web UI milestone (#136) ir pabeig
 - DWD paliek official warning authority;
 - private home un WeatherNext private access nav pirmā public-only UI prerequisite.
 
+## Operational priority after #315 audit
+
+The operational product goal is **private-home forecast + DWD warnings/radar**, and it is independent of WeatherNext research.
+
+- `private-home` runtime mode uses runtime-only `HOME_LAT` / `HOME_LON`;
+- public forecast ingest already collects home-scoped ICON-D2, ECMWF IFS and ECMWF AIFS when home is configured;
+- DWD warnings and DWD/Bright Sky radar use the private home point when configured;
+- Google/WeatherNext credentials are not required for this operational mode;
+- `station_05480` remains the measured verification benchmark; `home` remains forecast/radar display only until a defensible home observation truth source exists;
+- WeatherNext #122 is a separate research/cost-control lane and must not block operational home weather.
+
 Mutable runtime SHA/digest/provider-health stāvokli neglabā šajā README kā authority. Jauns explicit AUTO-RUN FULL run savu mutable state glabā target issue saskaņā ar `.github/auto-run-full-v2.json`; legacy controller issue #9 historical payload nav current mutable run authority.
 
 ## Canonical benchmark
@@ -59,9 +70,9 @@ WeatherNext 3 paliek first-class `primary_research`, bet real private access vē
 Current sequence:
 
 1. #168 — **completed**: first-access canary source contract migrēts no legacy `station_10416` uz canonical `station_05480`;
-2. #224 — pabeigt vienu WeatherNext Analytics Hub linked dataset un vienkāršu RPi5 runtime authentication; custom installer/bootstrap/Deploy-Queue path nav aktīvs prerequisite, un pats issue nedod BigQuery query vai production-data authority;
-3. #122 — tikai pēc #224 un fresh preflight veikt explicit owner-authorized bounded private read-only BigQuery first-access gate;
-4. first real WeatherNext snapshot write — atsevišķa production-data authorization;
+2. #224 — **completed**: WeatherNext Analytics Hub linked dataset un least-privilege RPi5 runtime authentication ir sagatavoti;
+3. #122 — **research-only / non-blocking operational weather**: turpināt tikai pēc atsevišķa cost-control lēmuma; multi-TiB clustered-table dry-run upper bounds nedrīkst tikt pārvērsti par multi-TiB real-query cap;
+4. first real WeatherNext snapshot write — atsevišķa production-data authorization tikai pēc droša #122 risinājuma;
 5. sustained private collection — tikai pēc proven access/provenance/cost/runtime contracts.
 
 SIMPLE target ir standard BigQuery client + ADC-compatible runtime credential; ordinary application code joprojām tiek piegādāts caur SIMPLE-DEPLOY, bet credentials/private-provider activation paliek atsevišķs owner gate.

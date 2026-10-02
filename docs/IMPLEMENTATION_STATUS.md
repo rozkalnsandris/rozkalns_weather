@@ -71,6 +71,14 @@ Ordinary source merge never authorizes production SQLite/corpus writes, private-
 
 ## Runtime/data status
 
+Production runtime is currently `public-only`. Audit #315 defines the next operational lane as `private-home`, which enables private runtime-only home coordinates for the existing public forecast/radar stack **without** enabling WeatherNext or requiring Google credentials.
+
+The operational separation is:
+
+- `public-only`: public benchmark/reference, no private home, no private Google access;
+- `private-home`: private home forecast + DWD warnings/radar using public providers, no Google/WeatherNext access;
+- `private-research`: separate WeatherNext research mode with Google project/dataset/auth requirements.
+
 Production runtime is `public-only`:
 
 - `DATABASE_INIT_MODE=require-existing` prevents app startup from implicitly creating/migrating production schema;
@@ -96,12 +104,14 @@ Completed source foundations:
 - sustained-collection and version-evolution source planning;
 - #168 migration of the first-access canary source contract from legacy `station_10416` to canonical `station_05480`.
 
-Current next sequence:
+Current WeatherNext research sequence:
 
-1. #224 — complete one-time private WeatherNext runtime/linked-dataset prerequisites and trusted-runtime reconciliation; this issue itself authorizes neither BigQuery query nor production data mutation;
-2. #122 — later explicit owner-authorized bounded private read-only BigQuery first access only after #224 and fresh binding/preflight;
-3. first real WeatherNext snapshot — separate production-data authorization;
+1. #224 — **completed**: linked dataset and least-privilege RPi5 runtime authentication are available;
+2. #122 — research-only/non-blocking operational weather; multi-TiB clustered-table dry-run upper bounds require a separate cost-control design before any real query;
+3. first real WeatherNext snapshot — separate production-data authorization only after #122 has a defensible bounded-query solution;
 4. sustained private collection and measured evaluation only after defensible real corpus exists.
+
+Operational private-home forecast/radar follows #315 instead and does not depend on this sequence.
 
 WeatherNext real values are never fabricated. Private Google identity, credentials and exact home coordinates never belong in GitHub evidence.
 
@@ -114,7 +124,7 @@ Material future contracts have been reconciled to current 05480 benchmark semant
 - #100 — spatial collocation/grid-identity provenance;
 - #76 — cross-artifact privacy leakage scanner.
 
-Issue #1 is now the remaining WeatherNext-private research umbrella. Issue #224 is the current prerequisite gate before #122; neither replaces the separate explicit authority required for private BigQuery access or production data writes.
+Issue #1 remains the WeatherNext-private research umbrella. Issue #224 is completed; #122 remains a separate research/cost-control gate. Operational private-home weather is tracked by #315 and does not require WeatherNext.
 
 ## Historical source lineage
 

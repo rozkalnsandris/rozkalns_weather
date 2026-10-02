@@ -20,6 +20,18 @@ Current public baseline:
 - [x] `/health`, `/ready`, `/api/readiness` and provider-health runtime contracts.
 - [x] DWD official warning authority preserved.
 
+## Current operational P0 — private-home forecast + radar
+
+Audit #315 separates the operational weather product from WeatherNext research.
+
+- [ ] Merge source support for `WEATHER_RUNTIME_MODE=private-home` with runtime-only home coordinates and no Google/WeatherNext dependency.
+- [ ] Under a later exact LIVE gate, configure private home coordinates without committing them.
+- [ ] Run the existing public ingest for home-scoped ICON-D2 / ECMWF IFS / ECMWF AIFS forecasts.
+- [ ] Verify DWD official warnings and DWD/Bright Sky observed/nowcast radar centered on the private home point.
+- [ ] Keep `station_05480` as measured verification truth; do not claim measured home accuracy.
+
+WeatherNext #122 remains a separate research lane and is not an operational-home prerequisite.
+
 Canonical measured benchmark:
 
 - `station_05480` / DWD CDC 05480 (Werl);
@@ -60,8 +72,8 @@ WeatherNext 3 remains the primary research model. Real private access is intenti
 - [x] Summary statistics `mean/p10/p25/p50/p75/p90` contract.
 - [x] Hourly interim + synoptic run-class contracts.
 - [x] **#168** migrate first-access canary source contract from legacy `station_10416` to canonical `station_05480`.
-- [ ] **#224** create one WeatherNext Analytics Hub linked dataset and one simple least-privilege RPi5 runtime authentication path; custom installer/bootstrap/Deploy-Queue machinery is not an active prerequisite, and no private query or production-data write is authorized by this issue alone.
-- [ ] **#122** execute bounded private read-only BigQuery first-access gate only after #224 and a fresh exact owner authorization.
+- [x] **#224** completed: one WeatherNext Analytics Hub linked dataset and one least-privilege RPi5 runtime authentication path are available; this does not authorize a real WeatherNext query or production-data write.
+- [ ] **#122** research-only: resolve clustered-table cost-control semantics before any real WeatherNext query; this lane is non-blocking for private-home forecast/radar.
 - [ ] Persist first real WeatherNext snapshot under a separate production-data authorization.
 - [ ] Enable sustained private WeatherNext collection only after access/provenance/cost/runtime proof.
 
