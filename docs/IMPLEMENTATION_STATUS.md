@@ -71,21 +71,24 @@ Ordinary source merge never authorizes production SQLite/corpus writes, private-
 
 ## Runtime/data status
 
-Production runtime is currently `public-only`. Audit #315 defines the next operational lane as `private-home`, which enables private runtime-only home coordinates for the existing public forecast/radar stack **without** enabling WeatherNext or requiring Google credentials.
+Production runtime is now `private-home`. Audit #315 established the separation from WeatherNext research, and the later owner-gated RPi5 cutover/data-activation sequence completed the operational home lane **without** enabling WeatherNext or requiring Google credentials.
 
-The operational separation is:
+The operational separation remains:
 
 - `public-only`: public benchmark/reference, no private home, no private Google access;
 - `private-home`: private home forecast + DWD warnings/radar using public providers, no Google/WeatherNext access;
 - `private-research`: separate WeatherNext research mode with Google project/dataset/auth requirements.
 
-Production runtime is `public-only`:
+Current `private-home` acceptance:
 
-- `DATABASE_INIT_MODE=require-existing` prevents app startup from implicitly creating/migrating production schema;
+- `DATABASE_INIT_MODE=require-existing` keeps application startup DB-read-only;
+- exact home coordinates exist only in protected runtime config and are not emitted in GitHub/API acceptance evidence;
 - persistent `weather_data` is retained across ordinary application replacement;
-- recurring public ingest runs separately from app deployment;
+- recurring public ingest is enabled separately from app deployment and has accepted home-scoped ICON-D2, ECMWF IFS and ECMWF AIFS rows;
+- `/api/hourly` and `/api/daily` for `home` expose all three public forecast providers without coordinate fields;
+- `/api/warnings` remains DWD-authoritative and `/api/radar` exposes DWD/Bright Sky observed/nowcast context with the configured home reference while coordinate/geometry/raw-payload exposure stays disabled;
 - provider failures remain isolated and visible through health/freshness state;
-- DWD Warnings/Radar remain distinct from experimental model output.
+- `station_05480` remains the measured verification benchmark; home is not a measured-accuracy truth location.
 
 The DWD measured-current freshness contract is pinned to canonical `station_05480` ingest provenance. A successful fetch/write cycle is only ingest success: freshness is classified from the latest canonical observed-at timestamp as `FRESH`, `SOURCE_DATA_LAGGING`, `SOURCE_DATA_STALE`, or `SOURCE_TIME_MISSING`. Empty/no-new results never fabricate a source timestamp, and legacy `station_10416` evidence must not satisfy current DWD measured-current health.
 
@@ -111,7 +114,7 @@ Current WeatherNext research sequence:
 3. first real WeatherNext snapshot — separate production-data authorization only after #122 has a defensible bounded-query solution;
 4. sustained private collection and measured evaluation only after defensible real corpus exists.
 
-Operational private-home forecast/radar follows #315 instead and does not depend on this sequence.
+Operational private-home forecast/radar was completed through the #315 realignment plus separate owner-gated RPi5 runtime/data activation and does not depend on this sequence.
 
 WeatherNext real values are never fabricated. Private Google identity, credentials and exact home coordinates never belong in GitHub evidence.
 
@@ -124,7 +127,7 @@ Material future contracts have been reconciled to current 05480 benchmark semant
 - #100 — spatial collocation/grid-identity provenance;
 - #76 — cross-artifact privacy leakage scanner.
 
-Issue #1 remains the WeatherNext-private research umbrella. Issue #224 is completed; #122 remains a separate research/cost-control gate. Operational private-home weather is tracked by #315 and does not require WeatherNext.
+Issue #1 remains the WeatherNext-private research umbrella. Issue #224 is completed; #122 remains a separate research/cost-control gate. Operational private-home weather was realigned by #315 and is now accepted independently of WeatherNext.
 
 ## Historical source lineage
 
