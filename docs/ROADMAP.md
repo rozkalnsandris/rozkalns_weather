@@ -30,7 +30,7 @@ Audit #315 separates the operational weather product from WeatherNext research. 
 - [x] Run and verify home-scoped ICON-D2 / ECMWF IFS / ECMWF AIFS forecast ingest, then activate recurring ingest under a separate production-data/systemd gate.
 - [x] Verify `/api/hourly` and `/api/daily` for `home` with all three public providers.
 - [x] Verify DWD official warnings and DWD/Bright Sky observed/nowcast radar centered on the private-home reference with coordinate/geometry/raw-payload exposure disabled.
-- [ ] Keep `station_05480` as measured verification truth; do not claim measured home accuracy.
+- [x] Keep `station_05480` as measured verification truth; do not claim measured home accuracy.
 
 WeatherNext #122 remains a separate research lane and is not an operational-home prerequisite.
 
