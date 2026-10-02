@@ -1,0 +1,95 @@
+{
+  "schema_version": 1,
+  "contract": "weathernext3-gcs-statistics-first-access.v1",
+  "issue": 122,
+  "source_only": true,
+  "canonical_location_id": "station_05480",
+  "model_version": "3.0.0",
+  "source": {
+    "bucket": "weathernext3_statistics_spatial",
+    "root_prefix": "weathernext_3_0_0_statistics/zarr/2026_to_present",
+    "zarr_leaf": "predictions.zarr",
+    "run_directory_pattern": "^\\d{8}_\\d{2}hr_\\d{2}_preds$",
+    "run_directory_discovery": "later_private_gate_supplies_one_explicit_directory_token",
+    "run_directory_suffix_semantics_assumed": false,
+    "alternate_prefix_fallback_allowed": false,
+    "full_ensemble_bucket_allowed": false,
+    "requester_pays": false,
+    "billing_project_header_required": false
+  },
+  "dataset_contract": {
+    "zarr_version": 3,
+    "lead_time_axis": "continuous_1_hour",
+    "lead_subtime_required": false,
+    "ensemble_sample_dimension_allowed": false,
+    "statistics": [
+      "mean",
+      "p10",
+      "p25",
+      "p50",
+      "p75",
+      "p90"
+    ],
+    "station_grid": {
+      "resolution": "0.05deg",
+      "latitude_coordinate": "lat_0p05",
+      "longitude_coordinate": "lon_0p05",
+      "variables": [
+        "station_head_temperature_2m",
+        "station_head_dewpoint_temperature_2m"
+      ]
+    },
+    "surface_grid": {
+      "resolution": "0.1deg",
+      "latitude_coordinate": "lat_0p1",
+      "longitude_coordinate": "lon_0p1",
+      "variables": [
+        "temperature_2m",
+        "dewpoint_temperature_2m",
+        "wind_speed_10m",
+        "mean_sea_level_pressure",
+        "total_cloud_cover",
+        "total_precipitation_1hr"
+      ]
+    },
+    "longitude_convention": "0_to_360",
+    "point_selection": "nearest_on_declared_grid",
+    "max_first_access_hours": 24,
+    "slice_before_materialization": true,
+    "full_dataset_load_forbidden": true,
+    "nearest_grid_max_distance": "half_cell"
+  },
+  "provenance": {
+    "provider": "weathernext3",
+    "model_provider": "Google DeepMind",
+    "model_name": "WeatherNext 3",
+    "source_surface": "GCS WeatherNext 3 statistics Zarr 0.05° station + 0.1° surface",
+    "transport_provider": "Google Cloud Storage/Zarr",
+    "upstream_available_at_utc_must_remain_null_without_observed_evidence": true,
+    "expected_dissemination_must_not_be_fabricated_as_observed_publication": true
+  },
+  "authority": {
+    "source_merge_authorizes_gcs_access": false,
+    "source_merge_authorizes_private_google_request": false,
+    "source_merge_authorizes_production_sqlite_write": false,
+    "source_merge_authorizes_credential_iam_quota_mutation": false,
+    "source_merge_authorizes_runtime_transport_switch": false,
+    "private_home_scope_allowed": false,
+    "real_values_in_fixture_allowed": false
+  },
+  "failure_semantics": {
+    "invalid_run_directory": "STOP",
+    "init_run_directory_mismatch": "STOP",
+    "schema_or_dimension_drift": "STOP",
+    "missing_required_statistic": "STOP",
+    "unbounded_lead_time": "STOP",
+    "alternate_bucket_or_prefix": "STOP",
+    "automatic_retry": false,
+    "automatic_fallback": false
+  },
+  "official_references": [
+    "https://developers.google.com/weathernext/guides/gcs",
+    "https://developers.google.com/weathernext/guides/access-forecast",
+    "https://developers.google.com/weathernext/guides/models"
+  ]
+}

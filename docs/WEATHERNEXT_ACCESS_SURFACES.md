@@ -88,3 +88,35 @@ Only after that source contract is reviewed and merged should a new exact privat
 - https://developers.google.com/earth-engine/guides/access
 - https://developers.google.com/earth-engine/guides/noncommercial_tiers
 - https://docs.cloud.google.com/storage/docs/requester-pays
+
+
+## Fixture-driven GCS adapter contract
+
+The preferred-candidate follow-up is now represented by the source-only contract
+`deploy/weathernext-gcs-statistics-first-access.json` and the transport-free
+adapter helpers in `src/rozkalns_weather/weathernext_gcs.py`.
+
+The contract follows the official GCS guide closely:
+
+- statistics data stays on `weathernext3_statistics_spatial`; the full-ensemble
+  Requester Pays bucket is not an allowed fallback;
+- the operational run directory must be supplied explicitly and match the
+  documented `YYYYMMDD_HHhr_XX_preds` shape plus the selected init date/hour;
+- the source does **not** assign meaning to the undocumented `XX` token and does
+  not guess `01_preds`;
+- `lead_time` is treated as one continuous hourly axis; `sample` and
+  `lead_subtime` are rejected for this statistics-product contract;
+- required 0.05° station and 0.1° surface statistic fields are schema-checked
+  before point records can map into `ForecastRun`;
+- first-access selection stays bounded to at most 24 lead hours and must slice
+  variables/time/point before any later materialization;
+- no live opener, bucket listing, Google request, runtime transport switch or
+  production write is authorized by this source contract.
+
+Fixture tests contain schema identities and synthetic numeric values only. They do
+not contain WeatherNext provider values or private coordinates.
+
+After this contract is reviewed and merged, the next step is not a BigQuery retry.
+It is a separately designed private read-only GCS gate that supplies one explicit
+run-directory token, performs bounded lazy selection and returns sanitized
+presence/provenance evidence before any production snapshot write is considered.
