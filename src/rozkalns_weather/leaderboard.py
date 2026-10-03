@@ -83,11 +83,12 @@ def _metric_row(
     items: Sequence[SkillSample],
     *,
     missingness: dict[str, int | float],
+    include_bootstrap: bool = True,
 ) -> dict[str, object]:
     errors = [item.forecast - item.observed for item in items]
     absolute = [abs(error) for error in errors]
     intervals = [item for item in items if item.p10 is not None and item.p90 is not None]
-    ci = bootstrap_mean_ci(absolute)
+    ci = bootstrap_mean_ci(absolute) if include_bootstrap else None
     sufficiency = sample_confidence(len(items))
     coverage = (
         mean(1.0 if float(item.p10) <= item.observed <= float(item.p90) else 0.0 for item in intervals)
@@ -110,7 +111,7 @@ def _metric_row(
     }
 
 
-def common_sample_leaderboard(samples: Iterable[SkillSample]) -> list[dict[str, object]]:
+def common_sample_leaderboard(\n    samples: Iterable[SkillSample], *, include_bootstrap: bool = True\n) -> list[dict[str, object]]:
     """Return strictly common, version-cohort metrics for comparable forecast samples.
 
     Comparison is bounded by mode, variable and lead bucket. A valid timestamp is then
@@ -205,7 +206,7 @@ def common_sample_leaderboard(samples: Iterable[SkillSample]) -> list[dict[str, 
                         "excluded_sample_ids": excluded_sample_ids,
                         "excluded_sample_count": len(excluded_sample_ids),
                         "common_sample_ids": matched_sample_ids,
-                        **_metric_row(provider_items, missingness=missingness),
+                        **_metric_row(\n                            provider_items,\n                            missingness=missingness,\n                            include_bootstrap=include_bootstrap,\n                        ),
                     }
                 )
 
