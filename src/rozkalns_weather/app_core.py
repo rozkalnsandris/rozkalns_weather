@@ -362,16 +362,46 @@ def create_app(settings: Settings | None = None, database: Database | None = Non
         )
 
     @app.get("/api/verification/summary")
-    def verification_summary(days: int = Query(90, ge=1, le=3650)) -> dict[str, object]:
+    def verification_summary(
+        days: int = Query(90, ge=1, le=3650),
+        compact: bool = Query(False),
+    ) -> dict[str, object]:
         require_database_ready()
+        rows = database.temperature_verification_pairs(days=days, location_id=BENCHMARK_LOCATION.id)
+        common_sample_slices = common_sample_leaderboard(
+            _temperature_common_samples(rows),
+            include_bootstrap=not compact,
+        )
+        if compact:
+            visible_fields = (
+                "provider",
+                "model_version",
+                "lead_bucket",
+                "n",
+                "missingness",
+                "sample_sufficiency_state",
+                "mae",
+                "rmse",
+                "bias",
+                "p10_p90_coverage",
+                "coverage_n",
+            )
+            return {
+                "window_days": days,
+                "variable": "temperature_2m",
+                "comparison_mode": "station_run_skill",
+                "comparison_location": {"id": BENCHMARK_LOCATION.id, "station_id": CDC_STATION_ID},
+                "common_sample_slices": [
+                    {key: row.get(key) for key in visible_fields}
+                    for row in common_sample_slices
+                ],
+            }
         truth_quality = database_truth_quality(
             database,
             days=days,
             location_id=BENCHMARK_LOCATION.id,
             station_id=CDC_STATION_ID,
         )
-        rows = database.temperature_verification_pairs(days=days, location_id=BENCHMARK_LOCATION.id)
-        common_sample_slices = common_sample_leaderboard(_temperature_common_samples(rows))
         by_provider = defaultdict(list)
         by_bucket = defaultdict(lambda: defaultdict(list))
         by_version = defaultdict(lambda: defaultdict(list))
