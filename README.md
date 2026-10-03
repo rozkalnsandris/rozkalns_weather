@@ -59,8 +59,10 @@ rozkalns-weather backup --output <path>
 Ordinary application release:
 
 ```text
-PR -> tests -> MERGE -> SIMPLE-DEPLOY -> GHCR -> RPi5 -> /health + /ready
+PR -> tests -> MERGE -> owner-authorized SIMPLE-DEPLOY -> GHCR -> RPi5 -> /health + /ready
 ```
+
+`SIMPLE-DEPLOY` is dispatched only after merge with separate LIVE authorization bound to the exact merged `main` SHA.
 
 No Weather-specific rollout controller, queue, receipt chain or deploy state machine is required.
 

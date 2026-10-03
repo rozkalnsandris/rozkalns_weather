@@ -4,7 +4,7 @@ COPY deploy/public-runtime.lock ./public-runtime.lock
 RUN python -m pip install --no-cache-dir -r public-runtime.lock
 COPY pyproject.toml README.md ./
 COPY src ./src
-RUN python -m pip install --no-cache-dir --no-deps --no-build-isolation .
+RUN python -m pip install --no-cache-dir --no-deps .
 RUN useradd --create-home --uid 10001 weather && mkdir -p /app/data && chown -R weather:weather /app
 USER weather
 EXPOSE 8000
