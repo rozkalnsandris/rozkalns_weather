@@ -24,6 +24,7 @@
 ## P2 — WeatherNext 3
 
 - [x] source-level bounded GCS statistics/Zarr adapter
+- [x] one-shot canary source path in the ordinary Weather image; no separate WeatherNext deploy stack
 - [ ] perform one separately authorized private read-only GCS canary
 - [ ] persist real WeatherNext snapshots only after that succeeds
 - [ ] collect enough real samples for measured comparison
