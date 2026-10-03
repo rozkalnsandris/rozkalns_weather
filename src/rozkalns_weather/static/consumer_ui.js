@@ -297,8 +297,6 @@
 
     const source = document.createElement("div");
     source.className = "hourly-detail-source";
-    const lead = Number(anchor.lead_hours);
-    const leadLabel = Number.isFinite(lead) ? `${Number.isInteger(lead) ? lead.toFixed(0) : lead.toFixed(1)} h` : "—";
     source.textContent = `${modelName} · forecast for ${berlinLocalTime(anchor.valid_time_utc)}`;
 
     target.append(heading, values, source);
