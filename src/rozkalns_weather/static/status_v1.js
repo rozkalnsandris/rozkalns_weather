@@ -1,7 +1,7 @@
 (function (root) {
   "use strict";
 
-  const PUBLIC_ORDER = ["dwd_observations", "dwd_mosmix_l", "icon_d2", "ecmwf_ifs", "ecmwf_aifs"];
+  const PUBLIC_ORDER = ["dwd_observations", "icon_d2", "ecmwf_ifs", "ecmwf_aifs"];
   let requestSequence = 0;
 
   function qs(selector) {

@@ -1,172 +1,69 @@
 # rozkalns_weather
 
-Privāts weather dashboard + forecast-verification projekts Dortmund-Wickede apkārtnei ar **WeatherNext 3** kā `primary_research` modeli.
+A **simple private weather PWA** for home use in Dortmund-Wickede.
 
-Galvenais cikls:
+The app answers five practical questions:
 
-```text
-forecast snapshot -> observation -> verification -> WeatherNext comparison
+1. What is the weather now?
+2. What will happen over the next hours and days?
+3. How do ICON-D2, ECMWF IFS, ECMWF AIFS and WeatherNext 3 differ?
+4. Are there official DWD warnings or nearby precipitation on radar?
+5. Which forecast models have actually been more accurate over time?
+
+## Stack
+
+- Python / FastAPI
+- SQLite
+- plain HTML/CSS/JavaScript PWA
+- Open-Meteo transport for ICON-D2 / ECMWF IFS / ECMWF AIFS
+- DWD CDC observations for measured verification
+- DWD warnings and DWD/Bright Sky radar context
+- optional WeatherNext 3 GCS/Zarr research adapter
+- Docker + shared SIMPLE-DEPLOY to the private RPi5
+
+## Locations
+
+- `home`: private runtime-only forecast/radar point; coordinates never belong in GitHub.
+- `station_05480`: DWD CDC Werl 05480, the single measured verification benchmark.
+
+There is no active legacy 10416/MOSMIX product path in the simple version.
+
+## Product views
+
+- **Overview** — current conditions, next hours, next days, model snapshot.
+- **Models** — provider-by-provider forecast comparison.
+- **Radar** — DWD warnings plus precipitation radar/nowcast context.
+- **Accuracy** — basic measured model error against DWD CDC 05480.
+- **Status** — provider freshness and availability.
+
+WeatherNext is optional research data and never blocks the operational home forecast.
+
+## Normal operations
+
+```bash
+rozkalns-weather readiness
+rozkalns-weather ingest-public
+rozkalns-weather corpus-stats
+rozkalns-weather corpus-check
 ```
 
-WeatherNext 3 nav warning authority. Severe-weather brīdinājumos Vācijā autoritatīvs avots ir **DWD**.
-
-## Current canonical state
-
-Pirmais reāli lietojamais public-only Weather Web UI milestone (#136) ir pabeigts.
-
-- ordinary application releases izmanto shared **SIMPLE-DEPLOY v1**;
-- generic RPi5 pull reconciler ir standing deployment path;
-- `/health`, `/ready` un `/api/readiness` ir production acceptance contract;
-- production SQLite schema un public corpus ir inicializēti;
-- recurring public ingest ir aktivizēts;
-- Overview / Models / Accuracy / Warnings-Radar darbojas ar reāliem public datiem;
-- DWD paliek official warning authority;
-- private home un WeatherNext private access nav pirmā public-only UI prerequisite.
-
-## Operational private-home acceptance
-
-Audit #315 realigned operational home weather away from WeatherNext research. The operational **private-home forecast + DWD warnings/radar** lane is completed and remains independent of WeatherNext research.
-
-- production runtime is `private-home` with runtime-only `HOME_LAT` / `HOME_LON`; exact values remain outside GitHub;
-- recurring public ingest is enabled and home-scoped ICON-D2, ECMWF IFS and ECMWF AIFS are present;
-- `/api/hourly?location_id=home` and `/api/daily?location_id=home` are accepted with all three public forecast providers;
-- `/api/warnings` preserves DWD as official warning authority and uses the configured private-home reference;
-- `/api/radar` provides DWD/Bright Sky observed + nowcast context centered on the private-home reference without exposing coordinates, geometry or raw upstream payload;
-- Google/WeatherNext credentials are not required for this operational mode;
-- `station_05480` remains the measured verification benchmark; `home` remains forecast/radar display only until a defensible home observation truth source exists;
-- WeatherNext #122 is a separate research/cost-control lane and must not block operational home weather.
-
-Mutable runtime SHA/digest/provider-health stāvokli neglabā šajā README kā authority. Jauns explicit AUTO-RUN FULL run savu mutable state glabā target issue saskaņā ar `.github/auto-run-full-v2.json`; legacy controller issue #9 historical payload nav current mutable run authority.
-
-## Canonical benchmark
-
-Current measured public benchmark ir:
-
-- location id: `station_05480`;
-- DWD CDC station: `05480` (Werl);
-- truth authority: DWD CDC observations;
-- deterministic comparison providers: ICON-D2, ECMWF IFS, ECMWF AIFS;
-- current fixed common benchmark window: `2026-08-13..2026-08-26`;
-- exact deterministic run hours: `00/06/12/18 UTC`.
-
-`station_10416` ir **legacy/MOSMIX reference compatibility**. Tas nav current measured benchmark jauniem verification contracts.
-
-Vecais `2026-04-02..2026-09-10` bootstrap mēģinājums un ar to saistītais 10416 corpus ir historical evidence. Tas netiek dzēsts vai pārrakstīts un nav current fixed common-window readiness contract.
-
-Private `home` ir runtime-only forecast location. Home prognozes netiek sauktas par measured home accuracy, kamēr nav atsevišķs defensible home observation truth avots.
-
-## Public corpus and verification
-
-Forecast snapshots ir immutable un saglabā provider/model provenance: model version, init, retrieval, valid time, lead time, statistic/member un source surface.
-
-Public deterministic exact-run corpus izmanto Open-Meteo Single Runs transportu ICON-D2 / IFS / AIFS avotiem. DWD CDC `05480` ir measured observation truth.
-
-`corpus-report` un verification slānis pārbauda provider/run-hour/lead-bucket coverage, immutable revisions, provenance un benchmark-truth coverage. IFS cycle-dependent horizon ir explicit: 00/12 ir long cycles, 06/18 īsāki cikli; coverage expectations ir cycle-aware.
-
-Deterministic precipitation amount (`mm`) un precipitation probability ir atšķirīgas quantities. Probability/CRPS/Brier netiek fabricēti no deterministic amount vai summary quantiles.
-
-## WeatherNext 3 continuation
-
-WeatherNext 3 paliek first-class `primary_research`, bet real private access vēl ir atsevišķs trust-boundary darbs.
-
-Current sequence:
-
-1. #168 — **completed**: first-access canary source contract migrēts no legacy `station_10416` uz canonical `station_05480`;
-2. #224 — **completed**: WeatherNext Analytics Hub linked dataset un least-privilege RPi5 runtime authentication ir sagatavoti;
-3. #122 — **research-only / non-blocking operational weather**: turpināt tikai pēc atsevišķa cost-control lēmuma; multi-TiB clustered-table dry-run upper bounds nedrīkst tikt pārvērsti par multi-TiB real-query cap;
-4. first real WeatherNext snapshot write — atsevišķa production-data authorization tikai pēc droša #122 risinājuma;
-5. sustained private collection — tikai pēc proven access/provenance/cost/runtime contracts.
-
-SIMPLE target ir standard BigQuery client + ADC-compatible runtime credential; ordinary application code joprojām tiek piegādāts caur SIMPLE-DEPLOY, bet credentials/private-provider activation paliek atsevišķs owner gate.
-
-Current first-access source binding ir aligned ar canonical `station_05480`, bet tas pats par sevi neautorizē private query. WeatherNext real values nekad netiek fabricētas.
-
-## Deployment — SIMPLE-DEPLOY v1
-
-Weather ir shared deployment platform **consumer/canary**, nevis platformas īpašnieks.
-
-Canonical ordinary release path:
-
-```text
-AUTO-RUN FULL
--> CI PASS
--> guarded merge
--> shared ops-workflows SIMPLE-DEPLOY
--> GHCR exact source SHA + immutable digest
--> generic RPi5 pull reconciler
--> Compose application replacement
--> /health + /ready verification
--> LIVE
-```
-
-Weather consumer config: `.simple-deploy.json` un `.github/workflows/simple-deploy.yml`.
-Accepted shared workflow revision: `ops-workflows@e05ed760791a127c7c9628696806ef39c9fe329c`.
-
-One-time SIMPLE-DEPLOY cutover, first standing AUTO_DEPLOY_SAFE release (#146), production public corpus bootstrap (#148) un recurring-ingest activation ir **completed**.
-
-Ordinary application merge nedod authority DB/schema/corpus mutation, systemd/timer changes, secrets/permissions, Cloudflare/network, private-home vai private WeatherNext operations.
-
-Historical Weather broker/operator/queue/JIT/Composite artifacts ir retained audit/regression evidence only un ir **superseded ordinary releases**.
-
-## API / PWA
-
-Public-only UI bez private home defaultē uz `station_05480`.
-
-- `/api/current` — DWD CDC 05480 observation view;
-- `/api/hourly` / `/api/daily` — selected-location provider forecast data;
-- `station_05480` — canonical public model-comparison location;
-- `station_10416` — legacy MOSMIX reference option;
-- `/api/verification/*` — location-matched measured benchmark state;
-- `/api/warnings` — DWD official warning authority;
-- `/api/radar` — observed/nowcast context, nevis model warning output;
-- `/api/health/providers` — provider ingest/freshness/error provenance;
-- `/ready` un `/api/readiness` — machine-readable runtime readiness.
-
-Public-only Warnings/Radar izmanto privacy-safe public reference location, ja private home nav konfigurēts. Exact private coordinates API/UI/GitHub netiek eksponētas.
-
-## CLI
+One-time/admin operations:
 
 ```bash
 rozkalns-weather init-database
-rozkalns-weather readiness
-rozkalns-weather ingest-public
-rozkalns-weather ingest-weathernext
-rozkalns-weather smoke-public
-rozkalns-weather corpus-stats
-rozkalns-weather corpus-check
-rozkalns-weather corpus-report --start YYYY-MM-DD --end YYYY-MM-DD
-rozkalns-weather diagnose-weathernext
-rozkalns-weather report-monthly --month YYYY-MM
-rozkalns-weather verification-drilldown --month YYYY-MM
+rozkalns-weather backup --output <path>
 ```
 
-`init-database` un production corpus/backfill/ingest commands ir explicit write operations. Production runtime izmanto `DATABASE_INIT_MODE=require-existing`; app startup ir DB-read-only — tas neveido schema, neveic hidden backfill/migration un vairs neveic location seed/upsert. Private `home` location row tiek materializēts tikai explicit ingest/write ceļā.
+## Deploy
 
-## Privacy and safety invariants
+Ordinary application release:
 
-- necommitot exact home address, `HOME_LAT`, `HOME_LON`, `.env`, credentials, tokens, Cloudflare secrets vai private runtime logs;
-- WeatherNext real values nedrīkst fabricēt;
-- provider/model provenance nedrīkst zaudēt;
-- DWD warning authority nedrīkst aizvietot ar model output;
-- production data writes un private-provider access paliek atsevišķi exact owner gates.
+```text
+PR -> tests -> MERGE -> SIMPLE-DEPLOY -> GHCR -> RPi5 -> /health + /ready
+```
 
-## Historical continuity
+No Weather-specific rollout controller, queue, receipt chain or deploy state machine is required.
 
-Svarīgākie historical source/rollout receipts paliek discoverable closed issues/PRs un Git history. Historical 10416, pre-SIMPLE-DEPLOY un first-rollout operator/JIT statements nav current runtime authority.
+DB/schema/data changes, secrets, Cloudflare/network and host/systemd changes remain separate explicit gates.
 
-Issue #9 ir legacy/historical AUTO-RUN controller evidence. Saskaņā ar normalized-state contract jaunam explicit run mutable state pieder target issue; controller uztur tikai lock/active-run pointer. Fresh `main`, target issue, exact-head CI/reviews un vajadzīgais live evidence ir current authority.
-
-## Dokumentācija
-
-- [2026-09-26 UI audits un ieviešanas plāns](docs/audits/2026-09-26/README.md) — 28 ieteikumi, web salīdzinājums un seši ieviešanas posmi; plānots darbs.
-
-- `docs/BENCHMARK_METHODOLOGY.md`
-- `docs/RPI5_PUBLIC_RUNTIME_HANDOFF.md`
-- `docs/ROADMAP.md`
-- `docs/IMPLEMENTATION_STATUS.md`
-- `docs/WEATHERNEXT3.md`
-- `docs/WEATHERNEXT_FIRST_ACCESS.md`
-- `docs/WEATHERNEXT_SUSTAINED_COLLECTION.md`
-- `docs/WEATHERNEXT_VERSION_EVOLUTION.md`
-- `docs/VERIFICATION.md`
-- `docs/OPERATIONS.md`
+See `docs/ARCHITECTURE.md`, `docs/OPERATIONS.md` and `docs/ROADMAP.md`.

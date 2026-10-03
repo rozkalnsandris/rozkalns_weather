@@ -3,8 +3,7 @@ name: Backend tests
 on:
   pull_request:
   push:
-    branches:
-      - main
+    branches: [main]
 
 permissions:
   contents: read
@@ -14,101 +13,30 @@ jobs:
     name: pytest
     runs-on: ubuntu-24.04
     steps:
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-
-      - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.12"
           cache: pip
-
-      - name: Install
-        run: python -m pip install -e '.[test]'
-
-      - name: Test
-        run: pytest
-
-  work-cycle-v23-canary:
-    name: FAST-LANE v2.3 work-cycle canary
-    runs-on: ubuntu-24.04
-    steps:
-      - name: Checkout Weather source
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
-      - name: Checkout accepted shared work-cycle contract
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          repository: rozkalnsandris/ops-workflows
-          ref: 274d58f2d9d3cb86feded2751b8f9009a4501f6b
-          path: .work-cycle-shared
-          persist-credentials: false
-
-      - name: Validate bootstrap manifest with shared validator
-        run: >-
-          python3 .work-cycle-shared/scripts/agent_bootstrap_manifest.py
-          .github/agent-bootstrap.json
-          --repo-root .
-
-      - name: Validate Weather work-cycle canary
-        run: python3 -m unittest discover -s tests -p 'test_work_cycle_v23_canary.py' -v
+      - run: python -m pip install -e '.[test]'
+      - run: pytest
 
   simple-deploy-contract:
     name: SIMPLE-DEPLOY consumer contract
     runs-on: ubuntu-24.04
     steps:
-      - name: Checkout Weather source
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-
-      - name: Checkout accepted shared SIMPLE-DEPLOY contract
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: rozkalnsandris/ops-workflows
           ref: e05ed760791a127c7c9628696806ef39c9fe329c
           path: .simple-deploy-shared
           persist-credentials: false
-
-      - name: Validate Weather consumer manifest
-        run: >-
+      - run: >-
           python3 .simple-deploy-shared/scripts/validate_simple_deploy.py
           --manifest .simple-deploy.json
           --expected-repository rozkalnsandris/rozkalns_weather
-
-  public-build-evidence:
-    name: reproducible public build evidence
-    runs-on: ubuntu-24.04
-    steps:
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
-      - name: Set up exact public runtime Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
-        with:
-          python-version: "3.12.14"
-          cache: pip
-          cache-dependency-path: deploy/public-runtime.lock
-
-      - name: Install locked public runtime
-        run: |
-          python -m pip install -r deploy/public-runtime.lock
-          python -m pip install --no-deps --no-build-isolation .
-          python -m pip check
-
-      - name: Generate reproducibility evidence and SBOM
-        run: |
-          python -m rozkalns_weather.build_evidence \
-            --source-sha "$GITHUB_SHA" \
-            --observed-source-sha "$GITHUB_SHA" \
-            --require-pass \
-            --output "$RUNNER_TEMP/container-build-evidence.json" \
-            --sbom-output "$RUNNER_TEMP/container-runtime-sbom.json"
-          python -c "from rozkalns_weather.app import app; assert app is not None"
-          python -c "from google.cloud import bigquery; assert bigquery.Client is not None"

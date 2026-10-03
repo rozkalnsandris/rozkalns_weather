@@ -108,7 +108,7 @@ def _install_query_guards(app):
     def hourly(
         hours: int = Query(48),
         variable: str = Query("temperature_2m"),
-        location_id: Literal["home", "station_05480", "station_10416"] = Query("home"),
+        location_id: Literal["home", "station_05480"] = Query("home"),
         providers: str | None = Query(None),
         model_versions: str | None = Query(None),
         page_size: int | None = Query(None),
@@ -186,7 +186,7 @@ def _install_query_guards(app):
     @app.get("/api/daily", response_model=None)
     def daily(
         days: int = Query(10),
-        location_id: Literal["home", "station_05480", "station_10416"] = Query("home"),
+        location_id: Literal["home", "station_05480"] = Query("home"),
     ) -> dict[str, object] | JSONResponse:
         require_database_ready()
         try:

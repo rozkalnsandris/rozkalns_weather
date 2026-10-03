@@ -4,7 +4,7 @@
   const CONDITION_CONTRACT = "weather-condition-v1";
   const FALLBACK_CONTRACT = "weather-condition-fallback-v1";
   const DAYLIGHT_FALLBACK = "timezone-hour-fallback-v1";
-  const PROVIDER_PREFERENCE = ["weathernext3", "icon_d2", "ecmwf_ifs", "ecmwf_aifs", "dwd_mosmix_l"];
+  const PROVIDER_PREFERENCE = ["weathernext3", "icon_d2", "ecmwf_ifs", "ecmwf_aifs"];
   const STAT_PREFERENCE = ["deterministic", "mean", "p50"];
   const DRIZZLE_MIN_MM = 0.05;
   const RAIN_MIN_MM = 0.2;

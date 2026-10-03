@@ -14,11 +14,10 @@ from .config import Settings
 from .current_store import latest_current_observations
 from .db import Database
 from .leaderboard import SkillSample, common_sample_leaderboard
-from .locations import BENCHMARK_LOCATION, DWD_10416
+from .locations import BENCHMARK_LOCATION
 from .models import parse_time
 from .providers import PROVIDERS
 from .providers.dwd_cdc_observations import CDC_STATION_ID
-from .providers.weathernext import access_state
 from .provider_health import PUBLIC_PROVIDER_HEALTH_POLICIES, classify_public_provider_health
 from .provenance_api import blocked_trace_response, hourly_with_provenance, verification_value_trace
 from .radar_warnings import fetch_dwd_alerts, fetch_radar_point
@@ -119,7 +118,7 @@ def _public_location_label(location_id: str, settings: Settings) -> str:
         return settings.home_label
     if location_id == BENCHMARK_LOCATION.id:
         return BENCHMARK_LOCATION.label
-    return DWD_10416.label
+    return BENCHMARK_LOCATION.label
 
 
 def _safety_reference(settings: Settings) -> tuple[float, float, dict[str, object]]:
@@ -166,12 +165,12 @@ def create_app(settings: Settings | None = None, database: Database | None = Non
     # materialization belongs to explicit schema/init or ingest write paths.
     if settings.database_init_mode == "auto" and schema["state"] == "ready":
         database.ensure_location(
-            location_id=DWD_10416.id,
-            label=DWD_10416.label,
-            lat=DWD_10416.lat,
-            lon=DWD_10416.lon,
-            elevation_m=DWD_10416.elevation_m,
-            timezone=DWD_10416.timezone,
+            location_id=BENCHMARK_LOCATION.id,
+            label=BENCHMARK_LOCATION.label,
+            lat=BENCHMARK_LOCATION.lat,
+            lon=BENCHMARK_LOCATION.lon,
+            elevation_m=BENCHMARK_LOCATION.elevation_m,
+            timezone=BENCHMARK_LOCATION.timezone,
         )
         if settings.home_configured:
             database.ensure_home_location(
@@ -243,7 +242,7 @@ def create_app(settings: Settings | None = None, database: Database | None = Non
             saved = stored.get(provider.id, {})
             state = saved.get("state", "adapter_ready_not_ingested")
             if provider.id == "weathernext3" and provider.id not in stored:
-                state = access_state(configured=settings.weathernext_cloud_configured, now=now)
+                state = "not_ingested"
             if provider.id in PUBLIC_PROVIDER_HEALTH_POLICIES:
                 health = classify_public_provider_health(provider.id, saved, evidence.get(provider.id), now=now)
                 state = health["ingest_state"]
@@ -309,7 +308,7 @@ def create_app(settings: Settings | None = None, database: Database | None = Non
     def hourly(
         hours: int = Query(48, ge=1, le=360),
         variable: str = Query("temperature_2m"),
-        location_id: Literal["home", "station_05480", "station_10416"] = Query("home"),
+        location_id: Literal["home", "station_05480"] = Query("home"),
     ) -> dict[str, object]:
         require_database_ready()
         return {
@@ -322,7 +321,7 @@ def create_app(settings: Settings | None = None, database: Database | None = Non
     @app.get("/api/daily")
     def daily(
         days: int = Query(10, ge=1, le=15),
-        location_id: Literal["home", "station_05480", "station_10416"] = Query("home"),
+        location_id: Literal["home", "station_05480"] = Query("home"),
     ) -> dict[str, object]:
         require_database_ready()
         return {
