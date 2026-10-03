@@ -9,7 +9,6 @@ from .db import Database
 from .locations import BENCHMARK_LOCATION
 from .orchestrator import IngestAlreadyRunning, IngestOrchestrator
 from .runtime import database_schema_state, readiness_payload
-from .smoke import smoke_public
 
 
 def _print(payload: object) -> None:
@@ -53,7 +52,6 @@ def main() -> None:
     sub.add_parser("init-database", help="create the SQLite schema")
     sub.add_parser("readiness", help="print privacy-safe runtime readiness")
     sub.add_parser("ingest-public", help="collect DWD, ICON-D2, ECMWF IFS and ECMWF AIFS")
-    sub.add_parser("smoke-public", help="run read-only public provider smoke checks")
     sub.add_parser("corpus-stats", help="print corpus statistics")
     sub.add_parser("corpus-check", help="run corpus integrity checks")
     backup = sub.add_parser("backup", help="create a consistent SQLite backup")
@@ -72,10 +70,6 @@ def main() -> None:
         payload = readiness_payload(settings, database)
         _print(payload)
         raise SystemExit(0 if payload["ready"] else 1)
-
-    if args.command == "smoke-public":
-        _print(smoke_public(settings))
-        return
 
     database = _database(settings)
 
