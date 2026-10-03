@@ -32,6 +32,8 @@ let lastHealth = null;
 let forecastLocationInitialized = false;
 let refreshSequence = 0;
 let accuracyLoaded = false;
+const accuracyPayloads = new Map();
+const accuracyRequests = new Map();
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -637,36 +639,63 @@ async function refresh() {
   }
 }
 
+function renderAccuracy(data) {
+  const target = qs("#accuracyTable");
+  const rows = data?.common_sample_slices || [];
+  if (!rows.length) {
+    target.textContent = "Not enough common station samples exist yet.";
+    return;
+  }
+  const metric = (value) => value == null ? "—" : Number(value).toFixed(2);
+  target.innerHTML = `<div class="provider-grid accuracy-grid">${rows.map((metrics) => `
+    <div class="provider accuracy-card">
+      <div class="provider-heading">
+        <strong>${escapeHtml(MODEL_LABELS[metrics.provider] || metrics.provider)}</strong>
+        <span class="accuracy-lead">${escapeHtml(metrics.lead_bucket || "—")}</span>
+      </div>
+      <small>${metrics.n ?? 0} common samples</small>
+      <div class="accuracy-metrics">
+        <span><small>MAE</small><strong>${metric(metrics.mae)}°</strong></span>
+        <span><small>RMSE</small><strong>${metric(metrics.rmse)}°</strong></span>
+        <span><small>Bias</small><strong>${metric(metrics.bias)}°</strong></span>
+      </div>
+    </div>`).join("")}</div>`;
+}
+
+async function fetchAccuracy(days) {
+  if (accuracyPayloads.has(days)) return accuracyPayloads.get(days);
+  if (accuracyRequests.has(days)) return accuracyRequests.get(days);
+  const request = apiWithFallback(
+    `/api/verification/summary?days=${days}&compact=true`,
+    `verification-summary-${days}-compact`,
+  ).then((result) => {
+    accuracyPayloads.set(days, result.payload);
+    accuracyRequests.delete(days);
+    return result.payload;
+  }).catch((error) => {
+    accuracyRequests.delete(days);
+    throw error;
+  });
+  accuracyRequests.set(days, request);
+  return request;
+}
+
 async function accuracy(days = 30) {
   const target = qs("#accuracyTable");
+  if (accuracyPayloads.has(days)) {
+    renderAccuracy(accuracyPayloads.get(days));
+    return;
+  }
   target.textContent = "Loading accuracy…";
   try {
-    const data = (await apiWithFallback(
-      `/api/verification/summary?days=${days}&compact=true`,
-      `verification-summary-${days}-compact`,
-    )).payload;
-    const rows = data.common_sample_slices || [];
-    if (!rows.length) {
-      target.textContent = "Not enough common station samples exist yet.";
-      return;
-    }
-    const metric = (value) => value == null ? "—" : Number(value).toFixed(2);
-    target.innerHTML = `<div class="provider-grid accuracy-grid">${rows.map((metrics) => `
-      <div class="provider accuracy-card">
-        <div class="provider-heading">
-          <strong>${escapeHtml(MODEL_LABELS[metrics.provider] || metrics.provider)}</strong>
-          <span class="accuracy-lead">${escapeHtml(metrics.lead_bucket || "—")}</span>
-        </div>
-        <small>${metrics.n ?? 0} common samples</small>
-        <div class="accuracy-metrics">
-          <span><small>MAE</small><strong>${metric(metrics.mae)}°</strong></span>
-          <span><small>RMSE</small><strong>${metric(metrics.rmse)}°</strong></span>
-          <span><small>Bias</small><strong>${metric(metrics.bias)}°</strong></span>
-        </div>
-      </div>`).join("")}</div>`;
+    renderAccuracy(await fetchAccuracy(days));
   } catch (_error) {
     target.textContent = "Accuracy API unavailable";
   }
+}
+
+function warmAccuracy() {
+  void fetchAccuracy(30).catch(() => {});
 }
 
 qsa("[data-days]").forEach((button) => {
