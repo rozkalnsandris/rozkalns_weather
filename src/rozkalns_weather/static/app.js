@@ -288,7 +288,7 @@ function renderCurrent(result, healthMap) {
   qs("#heroCondition").title = "Condition label is derived from observed DWD precipitation/cloud-cover values when available.";
   qs("#heroIcon").textContent = condition.icon;
   qs("#heroFeels").textContent = observed ? `Observed ${formatLocalTime(observed)} · Europe/Berlin` : "No DWD observation available";
-  qs("#heroSource").textContent = `${current.truth_source || "DWD CDC 05480"} · ${current.location?.label || "Werl"}`;
+  qs("#heroSource").textContent = `DWD observation · ${current.location?.label || "Werl"}`;
 
   qs("#detailHumidity").textContent = detailValue(values.relative_humidity_2m, (value) => `${Math.round(value)}%`);
   qs("#detailWind").textContent = detailValue(values.wind_speed_10m, (value) => `${(value * 3.6).toFixed(0)} km/h`);
@@ -505,11 +505,11 @@ function precipitationChart(series) {
 
 function uncertaintySummary(series) {
   const rows = series.filter((item) => item.provider === "weathernext3" && ["p10", "p90"].includes(item.statistic));
-  if (!rows.length) return "WeatherNext uncertainty is unavailable until genuine provider data exists.";
+  if (!rows.length) return "WeatherNext forecast range is not available yet.";
   const byTime = {};
   rows.forEach((item) => { (byTime[item.valid_time_utc] ??= {})[item.statistic] = Number(item.value); });
   const complete = Object.entries(byTime).filter(([, values]) => values.p10 != null && values.p90 != null).slice(0, 12);
-  if (!complete.length) return "WeatherNext p10–p90 pairs are incomplete.";
+  if (!complete.length) return "WeatherNext forecast range is not available yet.";
   return complete.map(([time, values]) => `${escapeHtml(time)}: ${values.p10.toFixed(1)}…${values.p90.toFixed(1)} °C`).join("<br>");
 }
 
