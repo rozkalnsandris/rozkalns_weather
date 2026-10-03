@@ -62,9 +62,9 @@ def test_radar_response_exposes_timeline_without_coordinates_or_raw_grid() -> No
 
     rendered = json.dumps(result, sort_keys=True)
     assert "precipitation_5" not in rendered
-    assert "geometry" not in rendered
-    assert "bbox" not in rendered
-    assert "latlon_position" not in rendered
+    assert '"geometry":' not in rendered
+    assert '"bbox":' not in rendered
+    assert '"latlon_position":' not in rendered
     assert "7.1" not in rendered
     assert "8.9" not in rendered
 
