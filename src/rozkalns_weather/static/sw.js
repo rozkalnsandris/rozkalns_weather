@@ -1,4 +1,4 @@
-const CACHE = "rozkalns-weather-v46";
+const CACHE = "rozkalns-weather-v47";
 const CACHE_PREFIX = "rozkalns-weather-";
 const ASSETS=[
   "/",
@@ -8,7 +8,7 @@ const ASSETS=[
   "/static/vendor/leaflet/leaflet.js",
   "/static/ui_preferences.js",
   "/static/daily_trend.js",
-  "/static/app.js",
+  "/static/app.js?v=47",
   "/static/navigation_v1.js",
   "/static/model_snapshot_alignment.js",
   "/static/weather_ui.js",
@@ -19,7 +19,7 @@ const ASSETS=[
   "/static/manifest.webmanifest",
   "/static/icon.svg",
 ];
-const SHELL_PATHS = new Set(ASSETS);
+const SHELL_PATHS = new Set(ASSETS.map((asset) => new URL(asset, self.location.origin).pathname));
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -55,7 +55,7 @@ self.addEventListener("fetch", (event) => {
           if (response.ok) await cache.put(event.request, response.clone());
           return response;
         } catch (error) {
-          const cached = await cache.match(event.request, { ignoreSearch: true });
+          const cached = await cache.match(event.request);
           if (cached) return cached;
           throw error;
         }
