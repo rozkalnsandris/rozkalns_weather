@@ -210,10 +210,19 @@ function globalNetworkState(healthState) {
 function providersCard(items) {
   return items.map((provider) => {
     const uiState = normalizedProviderState(provider);
+    const observedAt = provider.last_observed_at_utc;
+    const updatedAt = provider.last_retrieved_at_utc || provider.last_success_at_utc;
+    const updateLabel = observedAt
+      ? `Observed ${formatTimestamp(observedAt)}`
+      : updatedAt
+        ? `Updated ${formatTimestamp(updatedAt)}`
+        : uiState === "inactive"
+          ? "Not collected yet"
+          : "Update time unavailable";
     return `
       <div class="provider provider-state-${uiState}">
         <div class="provider-heading"><strong>${escapeHtml(provider.model_name)}</strong><span class="state-chip state-${uiState}">${uiState}</span></div>
-        <small>${provider.last_retrieved_at_utc ? `Updated ${escapeHtml(formatTimestamp(provider.last_retrieved_at_utc))}` : "No recent update"}</small>
+        <small>${escapeHtml(updateLabel)}</small>
       </div>`;
   }).join("");
 }
@@ -629,19 +638,34 @@ async function refresh() {
 }
 
 async function accuracy(days = 30) {
+  const target = qs("#accuracyTable");
+  target.textContent = "Loading accuracy…";
   try {
-    const data = (await apiWithFallback(`/api/verification/summary?days=${days}`, `verification-summary-${days}`)).payload;
+    const data = (await apiWithFallback(
+      `/api/verification/summary?days=${days}&compact=true`,
+      `verification-summary-${days}-compact`,
+    )).payload;
     const rows = data.common_sample_slices || [];
     if (!rows.length) {
-      qs("#accuracyTable").textContent = "Not enough common station samples exist between at least two providers in one lead-bucket/model-version cohort.";
+      target.textContent = "Not enough common station samples exist yet.";
       return;
     }
-    qs("#accuracyTable").innerHTML = `<table><thead><tr><th>Model</th><th>Version</th><th>Lead</th><th>n</th><th>Missing</th><th>Sufficiency</th><th>MAE</th><th>RMSE</th><th>Bias</th><th>p10–p90</th></tr></thead><tbody>${rows.map((metrics) => {
-      const missing = metrics.missingness || {};
-      return `<tr><td>${escapeHtml(metrics.provider)}</td><td>${escapeHtml(metrics.model_version || "unknown")}</td><td>${escapeHtml(metrics.lead_bucket)}</td><td>${metrics.n}</td><td>${missing.missing_n ?? "—"}/${missing.expected_n ?? "—"}</td><td>${escapeHtml(metrics.sample_sufficiency_state)}</td><td>${metrics.mae?.toFixed(2) ?? "—"}</td><td>${metrics.rmse?.toFixed(2) ?? "—"}</td><td>${metrics.bias?.toFixed(2) ?? "—"}</td><td>${metrics.p10_p90_coverage == null ? "—" : `${(metrics.p10_p90_coverage * 100).toFixed(0)}% (${metrics.coverage_n})`}</td></tr>`;
-    }).join("")}</tbody></table>`;
+    const metric = (value) => value == null ? "—" : Number(value).toFixed(2);
+    target.innerHTML = `<div class="provider-grid accuracy-grid">${rows.map((metrics) => `
+      <div class="provider accuracy-card">
+        <div class="provider-heading">
+          <strong>${escapeHtml(MODEL_LABELS[metrics.provider] || metrics.provider)}</strong>
+          <span class="accuracy-lead">${escapeHtml(metrics.lead_bucket || "—")}</span>
+        </div>
+        <small>${metrics.n ?? 0} common samples</small>
+        <div class="accuracy-metrics">
+          <span><small>MAE</small><strong>${metric(metrics.mae)}°</strong></span>
+          <span><small>RMSE</small><strong>${metric(metrics.rmse)}°</strong></span>
+          <span><small>Bias</small><strong>${metric(metrics.bias)}°</strong></span>
+        </div>
+      </div>`).join("")}</div>`;
   } catch (_error) {
-    qs("#accuracyTable").textContent = "Accuracy API unavailable";
+    target.textContent = "Accuracy API unavailable";
   }
 }
 
