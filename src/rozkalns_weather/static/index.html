@@ -167,22 +167,36 @@
     </section>
 
     <section id="safety" class="view" aria-label="Radar and warnings">
-      <header class="subpage-header"><div><span class="eyebrow">Official safety data</span><h1>Radar & Warnings</h1></div></header>
-      <div class="panel warning" data-warning-authority="DWD">
-        <div class="panel-title">DWD official warnings</div>
-        <p>DWD warning layer is authoritative and separate from model forecasts.</p>
-        <p class="muted">In public-only mode, warnings use the public DWD CDC Werl 05480 reference point; exact private coordinates are not exposed through the API/UI.</p>
-        <p class="muted">In public-only mode without a private home point, the view is centered on the public DWD CDC Werl 05480 reference point.</p>
-        <div id="warningsState" class="surface-state state-loading" role="status" aria-live="polite" aria-atomic="true">LOADING · warning data has not been requested</div>
-        <button id="loadWarnings" type="button">Load current DWD warnings</button>
-        <pre id="warningsOutput"></pre>
+      <header class="subpage-header"><div><span class="eyebrow">Nearby precipitation + official safety</span><h1>Radar & Warnings</h1></div></header>
+      <div class="panel radar-panel">
+        <div class="radar-heading">
+          <div><div class="panel-title">Rain nearby</div><p class="muted">DWD radar via Bright Sky · observed frames and short nowcast.</p></div>
+          <button id="loadRadar" type="button">Refresh</button>
+        </div>
+        <div id="radarState" class="surface-state state-loading" role="status" aria-live="polite" aria-atomic="true">LOADING · opening radar</div>
+        <div id="radarStage" class="radar-stage" hidden>
+          <canvas id="radarCanvas" aria-label="Nearby precipitation radar"></canvas>
+          <span class="radar-center" aria-hidden="true"></span>
+          <span id="radarTime" class="radar-time">—</span>
+        </div>
+        <div class="radar-controls">
+          <button id="radarPlay" type="button" aria-label="Play radar timeline">▶ Play</button>
+          <input id="radarTimeline" type="range" min="0" max="0" value="0" step="1" aria-label="Radar timeline" disabled>
+        </div>
+        <div id="radarMeta" class="muted">20 km privacy-safe view around the selected location. No coordinates are shown.</div>
+        <div class="radar-legend" aria-label="Radar precipitation intensity">
+          <span><i class="radar-key radar-key-light"></i>Light</span>
+          <span><i class="radar-key radar-key-moderate"></i>Moderate</span>
+          <span><i class="radar-key radar-key-heavy"></i>Heavy</span>
+        </div>
       </div>
-      <div class="panel">
-        <div class="panel-title">DWD radar</div>
-        <p class="muted">Radar observed/nowcast is not a model forecast. Coordinates remain private.</p>
-        <div id="radarState" class="surface-state state-loading" role="status" aria-live="polite" aria-atomic="true">LOADING · radar data has not been requested</div>
-        <button id="loadRadar" type="button">Load radar metadata</button>
-        <pre id="radarOutput"></pre>
+      <div class="panel warning official-warning" data-warning-authority="DWD">
+        <div class="radar-heading">
+          <div><div class="panel-title">DWD official warnings</div><p class="muted">Official DWD safety information · separate from forecast models.</p></div>
+          <button id="loadWarnings" type="button">Refresh</button>
+        </div>
+        <div id="warningsState" class="surface-state state-loading" role="status" aria-live="polite" aria-atomic="true">LOADING · checking DWD warnings</div>
+        <div id="warningsOutput" class="warning-readable"></div>
       </div>
     </section>
 
@@ -197,38 +211,24 @@
     </section>
 
     <section id="status" class="view" aria-label="Status">
-      <header class="subpage-header status-header"><div><span class="eyebrow">System</span><h1>Status & Sources</h1></div><div id="statusBadge" class="badge">loading</div></header>
-      <section id="statusWeatherNext" class="panel status-primary" data-state="loading" aria-labelledby="statusWeatherNextTitle">
-        <div class="status-eyebrow">Primary research model</div>
-        <h2 id="statusWeatherNextTitle">WeatherNext 3</h2>
-        <div id="statusWeatherNextState" class="surface-state state-loading" role="status" aria-live="polite" aria-atomic="true">LOADING · checking forecast availability and verification readiness</div>
-        <div class="status-key-row"><span>Forecast availability</span><strong id="statusWeatherNextForecast">Checking…</strong></div>
-        <div id="statusWeatherNextForecastMeta" class="muted status-meta">No genuine value is inferred from another provider.</div>
-        <div class="status-key-row"><span>Verification readiness</span><strong id="statusWeatherNextVerification">Checking…</strong></div>
-        <div id="statusWeatherNextVerificationMeta" class="muted status-meta">DWD CDC 05480 benchmark evidence is checked separately.</div>
-        <p class="muted status-note">Forecast availability and sufficient verification evidence are separate steps. WeatherNext is not DWD warning authority.</p>
-      </section>
+      <header class="subpage-header"><div><span class="eyebrow">System</span><h1>Status & Sources</h1></div></header>
       <div class="panel">
         <label for="forecastLocation">Forecast location</label>
         <select id="forecastLocation">
           <option value="home">Home · privāta prognoze</option>
-          <option value="station_05480">DWD CDC 05480 · canonical public benchmark</option>
+          <option value="station_05480">DWD CDC 05480 · measured benchmark</option>
         </select>
-        <div id="forecastLocationNote" class="muted">Canonical public benchmark selection.</div>
+        <div id="forecastLocationNote" class="muted">Measured benchmark selection.</div>
       </div>
       <div id="networkState" class="surface-state state-loading global-state" role="status" aria-live="polite" aria-atomic="true">LOADING · checking live API evidence</div>
       <div class="panel">
-        <div class="panel-title">Public data sources</div>
-        <div id="statusSources" class="status-source-list" aria-live="polite">Open Status to load independent provider evidence.</div>
-        <details class="status-technical-details">
-          <summary>Technical provider health</summary>
-          <div id="providerState" class="surface-state state-loading" role="status" aria-live="polite" aria-atomic="true">LOADING · provider health</div>
-          <div id="providerGrid" class="provider-grid"></div>
-        </details>
+        <div class="panel-title">Data sources</div>
+        <div id="providerState" class="surface-state state-loading" role="status" aria-live="polite" aria-atomic="true">LOADING · provider health</div>
+        <div id="providerGrid" class="provider-grid"></div>
       </div>
       <div class="panel">
-        <div class="panel-title">Reference semantics</div>
-        <div class="muted">DWD CDC 05480 is the single measured benchmark. Home remains a forecast display location until a defensible home observation source exists.</div>
+        <div class="panel-title">Reference</div>
+        <div class="muted">DWD CDC 05480 is the measured accuracy benchmark. Home is the private forecast and radar point. WeatherNext 3 remains optional research data.</div>
       </div>
     </section>
   </main>

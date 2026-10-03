@@ -16,7 +16,7 @@
 
 ## P1 — finish the useful UI
 
-- [ ] make Radar a polished visual player rather than a technical surface
+- [x] make Radar a polished visual player rather than a technical surface
 - [ ] keep mobile interaction fast and clear
 - [ ] remove remaining UI wording or controls that expose obsolete project history
 - [ ] validate the simple app on the real phone after relevant source changes

@@ -5,84 +5,6 @@
   const navButtons = [...document.querySelectorAll(".tabs button[data-view]")];
   const originalHandlers = new Map(navButtons.map((button) => [button, button.onclick]));
   const skipLink = document.querySelector(".skip-link");
-  const navigationScriptUrl = document.currentScript?.src || window.location.href;
-  const radarTimelineUrl = new URL("radar_timeline.js", navigationScriptUrl).href;
-  const statusModuleUrl = new URL("status_v1.js", navigationScriptUrl).href;
-  let radarTimelinePromise = null;
-  let statusModulePromise = null;
-
-  function markRadarModuleFailure() {
-    const state = document.querySelector("#radarState");
-    const button = document.querySelector("#loadRadar");
-    if (button) button.disabled = false;
-    if (!state) return;
-    state.dataset.state = "error";
-    state.setAttribute("role", "alert");
-    state.setAttribute("aria-live", "assertive");
-    state.textContent = "ERROR · Radar timeline module could not be loaded. This does not mean precipitation is absent.";
-  }
-
-  function ensureRadarTimeline() {
-    if (window.rozkalnsRadarTimeline) {
-      return Promise.resolve(window.rozkalnsRadarTimeline.load?.());
-    }
-    if (radarTimelinePromise) return radarTimelinePromise;
-
-    const button = document.querySelector("#loadRadar");
-    if (button) button.disabled = true;
-
-    radarTimelinePromise = new Promise((resolve, reject) => {
-      const script = document.createElement("script");
-      script.src = radarTimelineUrl;
-      script.dataset.radarTimeline = "true";
-      script.onload = () => {
-        Promise.resolve(window.rozkalnsRadarTimeline?.load?.()).then(resolve, reject);
-      };
-      script.onerror = () => {
-        radarTimelinePromise = null;
-        markRadarModuleFailure();
-        reject(new Error("radar timeline module failed to load"));
-      };
-      document.head.appendChild(script);
-    });
-    return radarTimelinePromise;
-  }
-
-  function markStatusModuleFailure() {
-    const state = document.querySelector("#statusWeatherNextState");
-    const sources = document.querySelector("#statusSources");
-    if (state) {
-      state.className = "surface-state state-error";
-      state.dataset.state = "error";
-      state.setAttribute("role", "alert");
-      state.setAttribute("aria-live", "assertive");
-      state.textContent = "ERROR · Status readiness module could not be loaded.";
-    }
-    if (sources) sources.textContent = "Independent source status could not be loaded.";
-  }
-
-  function ensureStatusModule() {
-    if (window.rozkalnsStatus) {
-      return Promise.resolve(window.rozkalnsStatus.load?.());
-    }
-    if (statusModulePromise) return statusModulePromise;
-
-    statusModulePromise = new Promise((resolve, reject) => {
-      const script = document.createElement("script");
-      script.src = statusModuleUrl;
-      script.dataset.statusModule = "true";
-      script.onload = () => {
-        Promise.resolve(window.rozkalnsStatus?.load?.()).then(resolve, reject);
-      };
-      script.onerror = () => {
-        statusModulePromise = null;
-        markStatusModuleFailure();
-        reject(new Error("status readiness module failed to load"));
-      };
-      document.head.appendChild(script);
-    });
-    return statusModulePromise;
-  }
 
   if (skipLink) {
     Object.assign(skipLink.style, {
@@ -119,9 +41,7 @@
     const temporaryTabindex = !target.hasAttribute("tabindex");
     if (temporaryTabindex) target.setAttribute("tabindex", "-1");
     target.focus({ preventScroll: true });
-    if (temporaryTabindex) {
-      target.addEventListener("blur", () => target.removeAttribute("tabindex"), { once: true });
-    }
+    if (temporaryTabindex) target.addEventListener("blur", () => target.removeAttribute("tabindex"), { once: true });
   }
 
   function invokeView(viewId) {
@@ -134,8 +54,6 @@
       navButtons.forEach((item) => item.classList.toggle("active", item.dataset.view === viewId));
     }
     syncCurrent(viewId);
-    if (viewId === "safety") ensureRadarTimeline().catch(() => {});
-    if (viewId === "status") ensureStatusModule().catch(() => {});
   }
 
   function activateHash({ focus = false } = {}) {
@@ -163,7 +81,7 @@
     control.addEventListener("click", () => {
       const viewId = normalizedView(control.dataset.openView);
       if (window.location.hash !== `#${viewId}`) window.location.hash = viewId;
-      else syncCurrent(viewId);
+      else invokeView(viewId);
     });
   });
 
