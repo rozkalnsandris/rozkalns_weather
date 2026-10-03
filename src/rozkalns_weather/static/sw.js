@@ -1,4 +1,4 @@
-const CACHE = "rozkalns-weather-v43";
+const CACHE = "rozkalns-weather-v44";
 const CACHE_PREFIX = "rozkalns-weather-";
 const ASSETS=[
   "/",
@@ -48,9 +48,15 @@ self.addEventListener("fetch", (event) => {
   if (isShellRequest(event.request)) {
     event.respondWith(
       caches.open(CACHE).then(async (cache) => {
-        const cached = await cache.match(event.request, { ignoreSearch: true });
-        if (cached) return cached;
-        return fetch(event.request);
+        try {
+          const response = await fetch(event.request, { cache: "no-cache" });
+          if (response.ok) await cache.put(event.request, response.clone());
+          return response;
+        } catch (error) {
+          const cached = await cache.match(event.request, { ignoreSearch: true });
+          if (cached) return cached;
+          throw error;
+        }
       })
     );
     return;
