@@ -106,6 +106,12 @@ def test_verification_summary_uses_station_05480_truth(tmp_path) -> None:
     assert payload["comparison_location"]["id"] == "station_05480"
     assert {row["provider"] for row in payload["common_sample_slices"]} == {"icon_d2", "ecmwf_ifs"}
 
+    compact = client.get("/api/verification/summary?days=30&compact=true").json()
+    assert compact["comparison_location"]["id"] == "station_05480"
+    assert {row["provider"] for row in compact["common_sample_slices"]} == {"icon_d2", "ecmwf_ifs"}
+    assert "providers" not in compact
+    assert all("matched_sample_ids" not in row for row in compact["common_sample_slices"])
+
 
 def test_unknown_location_is_rejected(tmp_path) -> None:
     client, _ = _client(tmp_path)

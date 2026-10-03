@@ -88,4 +88,11 @@ def test_mobile_interaction_stays_compact_and_direct() -> None:
     assert "grid-template-columns:repeat(3,minmax(0,1fr))" in accepted
     assert 'input[type="range"]' in accepted
     assert "min-height:44px" in accepted
-    assert "rozkalns-weather-v41" in worker
+    assert "compact=true" in app
+    assert "Loading accuracy…" in app
+    assert "provider.last_observed_at_utc" in app
+    assert ".chart{overflow:hidden}" in (STATIC / "app.css").read_text()
+    assert ".chart svg{display:block;min-width:0;max-width:100%;height:auto}" in (STATIC / "app.css").read_text()
+    time_semantics = (STATIC / "time_semantics.js").read_text()
+    assert " · ${identity.utc}" not in time_semantics
+    assert "rozkalns-weather-v42" in worker
