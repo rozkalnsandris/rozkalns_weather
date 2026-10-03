@@ -25,6 +25,7 @@ from .runtime import database_schema_state, readiness_payload
 from .truth_quality import database_truth_quality
 from .value_provenance import ValueProvenanceError
 from .verification import ErrorPair, lead_bucket, summarize
+from .weather_conditions import annotate_daily_conditions
 
 
 def _descriptor(provider) -> dict[str, object]:
@@ -326,7 +327,18 @@ def create_app(settings: Settings | None = None, database: Database | None = Non
             "days": days,
             "timezone": settings.home_timezone,
             "location": {"id": location_id, "label": _public_location_label(location_id, settings), "coordinates_exposed": False},
-            "days_by_provider": _daily_payload(database, days=days, timezone_name=settings.home_timezone, location_id=location_id),
+            "days_by_provider": annotate_daily_conditions(
+                database,
+                _daily_payload(
+                    database,
+                    days=days,
+                    timezone_name=settings.home_timezone,
+                    location_id=location_id,
+                ),
+                days=days,
+                timezone_name=settings.home_timezone,
+                location_id=location_id,
+            ),
         }
 
     @app.get("/api/corpus/stats")
