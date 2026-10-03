@@ -93,8 +93,9 @@ def test_dwd_radar_map_is_one_fixed_composite_wms_image() -> None:
         at="2026-09-28T12:30:00Z",
     )
     assert url.startswith("https://maps.dwd.de/geoserver/dwd/wms?")
-    assert "layers=dwd%3Abluemarble%2Cdwd%3ANiederschlagsradar%2Cdwd%3AWarngebiete_Kreise" in url
-    assert "styles=%2C%2C" in url
+    assert "layers=dwd%3Abluemarble%2Cdwd%3ANiederschlagsradar" in url
+    assert "Warngebiete_Kreise" not in url
+    assert "styles=%2C" in url
     assert "crs=EPSG%3A3857" in url
     assert "time=2026-09-28T12%3A30%3A00Z" in url
     assert "lat=" not in url
