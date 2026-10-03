@@ -7,7 +7,7 @@ from zoneinfo import ZoneInfo
 from typing import Literal
 
 from fastapi import FastAPI, HTTPException, Query
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from .config import Settings
@@ -20,7 +20,7 @@ from .providers import PROVIDERS
 from .providers.dwd_cdc_observations import CDC_STATION_ID
 from .provider_health import PUBLIC_PROVIDER_HEALTH_POLICIES, classify_public_provider_health
 from .provenance_api import blocked_trace_response, hourly_with_provenance, verification_value_trace
-from .radar_warnings import fetch_dwd_alerts, fetch_radar_point
+from .radar_warnings import fetch_dwd_alerts, fetch_dwd_radar_map_png, fetch_radar_point
 from .runtime import database_schema_state, readiness_payload
 from .truth_quality import database_truth_quality
 from .value_provenance import ValueProvenanceError
@@ -467,6 +467,30 @@ def create_app(settings: Settings | None = None, database: Database | None = Non
     def warnings() -> dict[str, object]:
         lat, lon, reference = _safety_reference(settings)
         return {**fetch_dwd_alerts(lat=lat, lon=lon), "reference_location": reference}
+
+    @app.get("/api/radar/map")
+    def radar_map(
+        layer: Literal["base", "boundaries", "radar"] = Query(...),
+        at: str | None = Query(None),
+    ) -> Response:
+        lat, lon, _reference = _safety_reference(settings)
+        if layer == "radar" and not at:
+            raise HTTPException(status_code=422, detail="radar timestamp is required")
+        try:
+            payload = fetch_dwd_radar_map_png(lat=lat, lon=lon, layer=layer, at=at)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        except Exception as exc:
+            raise HTTPException(status_code=502, detail="DWD radar map unavailable") from exc
+        max_age = 86_400 if layer in {"base", "boundaries"} else 300
+        return Response(
+            content=payload,
+            media_type="image/png",
+            headers={
+                "Cache-Control": f"private, max-age={max_age}",
+                "X-Content-Type-Options": "nosniff",
+            },
+        )
 
     @app.get("/api/radar")
     def radar() -> dict[str, object]:
