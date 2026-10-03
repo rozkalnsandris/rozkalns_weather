@@ -224,7 +224,7 @@
       .hourly-detail-metric{padding:7px 8px;border:1px solid rgba(60,115,160,.2);border-radius:9px;background:rgba(8,29,49,.46)}
       .hourly-detail-metric small,.hourly-detail-metric strong,.hourly-detail-metric span{display:block}
       .hourly-detail-metric small{color:#8faac3;font-size:.64rem}.hourly-detail-metric strong{margin-top:2px;font-size:.9rem}.hourly-detail-metric span{margin-top:2px;color:#91a9c2;font-size:.6rem}
-      @media(max-width:420px){.hourly-detail-values{grid-template-columns:1fr}.hourly-detail-head{align-items:flex-start;flex-direction:column;gap:2px}}
+      @media(max-width:420px){.hourly-detail-head{align-items:flex-start;flex-direction:column;gap:2px}.hourly-detail-metric{padding:6px 5px}}
     `;
     document.head.appendChild(style);
   }
@@ -297,9 +297,7 @@
 
     const source = document.createElement("div");
     source.className = "hourly-detail-source";
-    const lead = Number(anchor.lead_hours);
-    const leadLabel = Number.isFinite(lead) ? `${Number.isInteger(lead) ? lead.toFixed(0) : lead.toFixed(1)} h` : "—";
-    source.textContent = `${modelName} · valid ${anchor.valid_time_utc || "—"} · init ${anchor.init_time_utc || "—"} · lead ${leadLabel} · retrieved ${anchor.retrieved_at_utc || "—"} · statistic ${anchor.statistic || "—"} · model version ${anchor.model_version || "unavailable"}`;
+    source.textContent = `${modelName} · forecast for ${berlinLocalTime(anchor.valid_time_utc)}`;
 
     target.append(heading, values, source);
   }

@@ -120,3 +120,7 @@ html[data-ui-theme] body .status-primary { background:var(--hero); border-color:
 .status-technical-details #providerState { margin-top:4px; }
 .status-technical-details #providerGrid { margin-top:8px; }
 @media(max-width:420px) { .status-key-row { gap:8px; } .status-key-row strong { max-width:58%; } }
+
+/* Simple mobile interaction: preserve large tap targets without adding another UI layer. */
+html[data-ui-theme] .radar-controls button,html[data-ui-theme] .radar-controls input[type="range"],html[data-ui-theme] .switches button,html[data-ui-theme] #forecastLocation{min-height:44px}
+@media(max-width:420px){html[data-ui-theme] .hourly-detail-values{grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}html[data-ui-theme] .hourly-detail-metric{min-width:0}html[data-ui-theme] .hourly-detail-metric span{font-size:10px;overflow-wrap:anywhere}}
