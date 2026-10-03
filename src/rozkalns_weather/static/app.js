@@ -709,10 +709,11 @@ qsa("[data-days]").forEach((button) => {
 let radarFrames = [];
 let radarFrameIndex = 0;
 let radarPlaybackTimer = null;
+let radarMapRequestToken = 0;
 
 function radarCellColor(rawValue) {
   const mm = Number(rawValue) * 0.01;
-  if (!Number.isFinite(mm) || mm <= 0) return "rgba(6,20,36,.5)";
+  if (!Number.isFinite(mm) || mm <= 0) return "rgba(6,20,36,.18)";
   if (mm < 0.1) return "#5fa8ff";
   if (mm < 0.5) return "#30c7ea";
   if (mm < 1.5) return "#46d77a";
@@ -725,27 +726,79 @@ function radarFrameLabel(frame) {
   return `${kind} · ${formatTimestamp(frame?.timestamp)}`;
 }
 
+function radarMapUrl(layer, frame = null) {
+  const params = new URLSearchParams({ layer });
+  if (layer === "radar" && frame?.timestamp) params.set("at", frame.timestamp);
+  return `/api/radar/map?${params.toString()}`;
+}
+
+function ensureRadarMapLayers() {
+  const base = qs("#radarBaseMap");
+  const boundaries = qs("#radarBoundaries");
+  if (base && !base.dataset.loaded) {
+    base.dataset.loaded = "true";
+    base.src = radarMapUrl("base");
+  }
+  if (boundaries && !boundaries.dataset.loaded) {
+    boundaries.dataset.loaded = "true";
+    boundaries.src = radarMapUrl("boundaries");
+  }
+}
+
+function drawRadarRasterFallback(frame) {
+  const raster = frame?.raster;
+  const canvas = qs("#radarCanvas");
+  if (!canvas || !raster?.values?.length) return;
+  canvas.hidden = false;
+  canvas.width = Number(raster.width);
+  canvas.height = Number(raster.height);
+  const context = canvas.getContext("2d");
+  context.clearRect(0, 0, canvas.width, canvas.height);
+  context.imageSmoothingEnabled = false;
+  raster.values.forEach((row, y) => row.forEach((value, x) => {
+    const color = radarCellColor(value);
+    if (color === "rgba(6,20,36,.18)") return;
+    context.fillStyle = color;
+    context.fillRect(x, y, 1, 1);
+  }));
+}
+
+function preloadRadarFrameMaps(startIndex, count = 5) {
+  for (let offset = 1; offset <= count; offset += 1) {
+    const frame = radarFrames[(startIndex + offset) % radarFrames.length];
+    if (!frame?.timestamp) continue;
+    const image = new Image();
+    image.src = radarMapUrl("radar", frame);
+  }
+}
+
 function drawRadarFrame(index) {
   if (!radarFrames.length) return;
   radarFrameIndex = Math.max(0, Math.min(Number(index) || 0, radarFrames.length - 1));
   const frame = radarFrames[radarFrameIndex];
-  const raster = frame?.raster;
+  const image = qs("#radarImage");
   const canvas = qs("#radarCanvas");
   const timeline = qs("#radarTimeline");
-  if (!canvas || !raster?.values?.length) return;
+  if (!image || !canvas || !frame?.timestamp) return;
 
-  canvas.width = Number(raster.width);
-  canvas.height = Number(raster.height);
-  const context = canvas.getContext("2d");
-  context.imageSmoothingEnabled = false;
-  raster.values.forEach((row, y) => row.forEach((value, x) => {
-    context.fillStyle = radarCellColor(value);
-    context.fillRect(x, y, 1, 1);
-  }));
+  ensureRadarMapLayers();
+  const requestToken = ++radarMapRequestToken;
+  image.onload = () => {
+    if (requestToken !== radarMapRequestToken) return;
+    image.hidden = false;
+    canvas.hidden = true;
+  };
+  image.onerror = () => {
+    if (requestToken !== radarMapRequestToken) return;
+    image.hidden = true;
+    drawRadarRasterFallback(frame);
+  };
+  image.src = radarMapUrl("radar", frame);
+  preloadRadarFrameMaps(radarFrameIndex);
 
   timeline.value = String(radarFrameIndex);
   qs("#radarTime").textContent = radarFrameLabel(frame);
-  qs("#radarMeta").textContent = `${radarFrameLabel(frame)} · 20 km privacy-safe view around the selected location.`;
+  qs("#radarMeta").textContent = `${radarFrameLabel(frame)} · DWD radar map · 20 km around the selected location.`;
 }
 
 function stopRadarPlayback() {
