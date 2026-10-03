@@ -111,7 +111,9 @@ def _metric_row(
     }
 
 
-def common_sample_leaderboard(\n    samples: Iterable[SkillSample], *, include_bootstrap: bool = True\n) -> list[dict[str, object]]:
+def common_sample_leaderboard(
+    samples: Iterable[SkillSample], *, include_bootstrap: bool = True
+) -> list[dict[str, object]]:
     """Return strictly common, version-cohort metrics for comparable forecast samples.
 
     Comparison is bounded by mode, variable and lead bucket. A valid timestamp is then
@@ -206,7 +208,11 @@ def common_sample_leaderboard(\n    samples: Iterable[SkillSample], *, include_b
                         "excluded_sample_ids": excluded_sample_ids,
                         "excluded_sample_count": len(excluded_sample_ids),
                         "common_sample_ids": matched_sample_ids,
-                        **_metric_row(\n                            provider_items,\n                            missingness=missingness,\n                            include_bootstrap=include_bootstrap,\n                        ),
+                        **_metric_row(
+                            provider_items,
+                            missingness=missingness,
+                            include_bootstrap=include_bootstrap,
+                        ),
                     }
                 )
 
