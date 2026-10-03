@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 import hashlib
 import json
 from pathlib import Path
@@ -352,7 +352,6 @@ class Database:
         return [dict(row) for row in rows]
 
     def temperature_verification_pairs(self, *, days: int = 90, location_id: str = "station_05480") -> list[dict[str, object]]:
-        cutoff = utc_iso(datetime.now(timezone.utc) - timedelta(days=days))
         with self.connect() as connection:
             rows = connection.execute(
                 """WITH forecast AS (
@@ -361,16 +360,16 @@ class Database:
                            MAX(CASE WHEN v.statistic='p10' THEN v.value END) OVER (PARTITION BY r.id,v.valid_time_utc,v.variable) AS p10,
                            MAX(CASE WHEN v.statistic='p90' THEN v.value END) OVER (PARTITION BY r.id,v.valid_time_utc,v.variable) AS p90,
                            v.statistic
-                    FROM forecast_values v JOIN forecast_runs r ON r.id=v.run_id
-                    WHERE v.location_id=? AND r.location_id=? AND v.variable='temperature_2m'
+                    FROM forecast_runs r JOIN forecast_values v ON v.run_id=r.id
+                    WHERE r.location_id=? AND v.variable='temperature_2m'
                       AND v.statistic IN ('deterministic','mean','p50','p10','p90')
-                      AND v.valid_time_utc>=?
+                      AND julianday(v.valid_time_utc)>=julianday('now',?)
                 ) SELECT f.*,o.value AS observed_value,o.location_id AS truth_location_id
-                  FROM forecast f JOIN observations o ON o.location_id=f.location_id
-                    AND o.observed_at_utc=f.valid_time_utc AND o.variable='temperature_2m'
+                  FROM forecast f JOIN observations o ON o.variable='temperature_2m'
+                    AND o.observed_at_utc=f.valid_time_utc AND o.location_id=f.location_id
                     AND o.source_provider='DWD'
                   WHERE f.statistic IN ('deterministic','mean') ORDER BY f.provider,f.init_time_utc,f.valid_time_utc""",
-                (location_id, location_id, cutoff),
+                (location_id, f"-{days} days"),
             ).fetchall()
         return [dict(row) for row in rows]
 

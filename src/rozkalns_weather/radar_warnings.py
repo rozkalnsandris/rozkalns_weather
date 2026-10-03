@@ -11,22 +11,13 @@ from .providers.base import BytesFetcher, JsonFetcher, fetch_bytes, fetch_json
 BRIGHTSKY_ALERTS_URL = "https://api.brightsky.dev/alerts"
 BRIGHTSKY_RADAR_URL = "https://api.brightsky.dev/radar"
 DWD_WMS_URL = "https://maps.dwd.de/geoserver/dwd/wms"
-DWD_WMS_LAYERS = {
-    "base": "dwd:bluemarble",
-    "boundaries": "dwd:Warngebiete_Kreise",
-    "radar": "dwd:Niederschlagsradar",
-}
+DWD_WMS_LAYERS = "dwd:bluemarble,dwd:Niederschlagsradar,dwd:Warngebiete_Kreise"
 DWD_WMS_CRS = "EPSG:3857"
 DWD_WMS_IMAGE_SIZE_PX = 640
 DWD_WMS_MAX_IMAGE_BYTES = 2_000_000
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 WEB_MERCATOR_RADIUS_M = 6_378_137.0
 RADAR_RENDER_DISTANCE_M = 20_000
-RADAR_GRID_CELL_M = 1_000
-RADAR_PRECIPITATION_SCALE_MM_PER_5_MIN = 0.01
-RADAR_PROJECTION_ID = "DWD_RADOLAN_DE1200"
-RADAR_RASTER_INVALID_REASON = "RADAR_RASTER_VALIDATION_FAILED"
-RADAR_RASTER_EMPTY_REASON = "RADAR_NO_RENDERABLE_FRAMES"
 
 
 def _safe_time(value: Any) -> datetime | None:
@@ -81,31 +72,8 @@ def radar_frame_kind(timestamp: str | None, *, now: datetime) -> str:
     return "radar_observed" if stamp <= now.astimezone(timezone.utc) else "radar_nowcast"
 
 
-def _plain_radar_grid(value: Any) -> list[list[int]] | None:
-    if not isinstance(value, list) or not value:
-        return None
-    rows: list[list[int]] = []
-    width: int | None = None
-    for raw_row in value:
-        if not isinstance(raw_row, list) or not raw_row:
-            return None
-        if width is None:
-            width = len(raw_row)
-        elif len(raw_row) != width:
-            return None
-        row: list[int] = []
-        for raw_cell in raw_row:
-            if isinstance(raw_cell, bool) or not isinstance(raw_cell, int):
-                return None
-            if raw_cell < 0 or raw_cell > 32767:
-                return None
-            row.append(raw_cell)
-        rows.append(row)
-    return rows
-
-
 def _sanitized_radar_frame(raw: dict[str, Any], *, now: datetime) -> dict[str, Any]:
-    """Normalize one Bright Sky frame without exposing geometry or coordinates."""
+    """Keep only the timeline fields needed by the browser."""
 
     timestamp = raw.get("timestamp") or raw.get("time")
     kind = radar_frame_kind(str(timestamp) if timestamp else None, now=now)
@@ -116,69 +84,11 @@ def _sanitized_radar_frame(raw: dict[str, Any], *, now: datetime) -> dict[str, A
     source = raw.get("source")
     if source:
         frame["source"] = str(source)
-
-    grid = _plain_radar_grid(raw.get("precipitation_5"))
-    if grid is not None and kind in {"radar_observed", "radar_nowcast"}:
-        frame["raster"] = {
-            "width": len(grid[0]),
-            "height": len(grid),
-            "values": grid,
-        }
     return frame
 
 
-def _radar_rendering_contract(frames: list[dict[str, Any]]) -> dict[str, Any]:
-    raster_frames = [frame for frame in frames if isinstance(frame.get("raster"), dict)]
-    if not raster_frames:
-        return {
-            "state": "unavailable",
-            "raster_rendering_available": False,
-            "reason_code": RADAR_RASTER_EMPTY_REASON,
-        }
-
-    dimensions = {
-        (int(frame["raster"]["width"]), int(frame["raster"]["height"]))
-        for frame in raster_frames
-    }
-    if len(dimensions) != 1:
-        for frame in frames:
-            frame.pop("raster", None)
-        return {
-            "state": "unavailable",
-            "raster_rendering_available": False,
-            "reason_code": RADAR_RASTER_INVALID_REASON,
-        }
-
-    width, height = dimensions.pop()
-    return {
-        "state": "raster_ready",
-        "raster_rendering_available": True,
-        "encoding": "plain_integer_grid",
-        "dimensions": {"width": width, "height": height},
-        "projection": {
-            "id": RADAR_PROJECTION_ID,
-            "kind": "polar_stereographic",
-            "pixel_size_m": RADAR_GRID_CELL_M,
-            "web_mercator_overlay_safe": False,
-        },
-        "precipitation_unit": {
-            "field": "precipitation_5",
-            "unit": "mm_per_5_min",
-            "scale": RADAR_PRECIPITATION_SCALE_MM_PER_5_MIN,
-        },
-        "nodata": {
-            "sentinel": None,
-            "zero_may_include_uncovered_grid_edge": True,
-        },
-        "crop_radius_m": RADAR_RENDER_DISTANCE_M,
-        "center_marker": "privacy_safe_crop_center",
-        "raster_frame_count": len(raster_frames),
-        "timeline_frame_count": len(frames),
-    }
-
-
 def _web_mercator_bbox(lat: float, lon: float, *, radius_m: int = RADAR_RENDER_DISTANCE_M) -> tuple[float, float, float, float]:
-    """Return a square ground-distance crop in EPSG:3857 without exposing coordinates to clients."""
+    """Return a square ground-distance crop in EPSG:3857 without exposing coordinates."""
 
     safe_lat = max(-85.05112878, min(85.05112878, float(lat)))
     lat_rad = math.radians(safe_lat)
@@ -193,30 +103,27 @@ def _web_mercator_bbox(lat: float, lon: float, *, radius_m: int = RADAR_RENDER_D
     )
 
 
-def dwd_radar_map_url(*, lat: float, lon: float, layer: str, at: str | None = None) -> str:
-    """Build one fixed DWD WMS request; callers never choose an arbitrary upstream or WMS layer."""
+def dwd_radar_map_url(*, lat: float, lon: float, at: str) -> str:
+    """Build one fixed DWD WMS image containing map, radar and district boundaries."""
 
-    if layer not in DWD_WMS_LAYERS:
-        raise ValueError("unsupported radar map layer")
+    stamp = _safe_time(at)
+    if stamp is None:
+        raise ValueError("radar map timestamp is required")
     bbox = _web_mercator_bbox(lat, lon)
     params: dict[str, object] = {
         "service": "WMS",
         "version": "1.3.0",
         "request": "GetMap",
-        "layers": DWD_WMS_LAYERS[layer],
-        "styles": "",
+        "layers": DWD_WMS_LAYERS,
+        "styles": ",,",
         "crs": DWD_WMS_CRS,
         "bbox": ",".join(f"{value:.3f}" for value in bbox),
         "width": DWD_WMS_IMAGE_SIZE_PX,
         "height": DWD_WMS_IMAGE_SIZE_PX,
         "format": "image/png",
-        "transparent": "FALSE" if layer == "base" else "TRUE",
+        "transparent": "FALSE",
+        "time": utc_iso(stamp),
     }
-    if layer == "radar":
-        stamp = _safe_time(at)
-        if stamp is None:
-            raise ValueError("radar map timestamp is required")
-        params["time"] = utc_iso(stamp)
     return f"{DWD_WMS_URL}?{urlencode(params)}"
 
 
@@ -224,13 +131,12 @@ def fetch_dwd_radar_map_png(
     *,
     lat: float,
     lon: float,
-    layer: str,
-    at: str | None = None,
+    at: str,
     fetcher: BytesFetcher = fetch_bytes,
 ) -> bytes:
-    """Fetch a small projection-correct DWD WMS map without returning HOME_LAT/HOME_LON."""
+    """Fetch one composite DWD WMS PNG while keeping HOME_LAT/HOME_LON server-side."""
 
-    payload = fetcher(dwd_radar_map_url(lat=lat, lon=lon, layer=layer, at=at))
+    payload = fetcher(dwd_radar_map_url(lat=lat, lon=lon, at=at))
     if len(payload) > DWD_WMS_MAX_IMAGE_BYTES:
         raise ValueError("DWD radar map image is unexpectedly large")
     if not payload.startswith(PNG_SIGNATURE):
@@ -291,7 +197,6 @@ def fetch_radar_point(
             if frame["kind"] in {"radar_observed", "radar_nowcast"}:
                 frames.append(frame)
 
-    rendering_contract = _radar_rendering_contract(frames)
     return {
         "source": "DWD radar via Bright Sky",
         "transport": "Bright Sky",
@@ -306,7 +211,7 @@ def fetch_radar_point(
             "raw_payload_exposed": False,
             "allowed_kinds": ["radar_observed", "radar_nowcast"],
             "model_forecast_is_separate": True,
-            "rendering_contract": rendering_contract,
+            "image_endpoint": "/api/radar/map",
         },
         "frames": frames,
     }

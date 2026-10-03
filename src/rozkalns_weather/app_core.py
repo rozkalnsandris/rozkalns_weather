@@ -469,25 +469,19 @@ def create_app(settings: Settings | None = None, database: Database | None = Non
         return {**fetch_dwd_alerts(lat=lat, lon=lon), "reference_location": reference}
 
     @app.get("/api/radar/map")
-    def radar_map(
-        layer: Literal["base", "boundaries", "radar"] = Query(...),
-        at: str | None = Query(None),
-    ) -> Response:
+    def radar_map(at: str = Query(..., min_length=1)) -> Response:
         lat, lon, _reference = _safety_reference(settings)
-        if layer == "radar" and not at:
-            raise HTTPException(status_code=422, detail="radar timestamp is required")
         try:
-            payload = fetch_dwd_radar_map_png(lat=lat, lon=lon, layer=layer, at=at)
+            payload = fetch_dwd_radar_map_png(lat=lat, lon=lon, at=at)
         except ValueError as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
         except Exception as exc:
             raise HTTPException(status_code=502, detail="DWD radar map unavailable") from exc
-        max_age = 86_400 if layer in {"base", "boundaries"} else 300
         return Response(
             content=payload,
             media_type="image/png",
             headers={
-                "Cache-Control": f"private, max-age={max_age}",
+                "Cache-Control": "private, max-age=300",
                 "X-Content-Type-Options": "nosniff",
             },
         )

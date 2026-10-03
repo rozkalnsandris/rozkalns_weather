@@ -115,27 +115,27 @@ def test_verification_summary_uses_station_05480_truth(tmp_path) -> None:
 
 def test_radar_map_proxy_keeps_private_home_coordinates_server_side(tmp_path, monkeypatch) -> None:
     client, _ = _client(tmp_path, home=True)
-    seen: list[tuple[float, float, str, str | None]] = []
+    seen: list[tuple[float, float, str]] = []
 
-    def fake_map(*, lat: float, lon: float, layer: str, at: str | None = None) -> bytes:
-        seen.append((lat, lon, layer, at))
+    def fake_map(*, lat: float, lon: float, at: str) -> bytes:
+        seen.append((lat, lon, at))
         return b"\x89PNG\r\n\x1a\nfixture"
 
     monkeypatch.setattr("rozkalns_weather.app_core.fetch_dwd_radar_map_png", fake_map)
-    response = client.get("/api/radar/map?layer=radar&at=2026-09-28T12:30:00Z")
+    response = client.get("/api/radar/map?at=2026-09-28T12:30:00Z")
 
     assert response.status_code == 200
     assert response.headers["content-type"] == "image/png"
     assert response.headers["cache-control"].startswith("private")
     assert response.content.startswith(b"\x89PNG")
-    assert seen == [(51.5, 7.6, "radar", "2026-09-28T12:30:00Z")]
+    assert seen == [(51.5, 7.6, "2026-09-28T12:30:00Z")]
     assert b"51.5" not in response.content
     assert b"7.6" not in response.content
 
 
-def test_radar_map_requires_timestamp_for_radar_layer(tmp_path) -> None:
+def test_radar_map_requires_timestamp(tmp_path) -> None:
     client, _ = _client(tmp_path, home=True)
-    assert client.get("/api/radar/map?layer=radar").status_code == 422
+    assert client.get("/api/radar/map").status_code == 422
 
 
 def test_unknown_location_is_rejected(tmp_path) -> None:

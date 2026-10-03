@@ -42,18 +42,19 @@ def test_simple_radar_and_status_do_not_reference_removed_lazy_modules() -> None
     worker = (STATIC / "sw.js").read_text()
     combined = index + app + navigation + worker
 
-    assert 'id="radarBaseMap"' in index
     assert 'id="radarImage"' in index
-    assert 'id="radarBoundaries"' in index
-    assert 'id="radarCanvas"' in index
+    assert 'id="radarBaseMap"' not in index
+    assert 'id="radarBoundaries"' not in index
+    assert 'id="radarCanvas"' not in index
     assert 'id="radarTimeline"' in index
     assert 'id="radarPlay"' in index
     assert 'id="radarOutput"' not in index
     assert "function renderRadarPayload(payload)" in app
     assert "function drawRadarFrame(index)" in app
     assert "/api/radar/map?" in app
-    assert 'new URLSearchParams({ layer })' in app
-    assert "preloadRadarFrameMaps" in app
+    assert "encodeURIComponent(frame.timestamp)" in app
+    assert "preloadRadarFrameMaps" not in app
+    assert "radarCellColor" not in app
     assert "radar_timeline.js" not in combined
     assert "status_v1.js" not in combined
     assert "forecast_loading.js" not in worker
