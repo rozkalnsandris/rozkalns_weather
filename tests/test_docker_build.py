@@ -30,6 +30,7 @@ def test_source_tree_module_entrypoint_runs_without_installed_console_script() -
     assert result.returncode == 0, result.stderr
     assert "ingest-public" in result.stdout
     assert "readiness" in result.stdout
+    assert "weathernext-gcs-canary" in result.stdout
 
 
 def test_public_ingest_uses_module_entrypoint_in_runtime_image() -> None:
