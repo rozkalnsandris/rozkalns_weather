@@ -71,3 +71,21 @@ def test_simple_ui_hides_internal_research_controls() -> None:
     assert "WeatherNext 3" in html
     assert "DWD official warnings" in html
     assert "Forecast sources" in html
+
+
+def test_mobile_interaction_stays_compact_and_direct() -> None:
+    html = (STATIC / "index.html").read_text()
+    app = (STATIC / "app.js").read_text()
+    consumer = (STATIC / "consumer_ui.js").read_text()
+    accepted = (STATIC / "accepted_ui.css").read_text()
+    worker = (STATIC / "sw.js").read_text()
+
+    assert "min-height:300px" not in html
+    assert 'behavior: "smooth"' not in app
+    assert 'behavior: "auto"' in app
+    assert "forecast for ${berlinLocalTime(anchor.valid_time_utc)}" in consumer
+    assert " · retrieved ${anchor.retrieved_at_utc" not in consumer
+    assert "grid-template-columns:repeat(3,minmax(0,1fr))" in accepted
+    assert 'input[type="range"]' in accepted
+    assert "min-height:44px" in accepted
+    assert "rozkalns-weather-v41" in worker
