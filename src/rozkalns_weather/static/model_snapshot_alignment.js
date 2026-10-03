@@ -97,8 +97,8 @@
       <h2>WeatherNext 3</h2>
       <span class="wn-status surface-state state-loading" role="status" aria-live="polite">LOADING · checking forecast availability</span>
       <strong class="wn-value" hidden>—</strong>
-      <p class="wn-meta">Forecast availability is being checked from current provider evidence.</p>
-      <p class="wn-note">WeatherNext forecast availability is separate from verification readiness and DWD warning authority.</p>`;
+      <p class="wn-meta">Checking whether a WeatherNext forecast is available.</p>
+      <p class="wn-note">Experimental forecast model. DWD warnings remain official.</p>`;
     return section;
   }
 
@@ -152,20 +152,18 @@
         value.hidden = false;
         value.textContent = `${numeric.toFixed(1)}°`;
         status.textContent = state === "fresh"
-          ? "FRESH · genuine WeatherNext forecast available"
-          : `STALE · genuine WeatherNext forecast available; provider state ${healthState}`;
-        meta.textContent = provenanceText(row);
+          ? "AVAILABLE · WeatherNext forecast"
+          : "DELAYED · WeatherNext forecast";
+        meta.textContent = `Forecast for ${root.formatLocalTime(row.valid_time_utc)} · ${row.statistic || "forecast"}.`;
       } else {
         value.hidden = true;
         value.textContent = "—";
         if (state === "error") {
-          status.textContent = `ERROR · WeatherNext forecast unavailable; provider state ${healthState}`;
-        } else if ([health.ingest_state, health.state, health.freshness_state].includes("access_pending")) {
-          status.textContent = "PENDING · WeatherNext access pending; no genuine forecast value available";
+          status.textContent = "UNAVAILABLE · WeatherNext could not be refreshed";
         } else {
-          status.textContent = `PENDING · no genuine WeatherNext forecast value available; provider state ${healthState}`;
+          status.textContent = "NOT AVAILABLE YET · WeatherNext forecast";
         }
-        meta.textContent = provenanceText(null);
+        meta.textContent = "WeatherNext data has not been collected yet.";
       }
     });
   }
@@ -183,10 +181,10 @@
         const value = card.querySelector(".wn-value");
         const meta = card.querySelector(".wn-meta");
         status.className = `wn-status surface-state state-${state.dataset.state}`;
-        status.textContent = `${state.dataset.state.toUpperCase()} · WeatherNext forecast availability could not be refreshed`;
+        status.textContent = "UNAVAILABLE · WeatherNext could not be refreshed";
         value.hidden = true;
         value.textContent = "—";
-        meta.textContent = "No WeatherNext value is inferred from another provider when the forecast surface fails.";
+        meta.textContent = "Try again later.";
       });
     };
     new root.MutationObserver(sync).observe(state, { attributes: true, childList: true, subtree: true });
@@ -218,11 +216,11 @@
         const value = row && finiteNumber(row.value) != null ? `${finiteNumber(row.value).toFixed(1)}°` : "—";
         let note;
         if (pending) {
-          note = "No genuine data · pending";
+          note = "Not available yet";
         } else if (!comparisonTime) {
-          note = "No common valid time · excluded";
+          note = "No matching forecast";
         } else if (!row) {
-          note = `No value at ${root.formatLocalTime(comparisonTime)} · excluded`;
+          note = `No forecast at ${root.formatLocalTime(comparisonTime)}`;
         } else {
           const age = runAgeHours(row);
           const init = row.init_time_utc ? ` · init ${root.formatLocalTime(row.init_time_utc)}` : "";
@@ -237,8 +235,8 @@
         .map((row) => finiteNumber(row?.value))
         .filter((value) => value != null);
       root.document.querySelector("#modelSpread").textContent = comparisonTime && values.length >= 2
-        ? `Model spread ${(Math.max(...values) - Math.min(...values)).toFixed(1)}° at ${root.formatLocalTime(comparisonTime)} · descriptive provider disagreement`
-        : "Model spread — · no common valid time across at least two genuine model values";
+        ? `Model difference ${(Math.max(...values) - Math.min(...values)).toFixed(1)}° at ${root.formatLocalTime(comparisonTime)}`
+        : "Model difference —";
       renderWeatherNextPriority(rows, healthMap);
     };
     return true;
