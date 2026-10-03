@@ -897,5 +897,21 @@ window.addEventListener("online", () => {
   if (loadedSafetySurfaces.has("radar")) void loadRadarSurface();
 });
 
-if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js", { scope: "/" });
+if ("serviceWorker" in navigator) {
+  const hadController = Boolean(navigator.serviceWorker.controller);
+  let reloadingForWorker = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (!hadController || reloadingForWorker) return;
+    reloadingForWorker = true;
+    window.location.reload();
+  });
+  navigator.serviceWorker.register("/sw.js", { scope: "/" })
+    .then((registration) => registration.update())
+    .catch(() => {});
+}
+if ("requestIdleCallback" in window) {
+  window.requestIdleCallback(warmAccuracy, { timeout: 2500 });
+} else {
+  window.setTimeout(warmAccuracy, 1000);
+}
 refresh();
