@@ -63,22 +63,23 @@ Still require explicit authorization when applicable:
 ## WeatherNext one-shot GCS canary
 
 WeatherNext private access is intentionally **not** a second deployment system.
-The ordinary Weather image contains the optional GCS runtime, and the first
-read-only canary uses one ephemeral container with the already-provisioned
-WeatherNext binding mounted read-only.
+The ordinary Weather image contains the optional GCS runtime. The first
+read-only canary uses one ephemeral container and exactly one existing Google
+credential file mounted read-only at a fixed in-container path.
 
 After a separate exact LIVE authorization, the operator shape is:
 
 ```text
 exact Weather image
 -> docker run --rm --user 0:0
--> mount existing WeatherNext binding at /run/weathernext-binding:ro
+-> mount one existing credential file at /run/secrets/weathernext-google.json:ro
 -> python -m rozkalns_weather weathernext-gcs-canary --init <exact-UTC-init>
 -> print sanitized canary evidence only
 ```
 
-The canary has no database volume and performs no persistence, schema change,
-credential copy, IAM change, alternate dataset fallback or automatic retry.
+The canary has no binding manifest or credential-directory protocol, no database
+volume and no persistence, schema change, credential copy, IAM change, alternate
+dataset fallback or automatic retry.
 It is fixed to `station_05480`, six forecast hours and the precomputed
 WeatherNext 3 statistics GCS/Zarr surface. Any private binding, credential,
 schema or transport mismatch fails closed.
