@@ -54,9 +54,22 @@ def main() -> None:
     sub.add_parser("ingest-public", help="collect DWD, ICON-D2, ECMWF IFS and ECMWF AIFS")
     sub.add_parser("corpus-stats", help="print corpus statistics")
     sub.add_parser("corpus-check", help="run corpus integrity checks")
+    gcs_canary = sub.add_parser("weathernext-gcs-canary", help="run the bounded read-only WeatherNext GCS canary")
+    gcs_canary.add_argument("--init", required=True, help="exact UTC init time, for example 2026-10-01T23:00:00Z")
     backup = sub.add_parser("backup", help="create a consistent SQLite backup")
     backup.add_argument("--output", required=True)
     args = parser.parse_args()
+
+    if args.command == "weathernext-gcs-canary":
+        from .weathernext_canary import WeatherNextGCSCanaryError, parse_init_utc, run_fixed_canary
+
+        try:
+            evidence = run_fixed_canary(parse_init_utc(args.init))
+        except WeatherNextGCSCanaryError:
+            _print({"state": "gcs_canary_failed"})
+            raise SystemExit(1)
+        _print(evidence)
+        return
 
     settings = Settings.from_env()
 
