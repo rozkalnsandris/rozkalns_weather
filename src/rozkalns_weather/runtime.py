@@ -7,7 +7,6 @@ import os
 from .config import Settings
 from .db import Database
 from .providers import PROVIDERS
-from .providers.weathernext import access_state
 
 REQUIRED_TABLES = frozenset(
     {
@@ -81,14 +80,10 @@ def readiness_payload(settings: Settings, database: Database) -> dict[str, objec
     stored = database.provider_statuses() if database_state["state"] == "ready" else {}
 
     providers: list[dict[str, object]] = []
-    now = datetime.now(timezone.utc)
     for provider in PROVIDERS:
         saved = stored.get(provider.id, {})
         if provider.id == "weathernext3":
-            state = saved.get("state") or access_state(
-                configured=settings.weathernext_cloud_configured,
-                now=now,
-            )
+            state = saved.get("state", "not_ingested")
             required_for_runtime = False
         else:
             state = saved.get("state", "adapter_ready_not_ingested")
@@ -118,7 +113,7 @@ def readiness_payload(settings: Settings, database: Database) -> dict[str, objec
             "coordinates_exposed": False,
         },
         "weathernext": {
-            "configured": settings.weathernext_cloud_configured,
+            "configured": bool(stored.get("weathernext3")),
             "required_for_public_runtime": False,
             "values_fabricated": False,
         },

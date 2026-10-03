@@ -3,15 +3,14 @@ const qsa = (selector) => [...document.querySelectorAll(selector)];
 
 const DATA_CACHE_PREFIX = "rozkalns-weather:pwa-cache:v1:";
 const UI_STATES = ["loading", "fresh", "stale", "error", "offline"];
-const PUBLIC_PROVIDER_IDS = new Set(["dwd_observations", "dwd_mosmix_l", "icon_d2", "ecmwf_ifs", "ecmwf_aifs"]);
-const PROVIDER_PREFERENCE = ["weathernext3", "icon_d2", "ecmwf_ifs", "ecmwf_aifs", "dwd_mosmix_l"];
+const PUBLIC_PROVIDER_IDS = new Set(["dwd_observations", "icon_d2", "ecmwf_ifs", "ecmwf_aifs"]);
+const PROVIDER_PREFERENCE = ["weathernext3", "icon_d2", "ecmwf_ifs", "ecmwf_aifs"];
 const MODEL_SNAPSHOT_IDS = ["weathernext3", "icon_d2", "ecmwf_ifs", "ecmwf_aifs"];
 const MODEL_LABELS = {
   weathernext3: "WeatherNext 3",
   icon_d2: "ICON-D2",
   ecmwf_ifs: "ECMWF IFS",
   ecmwf_aifs: "AIFS",
-  dwd_mosmix_l: "DWD MOSMIX-L",
 };
 const STAT_PREFERENCE = ["deterministic", "mean", "p50"];
 const OBSERVATION_FRESH_HOURS = 3;
@@ -25,11 +24,6 @@ const FORECAST_LOCATION_META = {
     label: "DWD CDC 05480",
     heroLabel: "Dortmund-Wickede · reference",
     note: "Canonical public benchmark; station prognozes salīdzina pret DWD CDC 05480 observations.",
-  },
-  station_10416: {
-    label: "DWD 10416 · legacy MOSMIX",
-    heroLabel: "Dortmund · legacy 10416",
-    note: "Legacy MOSMIX reference; nav pašreizējais measured benchmark.",
   },
 };
 
@@ -548,7 +542,7 @@ function renderModelSnapshot(rows, healthMap) {
     const series = futureRows(canonicalProviderRows(rows, provider), 1);
     const row = series[0];
     const health = healthMap[provider];
-    const healthState = health?.state || health?.freshness_state || (provider === "weathernext3" ? "access_pending" : "unknown");
+    const healthState = health?.state || health?.freshness_state || (provider === "weathernext3" ? "not_ingested" : "unknown");
     const value = row && Number.isFinite(Number(row.value)) ? `${Number(row.value).toFixed(1)}°` : "—";
     const note = row ? `${formatLocalTime(row.valid_time_utc)} · ${row.statistic}` : (provider === "weathernext3" ? "No genuine data · pending" : healthState);
     return `<div class="model-card ${provider === "weathernext3" ? "primary" : ""}" data-provider="${provider}">
@@ -574,7 +568,7 @@ async function refresh() {
       forecastLocationInitialized = true;
     }
     qs("#providerGrid").innerHTML = providersCard(lastHealth.providers);
-    qs("#providerClasses").innerHTML = providersCard(lastHealth.providers);
+    if (qs("#providerClasses")) qs("#providerClasses").innerHTML = providersCard(lastHealth.providers);
     const healthState = providerGridState(lastHealth, healthResult);
     setSurfaceState("providerState", healthState.state, healthState.message);
     globalNetworkState(healthState);

@@ -14,20 +14,18 @@ from .config import Settings
 from .current_store import latest_current_observations
 from .db import Database
 from .leaderboard import SkillSample, common_sample_leaderboard
-from .locations import BENCHMARK_LOCATION, DWD_10416
+from .locations import BENCHMARK_LOCATION
 from .models import parse_time
 from .providers import PROVIDERS
 from .providers.dwd_cdc_observations import CDC_STATION_ID
-from .providers.weathernext import access_state
 from .provider_health import PUBLIC_PROVIDER_HEALTH_POLICIES, classify_public_provider_health
 from .provenance_api import blocked_trace_response, hourly_with_provenance, verification_value_trace
 from .radar_warnings import fetch_dwd_alerts, fetch_radar_point
 from .runtime import database_schema_state, readiness_payload
-from .semantics import PRECIP_EVENT_VERSION
 from .truth_quality import database_truth_quality
 from .value_provenance import ValueProvenanceError
-from .verification import ErrorPair, ProbabilityPair, brier_score, lead_bucket, reliability_bins, summarize
-from .verification_drilldown import verification_drilldown_month
+from .verification import ErrorPair, lead_bucket, summarize
+from .weather_conditions import annotate_daily_conditions
 
 
 def _descriptor(provider) -> dict[str, object]:
@@ -119,7 +117,7 @@ def _public_location_label(location_id: str, settings: Settings) -> str:
         return settings.home_label
     if location_id == BENCHMARK_LOCATION.id:
         return BENCHMARK_LOCATION.label
-    return DWD_10416.label
+    return BENCHMARK_LOCATION.label
 
 
 def _safety_reference(settings: Settings) -> tuple[float, float, dict[str, object]]:
@@ -166,12 +164,12 @@ def create_app(settings: Settings | None = None, database: Database | None = Non
     # materialization belongs to explicit schema/init or ingest write paths.
     if settings.database_init_mode == "auto" and schema["state"] == "ready":
         database.ensure_location(
-            location_id=DWD_10416.id,
-            label=DWD_10416.label,
-            lat=DWD_10416.lat,
-            lon=DWD_10416.lon,
-            elevation_m=DWD_10416.elevation_m,
-            timezone=DWD_10416.timezone,
+            location_id=BENCHMARK_LOCATION.id,
+            label=BENCHMARK_LOCATION.label,
+            lat=BENCHMARK_LOCATION.lat,
+            lon=BENCHMARK_LOCATION.lon,
+            elevation_m=BENCHMARK_LOCATION.elevation_m,
+            timezone=BENCHMARK_LOCATION.timezone,
         )
         if settings.home_configured:
             database.ensure_home_location(
@@ -243,7 +241,7 @@ def create_app(settings: Settings | None = None, database: Database | None = Non
             saved = stored.get(provider.id, {})
             state = saved.get("state", "adapter_ready_not_ingested")
             if provider.id == "weathernext3" and provider.id not in stored:
-                state = access_state(configured=settings.weathernext_cloud_configured, now=now)
+                state = "not_ingested"
             if provider.id in PUBLIC_PROVIDER_HEALTH_POLICIES:
                 health = classify_public_provider_health(provider.id, saved, evidence.get(provider.id), now=now)
                 state = health["ingest_state"]
@@ -309,7 +307,7 @@ def create_app(settings: Settings | None = None, database: Database | None = Non
     def hourly(
         hours: int = Query(48, ge=1, le=360),
         variable: str = Query("temperature_2m"),
-        location_id: Literal["home", "station_05480", "station_10416"] = Query("home"),
+        location_id: Literal["home", "station_05480"] = Query("home"),
     ) -> dict[str, object]:
         require_database_ready()
         return {
@@ -322,14 +320,25 @@ def create_app(settings: Settings | None = None, database: Database | None = Non
     @app.get("/api/daily")
     def daily(
         days: int = Query(10, ge=1, le=15),
-        location_id: Literal["home", "station_05480", "station_10416"] = Query("home"),
+        location_id: Literal["home", "station_05480"] = Query("home"),
     ) -> dict[str, object]:
         require_database_ready()
         return {
             "days": days,
             "timezone": settings.home_timezone,
             "location": {"id": location_id, "label": _public_location_label(location_id, settings), "coordinates_exposed": False},
-            "days_by_provider": _daily_payload(database, days=days, timezone_name=settings.home_timezone, location_id=location_id),
+            "days_by_provider": annotate_daily_conditions(
+                database,
+                _daily_payload(
+                    database,
+                    days=days,
+                    timezone_name=settings.home_timezone,
+                    location_id=location_id,
+                ),
+                days=days,
+                timezone_name=settings.home_timezone,
+                location_id=location_id,
+            ),
         }
 
     @app.get("/api/corpus/stats")
@@ -402,14 +411,6 @@ def create_app(settings: Settings | None = None, database: Database | None = Non
             "note": "Only common station valid-times inside one variable/lead bucket and one complete provider model-version cohort are eligible for model-comparison surfaces. Provider aggregates remain descriptive only. Metrics are not clean benchmark evidence unless verification_ready is true. Home forecasts are comparison-only until home observations exist.",
         }
 
-    @app.get("/api/verification/drilldown")
-    def verification_drilldown_api(month: str = Query(..., pattern=r"^\d{4}-\d{2}$")) -> dict[str, object]:
-        require_database_ready()
-        try:
-            return verification_drilldown_month(database, month=month)
-        except ValueError as exc:
-            raise HTTPException(status_code=422, detail=str(exc)) from exc
-
     @app.get("/api/provenance/verification", response_model=None)
     def provenance_verification(
         provider: str = Query(..., min_length=1),
@@ -431,59 +432,6 @@ def create_app(settings: Settings | None = None, database: Database | None = Non
         except ValueProvenanceError as exc:
             status_code = 404 if exc.reason_code in {"FORECAST_VALUE_NOT_FOUND", "TRUTH_VALUE_NOT_FOUND"} else 422
             return JSONResponse(blocked_trace_response(exc), status_code=status_code)
-
-    @app.get("/api/verification/precipitation")
-    def precipitation_verification(days: int = Query(90, ge=1, le=3650)) -> dict[str, object]:
-        require_database_ready()
-        truth_quality = database_truth_quality(
-            database,
-            days=days,
-            location_id=BENCHMARK_LOCATION.id,
-            station_id=CDC_STATION_ID,
-        )
-        threshold = settings.precipitation_event_threshold_mm
-        rows = database.precipitation_verification_pairs(
-            days=days,
-            threshold_mm=threshold,
-            location_id=BENCHMARK_LOCATION.id,
-        )
-        prob = defaultdict(list)
-        amount = defaultdict(list)
-        for row in rows["probability"]:
-            prob[str(row["provider"])].append(
-                ProbabilityPair(
-                    provider=str(row["provider"]),
-                    model_version=row.get("model_version"),
-                    lead_hours=float(row["lead_hours"]),
-                    probability=float(row["probability"]),
-                    observed_event=float(row["observed_event"]),
-                )
-            )
-        for row in rows["amount"]:
-            amount[str(row["provider"])].append(
-                ErrorPair(
-                    provider=str(row["provider"]),
-                    model_version=row.get("model_version"),
-                    lead_hours=float(row["lead_hours"]),
-                    forecast=float(row["forecast_value"]),
-                    observed=float(row["observed_value"]),
-                )
-            )
-        return {
-            "window_days": days,
-            "comparison_location": {"id": BENCHMARK_LOCATION.id, "station_id": CDC_STATION_ID},
-            "event_version": PRECIP_EVENT_VERSION,
-            "occurrence_threshold_mm_per_hour": threshold,
-            "sample_sufficiency_contract": "common-sample-sufficiency-v1",
-            "verification_ready": truth_quality["verification_ready"],
-            "truth_quality": truth_quality,
-            "probability": {
-                provider: {**brier_score(items), "reliability_bins": reliability_bins(items)}
-                for provider, items in prob.items()
-            },
-            "amount": {provider: summarize(items) for provider, items in amount.items()},
-            "note": "Probability and precipitation amount are verified separately; each metric exposes n and sample sufficiency. Missingness remains not_assessed unless a strict common-sample denominator is available. Metrics are not clean benchmark evidence unless verification_ready is true, and deterministic model transport never fabricates a probability.",
-        }
 
     @app.get("/api/warnings")
     def warnings() -> dict[str, object]:

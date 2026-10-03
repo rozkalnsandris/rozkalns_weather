@@ -270,7 +270,7 @@ class Database:
             rows = connection.execute("SELECT * FROM provider_ingest_status ORDER BY provider").fetchall()
         return {str(row["provider"]): dict(row) for row in rows}
 
-    def provider_freshness_evidence(self, *, location_id: str = "station_10416") -> dict[str, dict[str, object]]:
+    def provider_freshness_evidence(self, *, location_id: str = "station_05480") -> dict[str, dict[str, object]]:
         with self.connect() as connection:
             forecast_rows = connection.execute(
                 """WITH latest AS (
@@ -300,7 +300,7 @@ class Database:
             result["dwd_observations"] = {"last_observed_at_utc": observation["last_observed_at_utc"]}
         return result
 
-    def latest_observations(self, *, location_id: str = "station_10416") -> list[dict[str, object]]:
+    def latest_observations(self, *, location_id: str = "station_05480") -> list[dict[str, object]]:
         with self.connect() as connection:
             rows = connection.execute(
                 """WITH latest AS (
@@ -351,7 +351,7 @@ class Database:
             ).fetchall()
         return [dict(row) for row in rows]
 
-    def temperature_verification_pairs(self, *, days: int = 90, location_id: str = "station_10416") -> list[dict[str, object]]:
+    def temperature_verification_pairs(self, *, days: int = 90, location_id: str = "station_05480") -> list[dict[str, object]]:
         with self.connect() as connection:
             rows = connection.execute(
                 """WITH forecast AS (
@@ -373,7 +373,7 @@ class Database:
             ).fetchall()
         return [dict(row) for row in rows]
 
-    def precipitation_verification_pairs(self, *, days: int = 90, threshold_mm: float = 0.1, location_id: str = "station_10416") -> dict[str, list[dict[str, object]]]:
+    def precipitation_verification_pairs(self, *, days: int = 90, threshold_mm: float = 0.1, location_id: str = "station_05480") -> dict[str, list[dict[str, object]]]:
         with self.connect() as connection:
             amount = connection.execute(
                 """SELECT r.provider,r.model_version,r.location_id,r.init_time_quality,r.init_time_utc,v.valid_time_utc,v.lead_hours,
@@ -413,7 +413,7 @@ class Database:
             gaps = int(connection.execute(
                 """WITH ordered AS (
                     SELECT observed_at_utc,LAG(observed_at_utc) OVER (ORDER BY observed_at_utc) AS prev
-                    FROM observations WHERE variable='temperature_2m' AND source_provider='DWD' AND location_id='station_10416'
+                    FROM observations WHERE variable='temperature_2m' AND source_provider='DWD' AND location_id='station_05480'
                 ) SELECT COUNT(*) FROM ordered WHERE prev IS NOT NULL AND (julianday(observed_at_utc)-julianday(prev))*24.0>2.01"""
             ).fetchone()[0])
         return {"forecast_runs": run_total, "observations": obs_total, "observation_first_utc": obs_bounds[0], "observation_last_utc": obs_bounds[1], "providers": providers, "observation_gaps_over_2h": gaps}
@@ -452,7 +452,7 @@ class Database:
                 errors.append(f"invalid_observation_unit:{row['variable']}:{row['unit']}")
         return {"ok": not errors, "errors": errors, "error_count": len(errors)}
 
-    def notable_temperature_cases(self, *, days: int = 90, limit: int = 10, location_id: str = "station_10416") -> list[dict[str, object]]:
+    def notable_temperature_cases(self, *, days: int = 90, limit: int = 10, location_id: str = "station_05480") -> list[dict[str, object]]:
         rows = self.temperature_verification_pairs(days=days, location_id=location_id)
         return sorted(rows, key=lambda row: abs(float(row["forecast_value"]) - float(row["observed_value"])), reverse=True)[:limit]
 

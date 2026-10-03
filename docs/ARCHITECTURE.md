@@ -1,254 +1,58 @@
 # Architecture
 
-## Goals
+## Principle
 
-- viens privāts lokāls weather dashboard;
-- first-class WeatherNext 3 ingestion un verification;
-- vienāda point location visiem point-capable modeļiem;
-- immutable forecast snapshots;
-- provider provenance;
-- zema ekspluatācijas sarežģītība uz RPi5;
-- viegli paplašināms ar radar, AQI, pollen un citiem slāņiem.
-
-## MVP stack
-
-### Backend
-
-- Python 3
-- FastAPI
-- SQLite sākumā
-- APScheduler/systemd timer/cron tipa scheduled collectors (precīzo runtime orchestration izvēlēsim implementācijas laikā)
-- Pydantic provider schemas
-
-### Frontend
-
-- viegls responsive SPA/PWA;
-- sākotnēji pietiek ar TypeScript + Vite/React vai līdzvērtīgu minimālu stack;
-- mobile-first;
-- nav vajadzīga native Android app MVP.
-
-### Private access
-
-Ja dashboard tiek publicēts internetā tehniskai piekļuvei no telefona, tas joprojām paliek privāts. Kandidāts: Cloudflare Tunnel + Cloudflare Access.
-
-Deploy/runtime konfigurācija nav šīs bootstrap dokumentācijas daļa un prasa atsevišķu autorizāciju.
-
-## Deployment architecture
-
-Weather is a SIMPLE-DEPLOY v1 consumer/canary, not the deployment-platform implementation. `.github/workflows/simple-deploy.yml` pins `ops-workflows@e05ed760791a127c7c9628696806ef39c9fe329c` and reads `.simple-deploy.json`; the shared workflow builds/publishes the ARM64 image and advances only a discovery pointer. `RPi5_main@ff20fcf64ba62c95e5f15eeb481c3c66bb5c9708` owns the generic allowlisted pull/deploy boundary. The exact resolved GHCR digest is the runtime application identity.
-
-Application release does not include schema/corpus mutation, destructive recovery, private-provider activation, secrets/permissions or Cloudflare/network work. Those remain separately gated.
-
-## Logical components
+Keep the weather product small.
 
 ```text
-                         +--------------------+
-                         | local runtime cfg  |
-                         | HOME_LAT/HOME_LON  |
-                         +----------+---------+
-                                    |
-             +----------------------+----------------------+
-             |                      |                      |
-             v                      v                      v
-      WeatherNext 3             DWD adapters          ECMWF adapters
-       BigQuery                 ICON/MOSMIX/etc       IFS/AIFS
-             |                      |                      |
-             +----------------------+----------------------+
-                                    |
-                                    v
-                           provider normalization
-                                    |
-                 +------------------+------------------+
-                 |                                     |
-                 v                                     v
-         forecast snapshots                     observations
-                 |                                     |
-                 +------------------+------------------+
-                                    |
-                                    v
-                             verification engine
-                                    |
-                 +------------------+------------------+
-                 |                                     |
-                 v                                     v
-              REST API                          metrics/materialized
-                 |                                  summaries
-                 +------------------+------------------+
-                                    |
-                                    v
-                                  PWA
+public weather sources ─┐
+                       ├─> ingest -> SQLite -> FastAPI -> private PWA
+WeatherNext optional ──┘
+DWD warnings/radar ---------------------------> PWA
 ```
 
-## Provider adapter contract
+## Runtime components
 
-Katram adapterim jāatgriež normalized records ar minimum:
+### FastAPI
+Serves the PWA and JSON endpoints.
+
+### SQLite
+Stores immutable forecast snapshots, observations and provider ingest state. Historical forecasts are retained because measured verification needs the forecast that was actually available at that time.
+
+### Public ingest
+One recurring ingest command collects:
+- DWD CDC current observations;
+- DWD CDC hourly truth for station_05480;
+- ICON-D2;
+- ECMWF IFS;
+- ECMWF AIFS;
+- home forecasts when private home coordinates are configured.
+
+### WeatherNext
+WeatherNext is optional and separate. The preferred research transport is the bounded GCS statistics/Zarr adapter. It must never block ordinary home weather.
+
+### Warnings and radar
+DWD warnings are authoritative. Radar/nowcast is observation context, not a forecast-model warning.
+
+## Locations
+
+`station_05480` is the only measured benchmark.
+`home` is the private operational point.
+
+Exact home coordinates stay in runtime configuration only.
+
+## Deployment
+
+Weather consumes shared SIMPLE-DEPLOY. The repository does not own a separate deployment platform.
 
 ```text
-provider
-model_provider
-model_name
-model_version
-transport_provider
-source_surface
-init_time_utc
-retrieved_at_utc
-valid_time_utc
-lead_hours
-location_id
-variable
-statistic
-value
-unit
-native_value
-native_unit
-quality/status metadata
+merge main
+-> shared image build
+-> immutable GHCR image
+-> generic RPi5 pull deployer
+-> weather container replacement
+-> /health
+-> /ready
 ```
 
-### `location_id`
-
-Database nesaista forecast ar publiski ierakstītu adresi. Lokālajam punktam var lietot stabilu internal ID, piem. `home`.
-
-Precīzās koordinātas glabā runtime config un pēc vajadzības lokālajā DB, kas netiek commitota.
-
-## Database sketch
-
-### `locations`
-
-- `id`
-- `label`
-- `lat`
-- `lon`
-- `elevation_m`
-- `timezone`
-
-Lokālā DB saturs nav GitHub artifacts.
-
-### `forecast_runs`
-
-- `id`
-- `provider`
-- `model_name`
-- `model_version`
-- `init_time_utc`
-- `retrieved_at_utc`
-- `source_surface`
-- `raw_payload_ref/hash`
-- `status`
-
-### `forecast_values`
-
-- `run_id`
-- `location_id`
-- `valid_time_utc`
-- `lead_hours`
-- `variable`
-- `statistic`
-- `value`
-- `unit`
-- `accumulation_window_minutes` where applicable
-
-### `observations`
-
-- `source_provider`
-- `station_id`
-- `location_id/reference`
-- `observed_at_utc`
-- `variable`
-- `value`
-- `unit`
-- `quality metadata`
-
-### `warnings`
-
-- `source=dwd`
-- CAP identifier
-- onset/effective/expires
-- severity
-- urgency
-- certainty
-- area metadata
-- headline/description
-
-### `verification_scores`
-
-Materialized/cacheable metrics. Raw forecasts un observations paliek primārais auditējamais datu pamats.
-
-## Ingestion cadence
-
-Cadence jābalsta provider publicēšanas režīmā, nevis jāpolling katru minūti bez jēgas.
-
-### WeatherNext 3
-
-- 6-hour synoptic 15-day runs;
-- interim hourly 48 h runs;
-- jāņem vērā ~7+ h dissemination latency;
-- collector schedule jāpieskaņo faktiskajam availability window.
-
-### ICON-D2
-
-- aptuveni ik 3 h;
-- īstermiņa 0–48 h.
-
-### MOSMIX-L
-
-- polling cadence atbilstoši DWD published runs; `LATEST` fails ļauj vienkāršu ingest.
-
-### Observations
-
-- pietiekami bieži, lai truth būtu salīdzināms ar forecast valid times;
-- saglabāt source timestamps, nevis pieņemt retrieval time kā observation time.
-
-### Radar
-
-- atsevišķs higher-frequency pipeline;
-- nebloktē MVP forecast ingestion.
-
-## Raw data retention
-
-MVP optimizācija:
-
-- normalized forecast values glabā vienmēr;
-- raw WeatherNext/DWD/ECMWF response var glabāt kā compressed payload/hash/reference atkarībā no izmēra/licences;
-- nedrīkst pazaudēt init/version/provenance;
-- historical forecast snapshots nedrīkst overwrite ar `latest`.
-
-## API sketch
-
-```text
-GET /api/current
-GET /api/hourly?hours=48
-GET /api/daily?days=15
-GET /api/providers
-GET /api/providers/{provider}/forecast
-GET /api/uncertainty/weathernext3
-GET /api/warnings
-GET /api/verification/summary
-GET /api/verification/by-lead-time
-GET /api/health/providers
-```
-
-## Failure behavior
-
-Ja viens provider nav pieejams:
-
-- pārējie turpina darboties;
-- API atgriež freshness/status;
-- UI parāda “stale/unavailable”, nevis klusām aizvieto provider;
-- verification neinterpretē missing forecast kā meteoroloģisku kļūdu.
-
-## Combined forecast
-
-Combined ir atsevišķs derived layer. Tas nekad nedrīkst overwrite provider data.
-
-V1: nav automātiskas weighting.
-
-V2+: weights var būt atkarīgi no:
-
-- provider;
-- variable;
-- lead bucket;
-- season;
-- recent skill;
-- calibration.
-
-Jebkuram Combined output jābūt izskaidrojamam ar izmantotajiem provider weights/version.
+Sensitive runtime/data/host changes remain separately authorized.

@@ -270,26 +270,6 @@ def test_gcs_optional_extra_declares_explicit_auth_runtime_without_public_runtim
     assert "google-cloud-bigquery>=3.36,<4" not in gcs
 
 
-def test_gcs_machine_contract_requires_explicit_non_adc_host_credential_provider() -> None:
-    gate = json.loads(
-        (ROOT / "deploy/weathernext-gcs-private-readonly-gate.json").read_text(
-            encoding="utf-8"
-        )
-    )
-    auth = gate["transport"]["authentication"]
-    assert auth == {
-        "explicit_credential_provider_required": True,
-        "provider_class": "obstore.auth.google.GoogleCredentialProvider",
-        "explicit_credentials_object_required": True,
-        "ambient_adc_allowed": False,
-        "credential_file_read_by_weather_source": False,
-        "billing_project_header_required": False,
-        "runtime_dependencies": [
-            "google-auth>=2.59.1,<3",
-            "requests>=2.34.2,<3",
-        ],
-    }
-
 
 def test_gcs_transport_source_stays_callback_only_and_does_not_load_credentials() -> None:
     source = (

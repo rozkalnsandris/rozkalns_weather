@@ -18,7 +18,6 @@ const ASSETS=[
   "/static/radar_timeline.js",
   "/static/status_v1.js",
   "/static/runtime_badge.js",
-  "/static/accuracy_v3.js",
   "/static/provenance_v1.js",
   "/static/time_semantics.js",
   "/static/manifest.webmanifest",

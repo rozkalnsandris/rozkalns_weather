@@ -20,7 +20,6 @@ SCHEDULER_STALE_AFTER_HOURS = 2.0
 
 PUBLIC_PROVIDER_HEALTH_POLICIES: dict[str, FreshnessPolicy] = {
     "dwd_observations": FreshnessPolicy(source_fresh_hours=2.0, source_stale_hours=4.0),
-    "dwd_mosmix_l": FreshnessPolicy(source_fresh_hours=8.0, source_stale_hours=14.0),
     "icon_d2": FreshnessPolicy(source_fresh_hours=4.5, source_stale_hours=8.0),
     "ecmwf_ifs": FreshnessPolicy(source_fresh_hours=8.0, source_stale_hours=14.0),
     "ecmwf_aifs": FreshnessPolicy(source_fresh_hours=8.0, source_stale_hours=14.0),
