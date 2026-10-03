@@ -164,14 +164,15 @@
       <header class="subpage-header"><div><span class="eyebrow">Nearby precipitation + official safety</span><h1>Radar & Warnings</h1></div></header>
       <div class="panel radar-panel">
         <div class="radar-heading">
-          <div><div class="panel-title">Rain nearby</div><p class="muted">DWD radar via Bright Sky · observed frames and short nowcast.</p></div>
+          <div><div class="panel-title">Rain nearby</div><p class="muted">DWD radar map · observed rain and short nowcast.</p></div>
           <button id="loadRadar" type="button">Refresh</button>
         </div>
         <div id="radarState" class="surface-state state-loading" role="status" aria-live="polite" aria-atomic="true">LOADING · opening radar</div>
         <div id="radarStage" class="radar-stage" hidden>
-          <canvas id="radarCanvas" aria-label="Nearby precipitation radar"></canvas>
+          <img id="radarImage" alt="Nearby DWD precipitation radar map" hidden>
           <span class="radar-center" aria-hidden="true"></span>
           <span id="radarTime" class="radar-time">—</span>
+          <span class="radar-attribution">DWD</span>
         </div>
         <div class="radar-controls">
           <button id="radarPlay" type="button" aria-label="Play radar timeline">▶ Play</button>

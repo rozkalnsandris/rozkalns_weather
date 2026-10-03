@@ -32,6 +32,8 @@ let lastHealth = null;
 let forecastLocationInitialized = false;
 let refreshSequence = 0;
 let accuracyLoaded = false;
+const accuracyPayloads = new Map();
+const accuracyRequests = new Map();
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -637,36 +639,63 @@ async function refresh() {
   }
 }
 
+function renderAccuracy(data) {
+  const target = qs("#accuracyTable");
+  const rows = data?.common_sample_slices || [];
+  if (!rows.length) {
+    target.textContent = "Not enough common station samples exist yet.";
+    return;
+  }
+  const metric = (value) => value == null ? "—" : Number(value).toFixed(2);
+  target.innerHTML = `<div class="provider-grid accuracy-grid">${rows.map((metrics) => `
+    <div class="provider accuracy-card">
+      <div class="provider-heading">
+        <strong>${escapeHtml(MODEL_LABELS[metrics.provider] || metrics.provider)}</strong>
+        <span class="accuracy-lead">${escapeHtml(metrics.lead_bucket || "—")}</span>
+      </div>
+      <small>${metrics.n ?? 0} common samples</small>
+      <div class="accuracy-metrics">
+        <span><small>MAE</small><strong>${metric(metrics.mae)}°</strong></span>
+        <span><small>RMSE</small><strong>${metric(metrics.rmse)}°</strong></span>
+        <span><small>Bias</small><strong>${metric(metrics.bias)}°</strong></span>
+      </div>
+    </div>`).join("")}</div>`;
+}
+
+async function fetchAccuracy(days) {
+  if (accuracyPayloads.has(days)) return accuracyPayloads.get(days);
+  if (accuracyRequests.has(days)) return accuracyRequests.get(days);
+  const request = apiWithFallback(
+    `/api/verification/summary?days=${days}&compact=true`,
+    `verification-summary-${days}-compact`,
+  ).then((result) => {
+    accuracyPayloads.set(days, result.payload);
+    accuracyRequests.delete(days);
+    return result.payload;
+  }).catch((error) => {
+    accuracyRequests.delete(days);
+    throw error;
+  });
+  accuracyRequests.set(days, request);
+  return request;
+}
+
 async function accuracy(days = 30) {
   const target = qs("#accuracyTable");
+  if (accuracyPayloads.has(days)) {
+    renderAccuracy(accuracyPayloads.get(days));
+    return;
+  }
   target.textContent = "Loading accuracy…";
   try {
-    const data = (await apiWithFallback(
-      `/api/verification/summary?days=${days}&compact=true`,
-      `verification-summary-${days}-compact`,
-    )).payload;
-    const rows = data.common_sample_slices || [];
-    if (!rows.length) {
-      target.textContent = "Not enough common station samples exist yet.";
-      return;
-    }
-    const metric = (value) => value == null ? "—" : Number(value).toFixed(2);
-    target.innerHTML = `<div class="provider-grid accuracy-grid">${rows.map((metrics) => `
-      <div class="provider accuracy-card">
-        <div class="provider-heading">
-          <strong>${escapeHtml(MODEL_LABELS[metrics.provider] || metrics.provider)}</strong>
-          <span class="accuracy-lead">${escapeHtml(metrics.lead_bucket || "—")}</span>
-        </div>
-        <small>${metrics.n ?? 0} common samples</small>
-        <div class="accuracy-metrics">
-          <span><small>MAE</small><strong>${metric(metrics.mae)}°</strong></span>
-          <span><small>RMSE</small><strong>${metric(metrics.rmse)}°</strong></span>
-          <span><small>Bias</small><strong>${metric(metrics.bias)}°</strong></span>
-        </div>
-      </div>`).join("")}</div>`;
+    renderAccuracy(await fetchAccuracy(days));
   } catch (_error) {
     target.textContent = "Accuracy API unavailable";
   }
+}
+
+function warmAccuracy() {
+  void fetchAccuracy(30).catch(() => {});
 }
 
 qsa("[data-days]").forEach((button) => {
@@ -680,43 +709,40 @@ qsa("[data-days]").forEach((button) => {
 let radarFrames = [];
 let radarFrameIndex = 0;
 let radarPlaybackTimer = null;
-
-function radarCellColor(rawValue) {
-  const mm = Number(rawValue) * 0.01;
-  if (!Number.isFinite(mm) || mm <= 0) return "rgba(6,20,36,.5)";
-  if (mm < 0.1) return "#5fa8ff";
-  if (mm < 0.5) return "#30c7ea";
-  if (mm < 1.5) return "#46d77a";
-  if (mm < 3) return "#f2d34f";
-  return "#ff6f79";
-}
+let radarMapRequestToken = 0;
 
 function radarFrameLabel(frame) {
   const kind = frame?.kind === "radar_nowcast" ? "Nowcast" : "Observed";
   return `${kind} · ${formatTimestamp(frame?.timestamp)}`;
 }
 
+function radarMapUrl(frame) {
+  return `/api/radar/map?at=${encodeURIComponent(frame.timestamp)}`;
+}
+
 function drawRadarFrame(index) {
   if (!radarFrames.length) return;
   radarFrameIndex = Math.max(0, Math.min(Number(index) || 0, radarFrames.length - 1));
   const frame = radarFrames[radarFrameIndex];
-  const raster = frame?.raster;
-  const canvas = qs("#radarCanvas");
+  const image = qs("#radarImage");
   const timeline = qs("#radarTimeline");
-  if (!canvas || !raster?.values?.length) return;
+  if (!image || !frame?.timestamp) return;
 
-  canvas.width = Number(raster.width);
-  canvas.height = Number(raster.height);
-  const context = canvas.getContext("2d");
-  context.imageSmoothingEnabled = false;
-  raster.values.forEach((row, y) => row.forEach((value, x) => {
-    context.fillStyle = radarCellColor(value);
-    context.fillRect(x, y, 1, 1);
-  }));
+  const requestToken = ++radarMapRequestToken;
+  image.onload = () => {
+    if (requestToken !== radarMapRequestToken) return;
+    image.hidden = false;
+  };
+  image.onerror = () => {
+    if (requestToken !== radarMapRequestToken) return;
+    image.hidden = true;
+    qs("#radarMeta").textContent = "Radar map temporarily unavailable.";
+  };
+  image.src = radarMapUrl(frame);
 
   timeline.value = String(radarFrameIndex);
   qs("#radarTime").textContent = radarFrameLabel(frame);
-  qs("#radarMeta").textContent = `${radarFrameLabel(frame)} · 20 km privacy-safe view around the selected location.`;
+  qs("#radarMeta").textContent = `${radarFrameLabel(frame)} · DWD radar map · 20 km around the selected location.`;
 }
 
 function stopRadarPlayback() {
@@ -735,12 +761,12 @@ function toggleRadarPlayback() {
   qs("#radarPlay").textContent = "❚❚ Pause";
   radarPlaybackTimer = window.setInterval(() => {
     drawRadarFrame((radarFrameIndex + 1) % radarFrames.length);
-  }, 700);
+  }, 2000);
 }
 
 function renderRadarPayload(payload) {
   stopRadarPlayback();
-  radarFrames = (payload?.frames || []).filter((frame) => frame?.raster?.values?.length);
+  radarFrames = (payload?.frames || []).filter((frame) => frame?.timestamp);
   const stage = qs("#radarStage");
   const timeline = qs("#radarTimeline");
   const play = qs("#radarPlay");
@@ -815,5 +841,21 @@ window.addEventListener("online", () => {
   if (loadedSafetySurfaces.has("radar")) void loadRadarSurface();
 });
 
-if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js", { scope: "/" });
+if ("serviceWorker" in navigator) {
+  const hadController = Boolean(navigator.serviceWorker.controller);
+  let reloadingForWorker = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (!hadController || reloadingForWorker) return;
+    reloadingForWorker = true;
+    window.location.reload();
+  });
+  navigator.serviceWorker.register("/sw.js", { scope: "/" })
+    .then((registration) => registration.update())
+    .catch(() => {});
+}
+if ("requestIdleCallback" in window) {
+  window.requestIdleCallback(warmAccuracy, { timeout: 2500 });
+} else {
+  window.setTimeout(warmAccuracy, 1000);
+}
 refresh();
