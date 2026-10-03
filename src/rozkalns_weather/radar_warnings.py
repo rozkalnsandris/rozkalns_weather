@@ -1,13 +1,26 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
+import math
 from typing import Any
+from urllib.parse import urlencode
 
 from .models import parse_time, utc_iso
-from .providers.base import JsonFetcher, fetch_json
+from .providers.base import BytesFetcher, JsonFetcher, fetch_bytes, fetch_json
 
 BRIGHTSKY_ALERTS_URL = "https://api.brightsky.dev/alerts"
 BRIGHTSKY_RADAR_URL = "https://api.brightsky.dev/radar"
+DWD_WMS_URL = "https://maps.dwd.de/geoserver/dwd/wms"
+DWD_WMS_LAYERS = {
+    "base": "dwd:bluemarble",
+    "boundaries": "dwd:Warngebiete_Kreise",
+    "radar": "dwd:Niederschlagsradar",
+}
+DWD_WMS_CRS = "EPSG:3857"
+DWD_WMS_IMAGE_SIZE_PX = 640
+DWD_WMS_MAX_IMAGE_BYTES = 2_000_000
+PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
+WEB_MERCATOR_RADIUS_M = 6_378_137.0
 RADAR_RENDER_DISTANCE_M = 20_000
 RADAR_GRID_CELL_M = 1_000
 RADAR_PRECIPITATION_SCALE_MM_PER_5_MIN = 0.01
@@ -162,6 +175,67 @@ def _radar_rendering_contract(frames: list[dict[str, Any]]) -> dict[str, Any]:
         "raster_frame_count": len(raster_frames),
         "timeline_frame_count": len(frames),
     }
+
+
+def _web_mercator_bbox(lat: float, lon: float, *, radius_m: int = RADAR_RENDER_DISTANCE_M) -> tuple[float, float, float, float]:
+    """Return a square ground-distance crop in EPSG:3857 without exposing coordinates to clients."""
+
+    safe_lat = max(-85.05112878, min(85.05112878, float(lat)))
+    lat_rad = math.radians(safe_lat)
+    x = WEB_MERCATOR_RADIUS_M * math.radians(float(lon))
+    y = WEB_MERCATOR_RADIUS_M * math.log(math.tan(math.pi / 4 + lat_rad / 2))
+    projected_radius = float(radius_m) / max(math.cos(lat_rad), 0.01)
+    return (
+        x - projected_radius,
+        y - projected_radius,
+        x + projected_radius,
+        y + projected_radius,
+    )
+
+
+def dwd_radar_map_url(*, lat: float, lon: float, layer: str, at: str | None = None) -> str:
+    """Build one fixed DWD WMS request; callers never choose an arbitrary upstream or WMS layer."""
+
+    if layer not in DWD_WMS_LAYERS:
+        raise ValueError("unsupported radar map layer")
+    bbox = _web_mercator_bbox(lat, lon)
+    params: dict[str, object] = {
+        "service": "WMS",
+        "version": "1.3.0",
+        "request": "GetMap",
+        "layers": DWD_WMS_LAYERS[layer],
+        "styles": "",
+        "crs": DWD_WMS_CRS,
+        "bbox": ",".join(f"{value:.3f}" for value in bbox),
+        "width": DWD_WMS_IMAGE_SIZE_PX,
+        "height": DWD_WMS_IMAGE_SIZE_PX,
+        "format": "image/png",
+        "transparent": "FALSE" if layer == "base" else "TRUE",
+    }
+    if layer == "radar":
+        stamp = _safe_time(at)
+        if stamp is None:
+            raise ValueError("radar map timestamp is required")
+        params["time"] = utc_iso(stamp)
+    return f"{DWD_WMS_URL}?{urlencode(params)}"
+
+
+def fetch_dwd_radar_map_png(
+    *,
+    lat: float,
+    lon: float,
+    layer: str,
+    at: str | None = None,
+    fetcher: BytesFetcher = fetch_bytes,
+) -> bytes:
+    """Fetch a small projection-correct DWD WMS map without returning HOME_LAT/HOME_LON."""
+
+    payload = fetcher(dwd_radar_map_url(lat=lat, lon=lon, layer=layer, at=at))
+    if len(payload) > DWD_WMS_MAX_IMAGE_BYTES:
+        raise ValueError("DWD radar map image is unexpectedly large")
+    if not payload.startswith(PNG_SIGNATURE):
+        raise ValueError("DWD radar map response is not PNG")
+    return payload
 
 
 def fetch_dwd_alerts(
