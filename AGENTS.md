@@ -143,6 +143,7 @@ Shared contract: `rozkalnsandris/ops-workflows/docs/AGENT_WORK_CYCLE_V1.md`; loc
 - FULL uses only its freshly activated frozen issue envelope.
 - LIVE/deploy/runtime/credential/permission/production-data mutations require separate exact authority unless current stricter contract explicitly froze that class/target.
 - Every terminal response ends with exactly one command: real owner gate => exact ACTION REQUIRED; waiting mutable state => `SYNC rozkalns_weather`; safe continuation => `turpini`; completed outcome => `START rozkalns_weather`.
+- That final operator command — including `ACTION REQUIRED` authorization, `NEXT COMMAND`, `MERGE`, `AUTHORIZE`, `START`, `SYNC`, `turpini`, or any equivalent exact owner command — must be the sole content of its own fenced `text` code block. Never emit the final command as prose, inline code, a list item, a quote, or unfenced/plain text.
 
 ### GitHub API access canary
 
