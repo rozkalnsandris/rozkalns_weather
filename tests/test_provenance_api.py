@@ -163,27 +163,14 @@ def test_verification_trace_returns_stable_blocked_reason_when_value_is_missing(
     assert response.json()["reason_codes"] == ["FORECAST_VALUE_NOT_FOUND"]
 
 
-def test_pwa_loads_provenance_drilldown_and_keeps_provider_values_separate(tmp_path) -> None:
+def test_pwa_hides_internal_provenance_drilldown_from_consumer_shell(tmp_path) -> None:
     client, _ = _client(tmp_path)
     root = client.get("/")
     script = client.get("/static/provenance_v1.js")
 
     assert root.status_code == 200
-    assert '/static/provenance_v1.js' in root.text
-    assert script.status_code == 200
-    for field in (
-        "snapshot.id",
-        "source.model_name",
-        "source.model_version",
-        "time.init_time_utc",
-        "time.valid_time_utc",
-        "time.lead_hours",
-        "time.retrieved_at_utc",
-        "normalized.statistic",
-        "truth_trace_identity_sha256",
-        "metric_identity",
-    ):
-        assert field in script.text
-    assert "/api/provenance/verification" in script.text
-    assert "station_05480" in script.text
-    assert "Combined" not in script.text
+    assert '/static/provenance_v1.js' not in root.text
+    assert "Value provenance" not in root.text
+    assert script.status_code == 404
+    assert "WeatherNext 3" in root.text
+    assert "DWD official warnings" in root.text
