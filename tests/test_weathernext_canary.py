@@ -9,26 +9,11 @@ import pytest
 from rozkalns_weather import weathernext_canary
 
 
-def _fixed_binding(tmp_path: Path) -> tuple[Path, Path]:
-    root = tmp_path / "binding"
-    credentials = root / "credentials"
-    root.mkdir(mode=0o700)
-    credentials.mkdir(mode=0o700)
-    private = root / "first-access-private.json"
-    private.write_text(
-        json.dumps(
-            {
-                "schema": weathernext_canary.PRIVATE_BINDING_SCHEMA,
-                "credential_file": "google.json",
-            }
-        ),
-        encoding="utf-8",
-    )
-    private.chmod(0o600)
-    credential = credentials / "google.json"
+def _credential_file(tmp_path: Path) -> Path:
+    credential = tmp_path / "weathernext-google.json"
     credential.write_text('{"fixture":"only"}', encoding="utf-8")
     credential.chmod(0o600)
-    return root, credential
+    return credential
 
 
 def test_init_is_exact_utc_hour() -> None:
@@ -41,33 +26,25 @@ def test_init_is_exact_utc_hour() -> None:
         weathernext_canary.parse_init_utc("2026-10-03T18:00:00+00:00")
 
 
-def test_binding_path_is_fixed_bounded_and_no_follow(
+def test_credential_mount_is_one_fixed_bounded_no_follow_file(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    root, credential = _fixed_binding(tmp_path)
-    monkeypatch.setattr(weathernext_canary, "FIXED_BINDING_ROOT", root)
-    monkeypatch.setattr(
-        weathernext_canary,
-        "FIXED_PRIVATE_BINDING",
-        root / "first-access-private.json",
-    )
-    monkeypatch.setattr(
-        weathernext_canary,
-        "FIXED_CREDENTIAL_ROOT",
-        root / "credentials",
-    )
+    credential = _credential_file(tmp_path)
+    monkeypatch.setattr(weathernext_canary, "FIXED_CREDENTIAL_PATH", credential)
 
-    observed = weathernext_canary._credential_path(expected_uid=os.getuid())
+    observed = weathernext_canary._require_fixed_credential(
+        expected_uid=os.getuid()
+    )
     assert observed == credential
 
     credential.unlink()
-    credential.symlink_to(root / "first-access-private.json")
+    credential.symlink_to(tmp_path / "missing.json")
     with pytest.raises(
         weathernext_canary.WeatherNextGCSCanaryError,
         match="metadata drifted",
     ):
-        weathernext_canary._credential_path(expected_uid=os.getuid())
+        weathernext_canary._require_fixed_credential(expected_uid=os.getuid())
 
 
 def test_canary_returns_only_sanitized_transport_evidence(
@@ -85,7 +62,11 @@ def test_canary_returns_only_sanitized_transport_evidence(
         "coordinates_exposed": False,
     }
     monkeypatch.setattr(weathernext_canary.os, "geteuid", lambda: 0)
-    monkeypatch.setattr(weathernext_canary, "_fixed_credential_provider", lambda: object())
+    monkeypatch.setattr(
+        weathernext_canary,
+        "_fixed_credential_provider",
+        lambda: object(),
+    )
     monkeypatch.setattr(
         weathernext_canary,
         "read_private_first_access_gcs",
@@ -103,9 +84,12 @@ def test_canary_returns_only_sanitized_transport_evidence(
     assert "HOME_LON" not in rendered
 
 
-def test_canary_source_uses_one_fixed_binding_and_no_database_path() -> None:
+def test_canary_source_has_one_fixed_secret_path_and_no_database_path() -> None:
     source = Path(weathernext_canary.__file__).read_text(encoding="utf-8")
-    assert 'Path("/run/weathernext-binding")' in source
+    assert 'Path("/run/secrets/weathernext-google.json")' in source
+    assert "/run/weathernext-binding" not in source
+    assert "first-access-private.json" not in source
+    assert "credentials/" not in source
     assert "devstorage.read_only" in source
     assert "load_credentials_from_file" in source
     assert "Database(" not in source
