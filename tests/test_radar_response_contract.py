@@ -3,12 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 import json
 
-from rozkalns_weather.radar_warnings import (
-    PNG_SIGNATURE,
-    dwd_radar_map_url,
-    fetch_dwd_radar_map_png,
-    fetch_radar_point,
-)
+from rozkalns_weather.radar_warnings import fetch_radar_point
 
 
 NOW = datetime(2026, 9, 28, 12, 0, tzinfo=timezone.utc)
@@ -57,7 +52,6 @@ def test_radar_response_exposes_timeline_without_coordinates_or_raw_grid() -> No
         "radar_nowcast",
     ]
     assert all("raster" not in frame for frame in result["frames"])
-    assert result["map_contract"]["image_endpoint"] == "/api/radar/map"
     assert result["map_contract"]["coordinates_exposed"] is False
 
     rendered = json.dumps(result, sort_keys=True)
@@ -83,52 +77,3 @@ def test_empty_radar_response_keeps_simple_timeline_contract() -> None:
 
     assert result["state"] == "no_radar_frames"
     assert result["frames"] == []
-    assert result["map_contract"]["image_endpoint"] == "/api/radar/map"
-
-
-def test_dwd_radar_map_is_one_fixed_composite_wms_image() -> None:
-    url = dwd_radar_map_url(
-        lat=50.0,
-        lon=8.0,
-        at="2026-09-28T12:30:00Z",
-    )
-    assert url.startswith("https://maps.dwd.de/geoserver/dwd/wms?")
-    assert "layers=dwd%3Abluemarble%2Cdwd%3ANiederschlagsradar" in url
-    assert "Warngebiete_Kreise" not in url
-    assert "styles=%2C" in url
-    assert "crs=EPSG%3A3857" in url
-    assert "time=2026-09-28T12%3A30%3A00Z" in url
-    assert "lat=" not in url
-    assert "lon=" not in url
-
-
-def test_dwd_radar_map_proxy_accepts_only_png() -> None:
-    seen: list[str] = []
-
-    def fake_fetcher(url: str) -> bytes:
-        seen.append(url)
-        return PNG_SIGNATURE + b"fixture"
-
-    payload = fetch_dwd_radar_map_png(
-        lat=50.0,
-        lon=8.0,
-        at="2026-09-28T12:30:00Z",
-        fetcher=fake_fetcher,
-    )
-    assert payload == PNG_SIGNATURE + b"fixture"
-    assert len(seen) == 1
-
-    def bad_fetcher(_url: str) -> bytes:
-        return b"<ServiceException>bad request</ServiceException>"
-
-    try:
-        fetch_dwd_radar_map_png(
-            lat=50.0,
-            lon=8.0,
-            at="2026-09-28T12:30:00Z",
-            fetcher=bad_fetcher,
-        )
-    except ValueError as exc:
-        assert "not PNG" in str(exc)
-    else:
-        raise AssertionError("non-PNG WMS response must fail closed")

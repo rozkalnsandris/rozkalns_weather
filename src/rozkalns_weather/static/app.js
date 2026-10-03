@@ -709,40 +709,64 @@ qsa("[data-days]").forEach((button) => {
 let radarFrames = [];
 let radarFrameIndex = 0;
 let radarPlaybackTimer = null;
-let radarMapRequestToken = 0;
+let radarMap = null;
+let radarWmsLayer = null;
+const RADAR_PUBLIC_CENTER = [51.532, 7.611];
+const RADAR_INITIAL_ZOOM = 12;
 
 function radarFrameLabel(frame) {
   const kind = frame?.kind === "radar_nowcast" ? "Nowcast" : "Observed";
   return `${kind} · ${formatTimestamp(frame?.timestamp)}`;
 }
 
-function radarMapUrl(frame) {
-  return `/api/radar/map?at=${encodeURIComponent(frame.timestamp)}`;
+function ensureRadarMap(frame) {
+  if (!window.L) throw new Error("Interactive map library unavailable");
+  if (!radarMap) {
+    radarMap = L.map("radarMap", {
+      minZoom: 9,
+      maxZoom: 17,
+    }).setView(RADAR_PUBLIC_CENTER, RADAR_INITIAL_ZOOM);
+
+    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    }).addTo(radarMap);
+
+    radarWmsLayer = L.tileLayer.wms("https://maps.dwd.de/geoserver/dwd/wms", {
+      layers: "dwd:Niederschlagsradar",
+      format: "image/png",
+      transparent: true,
+      version: "1.3.0",
+      opacity: 0.72,
+      time: frame.timestamp,
+      attribution: 'Radar: <a href="https://www.dwd.de/">DWD</a>',
+    }).addTo(radarMap);
+
+    L.circleMarker(RADAR_PUBLIC_CENTER, {
+      radius: 6,
+      color: "#ffffff",
+      weight: 2,
+      fillColor: "#061424",
+      fillOpacity: 0.65,
+    }).bindTooltip("Dortmund-Wickede area").addTo(radarMap);
+  }
+
+  window.requestAnimationFrame(() => radarMap.invalidateSize());
 }
 
 function drawRadarFrame(index) {
   if (!radarFrames.length) return;
   radarFrameIndex = Math.max(0, Math.min(Number(index) || 0, radarFrames.length - 1));
   const frame = radarFrames[radarFrameIndex];
-  const image = qs("#radarImage");
   const timeline = qs("#radarTimeline");
-  if (!image || !frame?.timestamp) return;
+  if (!frame?.timestamp) return;
 
-  const requestToken = ++radarMapRequestToken;
-  image.onload = () => {
-    if (requestToken !== radarMapRequestToken) return;
-    image.hidden = false;
-  };
-  image.onerror = () => {
-    if (requestToken !== radarMapRequestToken) return;
-    image.hidden = true;
-    qs("#radarMeta").textContent = "Radar map temporarily unavailable.";
-  };
-  image.src = radarMapUrl(frame);
+  ensureRadarMap(frame);
+  radarWmsLayer.setParams({ time: frame.timestamp });
 
   timeline.value = String(radarFrameIndex);
   qs("#radarTime").textContent = radarFrameLabel(frame);
-  qs("#radarMeta").textContent = `${radarFrameLabel(frame)} · DWD radar map · 20 km around the selected location.`;
+  qs("#radarMeta").textContent = `${radarFrameLabel(frame)} · drag or pinch to explore · public Wickede map center.`;
 }
 
 function stopRadarPlayback() {
@@ -761,7 +785,7 @@ function toggleRadarPlayback() {
   qs("#radarPlay").textContent = "❚❚ Pause";
   radarPlaybackTimer = window.setInterval(() => {
     drawRadarFrame((radarFrameIndex + 1) % radarFrames.length);
-  }, 2000);
+  }, 2500);
 }
 
 function renderRadarPayload(payload) {
