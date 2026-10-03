@@ -11,6 +11,24 @@ def test_bootstrap_ci_is_explicitly_suppressed_for_small_samples() -> None:
     assert interval.upper == 1.0
 
 
+def test_common_sample_leaderboard_can_skip_bootstrap(monkeypatch) -> None:
+    import rozkalns_weather.leaderboard as leaderboard
+
+    def unexpected_bootstrap(*_args, **_kwargs):
+        raise AssertionError("bootstrap must be skipped")
+
+    monkeypatch.setattr(leaderboard, "bootstrap_mean_ci", unexpected_bootstrap)
+    rows = leaderboard.common_sample_leaderboard(
+        [
+            SkillSample("a", "icon", "v1", 12, 2.0, 1.0),
+            SkillSample("a", "ifs", "v1", 12, 1.5, 1.0),
+        ],
+        include_bootstrap=False,
+    )
+    assert len(rows) == 2
+    assert all(row["mae_bootstrap_95_ci"] is None for row in rows)
+
+
 def test_common_sample_leaderboard_excludes_provider_only_samples_and_reports_missingness() -> None:
     samples = [
         SkillSample("a", "icon", "v1", 12, 2.0, 1.0),
