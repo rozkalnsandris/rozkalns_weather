@@ -145,6 +145,8 @@ Shared contract: `rozkalnsandris/ops-workflows/docs/AGENT_WORK_CYCLE_V1.md`; loc
 - Every terminal response ends with exactly one command: real owner gate => exact ACTION REQUIRED; waiting mutable state => `SYNC rozkalns_weather`; safe continuation => `turpini`; completed outcome => `START rozkalns_weather`.
 - That final operator command — including `ACTION REQUIRED` authorization, `NEXT COMMAND`, `MERGE`, `AUTHORIZE`, `START`, `SYNC`, `turpini`, or any equivalent exact owner command — must be the sole content of its own fenced `text` code block. Never emit the final command as prose, inline code, a list item, a quote, or unfenced/plain text.
 
+Keep owner commands compact: do not repeat standing safety exclusions, routine fresh-state checks, or fail-closed clauses already imposed by this repository/shared policy. Include only the operation, scope/target, and exact binding or exception needed for the decision. Preserve a full immutable SHA and any required target/risk/recovery binding when exact identity or authority requires it; use a longer form only when additional authority must be explicit.
+
 ### GitHub API access canary
 
 Local adoption manifest: `.github/github-api-access-v1.json`. Accepted shared contract pin: `rozkalnsandris/ops-workflows@3bb0740b5f0a8ce631d2ff79f1acc4999ff6ed2c` (`docs/GITHUB_API_ACCESS_V1.md` + `policy/github-api-access-v1.json`).
