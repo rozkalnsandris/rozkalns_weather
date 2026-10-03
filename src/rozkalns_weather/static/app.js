@@ -221,7 +221,7 @@ function providersCard(items) {
 function setActiveView(viewId) {
   qsa(".tabs button").forEach((button) => button.classList.toggle("active", button.dataset.view === viewId));
   qsa(".view").forEach((view) => view.classList.toggle("active", view.id === viewId));
-  window.scrollTo({ top: 0, behavior: "smooth" });
+  window.scrollTo({ top: 0, behavior: "auto" });
   if (viewId === "accuracy" && !accuracyLoaded) {
     accuracyLoaded = true;
     accuracy(30);
