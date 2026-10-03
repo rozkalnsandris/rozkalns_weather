@@ -11,7 +11,7 @@ from .providers.base import BytesFetcher, JsonFetcher, fetch_bytes, fetch_json
 BRIGHTSKY_ALERTS_URL = "https://api.brightsky.dev/alerts"
 BRIGHTSKY_RADAR_URL = "https://api.brightsky.dev/radar"
 DWD_WMS_URL = "https://maps.dwd.de/geoserver/dwd/wms"
-DWD_WMS_LAYERS = "dwd:bluemarble,dwd:Niederschlagsradar,dwd:Warngebiete_Kreise"
+DWD_WMS_LAYERS = "dwd:bluemarble,dwd:Niederschlagsradar"
 DWD_WMS_CRS = "EPSG:3857"
 DWD_WMS_IMAGE_SIZE_PX = 640
 DWD_WMS_MAX_IMAGE_BYTES = 2_000_000
@@ -104,7 +104,7 @@ def _web_mercator_bbox(lat: float, lon: float, *, radius_m: int = RADAR_RENDER_D
 
 
 def dwd_radar_map_url(*, lat: float, lon: float, at: str) -> str:
-    """Build one fixed DWD WMS image containing map, radar and district boundaries."""
+    """Build one fixed DWD WMS image containing only the base map and radar."""
 
     stamp = _safe_time(at)
     if stamp is None:
@@ -115,7 +115,7 @@ def dwd_radar_map_url(*, lat: float, lon: float, at: str) -> str:
         "version": "1.3.0",
         "request": "GetMap",
         "layers": DWD_WMS_LAYERS,
-        "styles": ",,",
+        "styles": ",",
         "crs": DWD_WMS_CRS,
         "bbox": ",".join(f"{value:.3f}" for value in bbox),
         "width": DWD_WMS_IMAGE_SIZE_PX,
