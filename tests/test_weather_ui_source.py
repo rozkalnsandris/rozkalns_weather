@@ -54,3 +54,20 @@ def test_simple_radar_and_status_do_not_reference_removed_lazy_modules() -> None
     assert "request_lifecycle.js" not in worker
     assert "pwa_lifecycle.js" not in worker
     assert 'id="statusWeatherNext"' not in index
+
+
+def test_simple_ui_hides_internal_research_controls() -> None:
+    html = (STATIC / "index.html").read_text()
+    app = (STATIC / "app.js").read_text()
+    worker = (STATIC / "sw.js").read_text()
+
+    assert "Value provenance" not in html
+    assert "Provider classes" not in html
+    assert "verification lineage" not in html
+    assert "descriptive provider disagreement" not in app
+    assert "/static/provenance_v1.js" not in html
+    assert "/static/provenance_v1.js" not in worker
+    assert not (STATIC / "provenance_v1.js").exists()
+    assert "WeatherNext 3" in html
+    assert "DWD official warnings" in html
+    assert "Forecast sources" in html

@@ -53,7 +53,7 @@
           <div class="hero-place">
             <span class="location-pin" aria-hidden="true">●</span>
             <div>
-              <h1 id="heroLocation">DWD CDC 05480</h1>
+              <h1 id="heroLocation">Dortmund-Wickede · reference</h1>
               <div id="heroUpdated" class="hero-updated">Updating weather evidence…</div>
             </div>
           </div>
@@ -70,19 +70,19 @@
           </div>
         </div>
 
-        <div class="hero-state-slot"><div id="currentState" class="surface-state state-loading hero-state" role="status" aria-live="polite" aria-atomic="true">LOADING · DWD station truth</div></div>
+        <div class="hero-state-slot"><div id="currentState" class="surface-state state-loading hero-state" role="status" aria-live="polite" aria-atomic="true">LOADING · current DWD weather</div></div>
         <div class="hero-source-row">
-          <span id="heroSource">Werl · official DWD observation source</span>
+          <span id="heroSource">Official DWD observation · Werl</span>
         </div>
       </section>
 
       <section class="wn-primary" data-weathernext-priority="overview" data-state="loading" aria-label="WeatherNext 3 — primary research model">
-        <div class="wn-eyebrow">Primary research model</div>
+        <div class="wn-eyebrow">Experimental forecast</div>
         <h2>WeatherNext 3</h2>
         <span class="wn-status surface-state state-loading" role="status" aria-live="polite">LOADING · checking forecast availability</span>
         <strong class="wn-value" hidden>—</strong>
-        <p class="wn-meta">Forecast availability is being checked from current provider evidence.</p>
-        <p class="wn-note">WeatherNext forecast availability is separate from verification readiness and DWD warning authority.</p>
+        <p class="wn-meta">Checking whether WeatherNext forecast data is available.</p>
+        <p class="wn-note">Experimental forecast model. DWD warnings remain official.</p>
       </section>
 
       <section class="consumer-panel" aria-labelledby="nextHoursTitle">
@@ -98,11 +98,10 @@
             <div class="hourly-detail-metric"><small>Precipitation</small><strong>—</strong><span>amount, not probability</span></div>
             <div class="hourly-detail-metric"><small>Wind</small><strong>—</strong><span>loading wind data</span></div>
           </div>
-          <div class="hourly-detail-source">Forecast provenance loads with the selected hour.</div>
+          <div class="hourly-detail-source">Forecast source loads with the selected hour.</div>
         </div>
-        <details id="valueProvenanceDrilldown" class="provenance-drilldown"><summary>Value provenance</summary><div id="valueProvenanceBody" class="muted">Select an hourly value to inspect its provider snapshot and verification lineage.</div></details>
-        <div class="compact-state-slot"><div id="overviewTempState" class="surface-state state-loading compact-state" role="status" aria-live="polite" aria-atomic="true">LOADING · temperature forecast provenance</div></div>
-        <div class="compact-state-slot"><div id="overviewPrecipState" class="surface-state state-loading compact-state" role="status" aria-live="polite" aria-atomic="true">LOADING · precipitation forecast provenance</div></div>
+        <div class="compact-state-slot"><div id="overviewTempState" class="surface-state state-loading compact-state" role="status" aria-live="polite" aria-atomic="true">LOADING · temperature forecast</div></div>
+        <div class="compact-state-slot"><div id="overviewPrecipState" class="surface-state state-loading compact-state" role="status" aria-live="polite" aria-atomic="true">LOADING · precipitation forecast</div></div>
         <div id="consumerHourlyChart" class="consumer-chart" aria-label="Next-hours temperature and precipitation chart"></div>
       </section>
 
@@ -129,7 +128,7 @@
 
       <section class="consumer-panel model-snapshot-panel" aria-labelledby="modelSnapshotTitle">
         <div class="section-heading">
-          <div><h2 id="modelSnapshotTitle">Model Snapshot</h2><span class="source-label">Next available temperature · provider values stay separate</span></div>
+          <div><h2 id="modelSnapshotTitle">Model Snapshot</h2><span class="source-label">Next available temperature forecast</span></div>
           <button class="text-button" type="button" data-open-view="models">See more</button>
         </div>
         <div id="modelSnapshot" class="model-snapshot-grid" aria-live="polite">
@@ -143,12 +142,7 @@
     </section>
 
     <section id="models" class="view" aria-label="Models">
-      <header class="subpage-header"><div><span class="eyebrow">Research</span><h1>Models</h1></div></header>
-      <div class="panel research">
-        <div class="panel-title">Provider classes · provenance first</div>
-        <div id="providerClasses" class="provider-grid">Provider metadata follows current health evidence.</div>
-        <div class="muted">Deterministic and ensemble transports remain separate. Genuine provider values are never replaced by a fabricated blended value.</div>
-      </div>
+      <header class="subpage-header"><div><span class="eyebrow">Forecast comparison</span><h1>Models</h1></div></header>
       <div class="panel">
         <div class="panel-title"><span class="forecast-location-label">DWD CDC 05480</span> · model temperature comparison</div>
         <div class="legend"><span>WeatherNext 3</span><span>ICON-D2</span><span>IFS HRES</span><span>AIFS</span></div>
@@ -160,9 +154,9 @@
         <div id="modelsPrecipState" class="surface-state state-loading" role="status" aria-live="polite" aria-atomic="true">LOADING · model freshness</div>
         <div id="modelsPrecip" class="chart empty">Precipitation bars appear when data is available.</div>
       </div>
-      <div class="panel research">
-        <div class="panel-title">WeatherNext p10–p90 uncertainty</div>
-        <div id="uncertainty">WeatherNext uncertainty appears only after genuine data ingest.</div>
+      <div class="panel">
+        <div class="panel-title">WeatherNext forecast range</div>
+        <div id="uncertainty">Range appears when WeatherNext data is available.</div>
       </div>
     </section>
 
@@ -201,34 +195,30 @@
     </section>
 
     <section id="accuracy" class="view" aria-label="Accuracy">
-      <header class="subpage-header"><div><span class="eyebrow">Verification</span><h1>Accuracy</h1></div></header>
+      <header class="subpage-header"><div><span class="eyebrow">Model comparison</span><h1>Accuracy</h1></div></header>
       <div class="panel">
-        <div class="panel-title">DWD CDC 05480 measured benchmark</div>
+        <div class="panel-title">Reference station · DWD 05480</div>
         <div class="switches"><button data-days="30" class="active">30d</button><button data-days="90">90d</button></div>
-        <div class="muted">Temperature MAE, RMSE, bias, lead bucket and sample count. Home is not treated as measured truth.</div>
+        <div class="muted">Compare model temperature errors over 30 or 90 days. Home is forecast-only.</div>
         <div id="accuracyTable" class="table-wrap">Accuracy loads when this view is opened.</div>
       </div>
     </section>
 
     <section id="status" class="view" aria-label="Status">
-      <header class="subpage-header"><div><span class="eyebrow">System</span><h1>Status & Sources</h1></div></header>
+      <header class="subpage-header"><div><span class="eyebrow">Sources</span><h1>Status</h1></div></header>
       <div class="panel">
         <label for="forecastLocation">Forecast location</label>
         <select id="forecastLocation">
-          <option value="home">Home · privāta prognoze</option>
-          <option value="station_05480">DWD CDC 05480 · measured benchmark</option>
+          <option value="home">Home</option>
+          <option value="station_05480">Reference location</option>
         </select>
-        <div id="forecastLocationNote" class="muted">Measured benchmark selection.</div>
+        <div id="forecastLocationNote" class="muted">Choose where forecasts are shown.</div>
       </div>
       <div id="networkState" class="surface-state state-loading global-state" role="status" aria-live="polite" aria-atomic="true">LOADING · checking live API evidence</div>
       <div class="panel">
-        <div class="panel-title">Data sources</div>
+        <div class="panel-title">Forecast sources</div>
         <div id="providerState" class="surface-state state-loading" role="status" aria-live="polite" aria-atomic="true">LOADING · provider health</div>
         <div id="providerGrid" class="provider-grid"></div>
-      </div>
-      <div class="panel">
-        <div class="panel-title">Reference</div>
-        <div class="muted">DWD CDC 05480 is the measured accuracy benchmark. Home is the private forecast and radar point. WeatherNext 3 remains optional research data.</div>
       </div>
     </section>
   </main>
@@ -241,7 +231,6 @@
     <button data-view="status"><span aria-hidden="true">⚙</span><small>Status</small></button>
   </nav>
 
-  <footer>WeatherNext 3 benchmark · measured skill uses DWD CDC 05480 reference truth</footer>
   <script src="/static/daily_trend.js" defer></script>
   <script src="/static/app.js" defer></script>
   <script src="/static/navigation_v1.js" defer></script>
@@ -250,7 +239,6 @@
   <script src="/static/consumer_ui.js" defer></script>
   <script src="/static/observation_age.js" defer></script>
   <script src="/static/runtime_badge.js" defer></script>
-  <script src="/static/provenance_v1.js" defer></script>
   <script src="/static/time_semantics.js" defer></script>
 </body>
 </html>

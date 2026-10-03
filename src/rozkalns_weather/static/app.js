@@ -18,12 +18,12 @@ const FORECAST_LOCATION_META = {
   home: {
     label: "Home",
     heroLabel: "Dortmund-Wickede",
-    note: "Privāta home prognoze; nav izmērīta station accuracy.",
+    note: "Private home forecast and radar view.",
   },
   station_05480: {
-    label: "DWD CDC 05480",
+    label: "Dortmund-Wickede · reference",
     heroLabel: "Dortmund-Wickede · reference",
-    note: "Canonical public benchmark; station prognozes salīdzina pret DWD CDC 05480 observations.",
+    note: "Reference location used for model accuracy checks.",
   },
 };
 
@@ -167,41 +167,41 @@ function providerSurfaceState(rows, healthMap, result) {
   if (fallbackState !== "fresh") {
     return {
       state: fallbackState,
-      message: `${cacheMessage(result)}; latest stored retrieval ${formatTimestamp(latestRetrieved)}. Data is not current.`,
+      message: `${cacheMessage(result)}; latest forecast ${formatTimestamp(latestRetrieved)}. Data may be outdated.`,
     };
   }
-  if (!rows.length) return { state: "stale", message: "No stored forecast rows are available for this surface." };
+  if (!rows.length) return { state: "stale", message: "No forecast data is available for this view." };
   const providers = [...new Set(rows.map((row) => row.provider).filter(Boolean))];
   const degraded = providers.filter((provider) => normalizedProviderState(healthMap[provider]) !== "fresh");
   if (degraded.length === providers.length && !providers.includes("weathernext3")) {
     return {
       state: "stale",
-      message: `Displayed provider freshness is degraded (${degraded.join(", ")}); latest retrieval ${formatTimestamp(latestRetrieved)}.`,
+      message: `Forecast sources are delayed; last update ${formatTimestamp(latestRetrieved)}.`,
     };
   }
   if (degraded.length) {
     return {
       state: "stale",
-      message: `Healthy providers remain visible; degraded: ${degraded.join(", ")}. Latest retrieval ${formatTimestamp(latestRetrieved)}.`,
+      message: `Some forecast sources are delayed. Last update ${formatTimestamp(latestRetrieved)}.`,
     };
   }
-  return { state: "fresh", message: `Live API response; latest retrieval ${formatTimestamp(latestRetrieved)}.` };
+  return { state: "fresh", message: `Updated ${formatTimestamp(latestRetrieved)}.` };
 }
 
 function providerGridState(health, result) {
   const fallbackState = stateFromResult(result);
   if (fallbackState !== "fresh") return { state: fallbackState, message: `${cacheMessage(result)}; provider status is not current.` };
   const tracked = (health.providers || []).filter((provider) => PUBLIC_PROVIDER_IDS.has(provider.id));
-  if (!tracked.length) return { state: "error", message: "Public provider health evidence is missing." };
+  if (!tracked.length) return { state: "error", message: "Forecast source status is unavailable." };
   const degraded = tracked.filter((provider) => normalizedProviderState(provider) !== "fresh");
-  if (!degraded.length) return { state: "fresh", message: "All recurring public providers report fresh state." };
-  if (degraded.length === tracked.length) return { state: "stale", message: "All recurring public providers are degraded or not yet fresh." };
-  return { state: "stale", message: `Partial provider degradation: ${degraded.map((provider) => provider.id).join(", ")}. Healthy providers remain visible.` };
+  if (!degraded.length) return { state: "fresh", message: "Forecast sources are up to date." };
+  if (degraded.length === tracked.length) return { state: "stale", message: "Forecast sources are delayed." };
+  return { state: "stale", message: "Some forecast sources are delayed." };
 }
 
 function globalNetworkState(healthState) {
   if (!navigator.onLine) {
-    setSurfaceState("networkState", "offline", "Browser reports offline. Last-known data is shown only when a visible cache timestamp is available.", { alert: true });
+    setSurfaceState("networkState", "offline", "Offline. Showing saved weather data where available.", { alert: true });
     return;
   }
   setSurfaceState("networkState", healthState.state, healthState.message, { alert: healthState.state === "error" });
@@ -213,14 +213,7 @@ function providersCard(items) {
     return `
       <div class="provider provider-state-${uiState}">
         <div class="provider-heading"><strong>${escapeHtml(provider.model_name)}</strong><span class="state-chip state-${uiState}">${uiState}</span></div>
-        <small>
-          ingest ${escapeHtml(provider.ingest_state || provider.state || "unknown")}
-          <br>freshness ${escapeHtml(provider.freshness_state || "unknown")}
-          ${provider.failure_domain && provider.failure_domain !== "none" ? `<br>domain ${escapeHtml(provider.failure_domain)}` : ""}
-          ${provider.reason_code ? `<br>${escapeHtml(provider.reason_code)}` : ""}
-          ${provider.last_init_time_utc ? `<br>init ${escapeHtml(provider.last_init_time_utc)}` : ""}
-          ${provider.last_retrieved_at_utc ? `<br>retrieved ${escapeHtml(provider.last_retrieved_at_utc)}` : ""}
-        </small>
+        <small>${provider.last_retrieved_at_utc ? `Updated ${escapeHtml(formatTimestamp(provider.last_retrieved_at_utc))}` : "No recent update"}</small>
       </div>`;
   }).join("");
 }
@@ -547,7 +540,7 @@ function renderModelSnapshot(rows, healthMap) {
     const health = healthMap[provider];
     const healthState = health?.state || health?.freshness_state || (provider === "weathernext3" ? "not_ingested" : "unknown");
     const value = row && Number.isFinite(Number(row.value)) ? `${Number(row.value).toFixed(1)}°` : "—";
-    const note = row ? `${formatLocalTime(row.valid_time_utc)} · ${row.statistic}` : (provider === "weathernext3" ? "No genuine data · pending" : healthState);
+    const note = row ? formatLocalTime(row.valid_time_utc) : (provider === "weathernext3" ? "Not available yet" : "No data");
     return `<div class="model-card ${provider === "weathernext3" ? "primary" : ""}" data-provider="${provider}">
       <small>${escapeHtml(MODEL_LABELS[provider])}</small>
       <strong>${value}</strong>
@@ -556,7 +549,7 @@ function renderModelSnapshot(rows, healthMap) {
   });
   qs("#modelSnapshot").innerHTML = cards.join("");
   const values = MODEL_SNAPSHOT_IDS.map((provider) => futureRows(canonicalProviderRows(rows, provider), 1)[0]).filter(Boolean).map((row) => Number(row.value)).filter(Number.isFinite);
-  qs("#modelSpread").textContent = values.length >= 2 ? `Model spread ${(Math.max(...values) - Math.min(...values)).toFixed(1)}° · descriptive provider disagreement` : "Model spread — · waiting for at least two genuine model values";
+  qs("#modelSpread").textContent = values.length >= 2 ? `Model difference ${(Math.max(...values) - Math.min(...values)).toFixed(1)}°` : "Model difference —";
 }
 
 async function refresh() {
