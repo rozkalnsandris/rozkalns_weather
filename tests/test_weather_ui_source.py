@@ -59,12 +59,18 @@ def test_simple_radar_and_status_do_not_reference_removed_lazy_modules() -> None
 def test_simple_ui_hides_internal_research_controls() -> None:
     html = (STATIC / "index.html").read_text()
     app = (STATIC / "app.js").read_text()
+    model_alignment = (STATIC / "model_snapshot_alignment.js").read_text()
     worker = (STATIC / "sw.js").read_text()
 
     assert "Value provenance" not in html
     assert "Provider classes" not in html
     assert "verification lineage" not in html
     assert "descriptive provider disagreement" not in app
+    assert "descriptive provider disagreement" not in model_alignment
+    assert "provider state" not in model_alignment
+    assert "no genuine WeatherNext forecast value available" not in model_alignment
+    assert "WeatherNext data has not been collected yet." in model_alignment
+    assert "Model difference" in model_alignment
     assert "/static/provenance_v1.js" not in html
     assert "/static/provenance_v1.js" not in worker
     assert not (STATIC / "provenance_v1.js").exists()
@@ -95,4 +101,4 @@ def test_mobile_interaction_stays_compact_and_direct() -> None:
     assert ".chart svg{display:block;min-width:0;max-width:100%;height:auto}" in (STATIC / "app.css").read_text()
     time_semantics = (STATIC / "time_semantics.js").read_text()
     assert " · ${identity.utc}" not in time_semantics
-    assert "rozkalns-weather-v42" in worker
+    assert "rozkalns-weather-v43" in worker
