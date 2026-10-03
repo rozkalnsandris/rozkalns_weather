@@ -52,7 +52,7 @@
     const identity = berlinLocalIdentity(value);
     if (!identity) return value ? String(value) : "unknown time";
     const [year, month, day] = identity.localDate.split("-");
-    return `${day}/${month}/${year} ${identity.localClock.slice(0, 5)} ${identity.offset} · ${identity.utc}`;
+    return `${day}/${month}/${year} ${identity.localClock.slice(0, 5)} ${identity.offset}`;
   }
 
   function localDateKeyBerlin(value = new Date()) {
