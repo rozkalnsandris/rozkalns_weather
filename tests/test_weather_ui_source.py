@@ -45,8 +45,13 @@ def test_simple_radar_and_status_do_not_reference_removed_lazy_modules() -> None
     assert 'id="radarMap"' in index
     assert 'id="radarImage"' not in index
     assert 'id="radarCanvas"' not in index
-    assert "leaflet@1.9.4/dist/leaflet.css" in index
-    assert "leaflet@1.9.4/dist/leaflet.js" in index
+    assert '/static/vendor/leaflet/leaflet.css' in index
+    assert '/static/vendor/leaflet/leaflet.js' in index
+    assert "unpkg.com/leaflet" not in index
+    leaflet_js = (STATIC / "vendor" / "leaflet" / "leaflet.js").read_text()
+    leaflet_css = (STATIC / "vendor" / "leaflet" / "leaflet.css").read_text()
+    assert "Leaflet 1.9.4" in leaflet_js
+    assert ".leaflet-container" in leaflet_css
     assert 'id="radarTimeline"' in index
     assert 'id="radarPlay"' in index
     assert 'id="radarOutput"' not in index
@@ -118,4 +123,4 @@ def test_mobile_interaction_stays_compact_and_direct() -> None:
     assert ".chart svg{display:block;min-width:0;max-width:100%;height:auto}" in (STATIC / "app.css").read_text()
     time_semantics = (STATIC / "time_semantics.js").read_text()
     assert " · ${identity.utc}" not in time_semantics
-    assert "rozkalns-weather-v45" in worker
+    assert "rozkalns-weather-v46" in worker
