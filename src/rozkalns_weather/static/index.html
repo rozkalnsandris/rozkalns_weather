@@ -7,6 +7,7 @@
   <title>Rozkalns Weather</title>
   <link rel="manifest" href="/static/manifest.webmanifest">
   <link rel="icon" href="/static/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
   <link rel="stylesheet" href="/static/app.css">
   <link rel="stylesheet" href="/static/accepted_ui.css">
   <script src="/static/ui_preferences.js"></script>
@@ -164,21 +165,19 @@
       <header class="subpage-header"><div><span class="eyebrow">Nearby precipitation + official safety</span><h1>Radar & Warnings</h1></div></header>
       <div class="panel radar-panel">
         <div class="radar-heading">
-          <div><div class="panel-title">Rain nearby</div><p class="muted">DWD radar map · observed rain and short nowcast.</p></div>
+          <div><div class="panel-title">Rain nearby</div><p class="muted">Interactive DWD radar · observed rain and short nowcast.</p></div>
           <button id="loadRadar" type="button">Refresh</button>
         </div>
         <div id="radarState" class="surface-state state-loading" role="status" aria-live="polite" aria-atomic="true">LOADING · opening radar</div>
         <div id="radarStage" class="radar-stage" hidden>
-          <img id="radarImage" alt="Nearby DWD precipitation radar map" hidden>
-          <span class="radar-center" aria-hidden="true"></span>
+          <div id="radarMap" class="radar-map" aria-label="Interactive precipitation radar map"></div>
           <span id="radarTime" class="radar-time">—</span>
-          <span class="radar-attribution">DWD</span>
         </div>
         <div class="radar-controls">
           <button id="radarPlay" type="button" aria-label="Play radar timeline">▶ Play</button>
           <input id="radarTimeline" type="range" min="0" max="0" value="0" step="1" aria-label="Radar timeline" disabled>
         </div>
-        <div id="radarMeta" class="muted">20 km privacy-safe view around the selected location. No coordinates are shown.</div>
+        <div id="radarMeta" class="muted">Interactive map centered on the public Dortmund-Wickede area. Pinch or use +/− to zoom.</div>
         <div class="radar-legend" aria-label="Radar precipitation intensity">
           <span><i class="radar-key radar-key-light"></i>Light</span>
           <span><i class="radar-key radar-key-moderate"></i>Moderate</span>
@@ -232,6 +231,7 @@
     <button data-view="status"><span aria-hidden="true">⚙</span><small>Status</small></button>
   </nav>
 
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="" defer></script>
   <script src="/static/daily_trend.js" defer></script>
   <script src="/static/app.js" defer></script>
   <script src="/static/navigation_v1.js" defer></script>
