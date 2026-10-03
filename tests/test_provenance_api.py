@@ -14,7 +14,7 @@ from rozkalns_weather.models import ForecastRun, ForecastValue, Observation
 def _client(tmp_path, *, with_home: bool = True) -> tuple[TestClient, Database]:
     env = {"DATABASE_URL": f"sqlite:///{tmp_path / 'weather.db'}"}
     if with_home:
-        env.update({"HOME_LAT": "51.5", "HOME_LON": "7.6"})
+        env.update({"WEATHER_RUNTIME_MODE": "private-home", "HOME_LAT": "51.5", "HOME_LON": "7.6"})
     settings = Settings.from_env(env)
     database = Database(settings.database_url)
     return TestClient(create_app(settings=settings, database=database)), database

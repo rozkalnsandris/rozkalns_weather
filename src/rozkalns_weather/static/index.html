@@ -189,27 +189,10 @@
     <section id="accuracy" class="view" aria-label="Accuracy">
       <header class="subpage-header"><div><span class="eyebrow">Verification</span><h1>Accuracy</h1></div></header>
       <div class="panel">
-        <div class="panel-title">DWD CDC 05480 station benchmark · deterministic</div>
+        <div class="panel-title">DWD CDC 05480 measured benchmark</div>
         <div class="switches"><button data-days="30" class="active">30d</button><button data-days="90">90d</button></div>
-        <div class="muted">Only location-matched station forecasts are compared against DWD CDC 05480 truth. Lead bucket and sample size remain visible.</div>
+        <div class="muted">Temperature MAE, RMSE, bias, lead bucket and sample count. Home is not treated as measured truth.</div>
         <div id="accuracyTable" class="table-wrap">Accuracy loads when this view is opened.</div>
-        <div id="leadBucketTable" class="table-wrap"></div>
-      </div>
-      <div class="panel">
-        <div class="panel-title">Verification drilldown · cycle / lead / variable / model version</div>
-        <div class="switches">
-          <label for="drilldownMonth">Month</label>
-          <input id="drilldownMonth" type="month" min="2026-04">
-          <button id="loadDrilldown" type="button">Load drilldown</button>
-        </div>
-        <div class="muted">Strict common station valid-times only. UTC init cycle, lead bucket, variable, n, missingness and sample sufficiency remain visible.</div>
-        <div id="drilldownDeterministic" class="table-wrap">Choose a month to inspect deterministic common-sample slices.</div>
-        <div id="drilldownEnsemble" class="table-wrap">Genuine member-only ensemble drilldown appears separately when available.</div>
-      </div>
-      <div class="panel">
-        <div class="panel-title">Ensemble calibration · precipitation event</div>
-        <div id="calibrationTable" class="table-wrap">Genuine member-derived probability data is not available yet.</div>
-        <div class="muted">Deterministic precipitation amount is never converted into fabricated probability.</div>
       </div>
     </section>
 
@@ -267,7 +250,6 @@
   <script src="/static/consumer_ui.js" defer></script>
   <script src="/static/observation_age.js" defer></script>
   <script src="/static/runtime_badge.js" defer></script>
-  <script src="/static/accuracy_v3.js" defer></script>
   <script src="/static/provenance_v1.js" defer></script>
   <script src="/static/time_semantics.js" defer></script>
 </body>

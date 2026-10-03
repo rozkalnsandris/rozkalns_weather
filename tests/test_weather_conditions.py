@@ -203,6 +203,7 @@ def test_daily_api_adds_deterministic_most_severe_condition_without_breaking_old
     settings = Settings.from_env(
         {
             "DATABASE_URL": f"sqlite:///{tmp_path / 'weather.db'}",
+            "WEATHER_RUNTIME_MODE": "private-home",
             "HOME_LAT": "51.5",
             "HOME_LON": "7.6",
         }
@@ -256,6 +257,7 @@ def test_existing_corpus_without_weather_code_or_is_day_uses_safe_daily_fallback
     settings = Settings.from_env(
         {
             "DATABASE_URL": f"sqlite:///{tmp_path / 'legacy.db'}",
+            "WEATHER_RUNTIME_MODE": "private-home",
             "HOME_LAT": "51.5",
             "HOME_LON": "7.6",
         }

@@ -16,7 +16,7 @@ def _run() -> ForecastRun:
         init_time_utc=datetime(2026, 9, 7, 0, tzinfo=timezone.utc),
         retrieved_at_utc=datetime(2026, 9, 7, 8, 15, tzinfo=timezone.utc),
         source_surface="test",
-        transport_provider="Google BigQuery",
+        transport_provider="Google Cloud Storage/Zarr",
         source_metadata={"resolution": "0.05deg"},
         values=(
             ForecastValue(
@@ -50,7 +50,7 @@ def test_forecast_run_is_immutable_and_utc(tmp_path) -> None:
         row = connection.execute("SELECT * FROM forecast_runs WHERE id=?", (run_id,)).fetchone()
         assert row["init_time_utc"].endswith("Z")
         assert row["retrieved_at_utc"].endswith("Z")
-        assert row["transport_provider"] == "Google BigQuery"
+        assert row["transport_provider"] == "Google Cloud Storage/Zarr"
         assert "0.05deg" in row["source_metadata_json"]
     with pytest.raises(sqlite3.IntegrityError, match="immutable"):
         with database.connect() as connection:
