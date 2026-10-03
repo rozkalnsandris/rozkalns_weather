@@ -28,7 +28,7 @@ services:
 
   public-ingest:
     image: ghcr.io/rozkalnsandris/rozkalns_weather:production
-    command: ["rozkalns-weather", "ingest-public"]
+    command: ["python", "-m", "rozkalns_weather", "ingest-public"]
     environment:
       WEATHER_RUNTIME_MODE: public-only
       WEATHER_CONFIG_PROFILE: deployment
