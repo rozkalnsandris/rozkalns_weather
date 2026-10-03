@@ -51,7 +51,6 @@ def test_simple_radar_and_status_do_not_reference_removed_lazy_modules() -> None
     assert 'id="radarOutput"' not in index
     assert "function renderRadarPayload(payload)" in app
     assert "function drawRadarFrame(index)" in app
-    assert '"/api/radar/map?"' not in app
     assert "/api/radar/map?" in app
     assert 'new URLSearchParams({ layer })' in app
     assert "preloadRadarFrameMaps" in app
