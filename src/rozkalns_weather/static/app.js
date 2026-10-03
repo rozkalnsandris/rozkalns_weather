@@ -233,6 +233,9 @@ function setActiveView(viewId) {
     accuracyLoaded = true;
     accuracy(30);
   }
+  if (viewId === "safety" && !loadedSafetySurfaces.has("radar")) {
+    void loadRadarSurface();
+  }
 }
 
 qsa(".tabs button").forEach((button) => {
@@ -657,54 +660,127 @@ qsa("[data-days]").forEach((button) => {
   };
 });
 
-function updateOverviewWarning(result) {
-  if (stateFromResult(result) !== "fresh") {
-    qs("#overviewWarningState").textContent = "Cached warning response · not current official status";
-    return;
-  }
-  const payload = result.payload || {};
-  if (payload.state === "no_active_alerts") {
-    qs("#overviewWarningState").textContent = "No active warnings · current DWD response";
-    return;
-  }
-  const active = (payload.alerts || []).filter((alert) => alert.lifecycle !== "expired");
-  qs("#overviewWarningState").textContent = active.length ? `${active.length} DWD warning${active.length === 1 ? "" : "s"} · open details` : "DWD warning response loaded";
+let radarFrames = [];
+let radarFrameIndex = 0;
+let radarPlaybackTimer = null;
+
+function radarCellColor(rawValue) {
+  const mm = Number(rawValue) * 0.01;
+  if (!Number.isFinite(mm) || mm <= 0) return "rgba(6,20,36,.5)";
+  if (mm < 0.1) return "#5fa8ff";
+  if (mm < 0.5) return "#30c7ea";
+  if (mm < 1.5) return "#46d77a";
+  if (mm < 3) return "#f2d34f";
+  return "#ff6f79";
 }
 
-async function loadSafetySurface(kind) {
-  const isWarning = kind === "warnings";
-  const url = isWarning ? "/api/warnings" : "/api/radar";
-  const stateId = isWarning ? "warningsState" : "radarState";
-  const outputId = isWarning ? "warningsOutput" : "radarOutput";
-  loadedSafetySurfaces.add(kind);
+function radarFrameLabel(frame) {
+  const kind = frame?.kind === "radar_nowcast" ? "Nowcast" : "Observed";
+  return `${kind} · ${formatTimestamp(frame?.timestamp)}`;
+}
+
+function drawRadarFrame(index) {
+  if (!radarFrames.length) return;
+  radarFrameIndex = Math.max(0, Math.min(Number(index) || 0, radarFrames.length - 1));
+  const frame = radarFrames[radarFrameIndex];
+  const raster = frame?.raster;
+  const canvas = qs("#radarCanvas");
+  const timeline = qs("#radarTimeline");
+  if (!canvas || !raster?.values?.length) return;
+
+  canvas.width = Number(raster.width);
+  canvas.height = Number(raster.height);
+  const context = canvas.getContext("2d");
+  context.imageSmoothingEnabled = false;
+  raster.values.forEach((row, y) => row.forEach((value, x) => {
+    context.fillStyle = radarCellColor(value);
+    context.fillRect(x, y, 1, 1);
+  }));
+
+  timeline.value = String(radarFrameIndex);
+  qs("#radarTime").textContent = radarFrameLabel(frame);
+  qs("#radarMeta").textContent = `${radarFrameLabel(frame)} · 20 km privacy-safe view around the selected location.`;
+}
+
+function stopRadarPlayback() {
+  if (radarPlaybackTimer !== null) window.clearInterval(radarPlaybackTimer);
+  radarPlaybackTimer = null;
+  const button = qs("#radarPlay");
+  if (button) button.textContent = "▶ Play";
+}
+
+function toggleRadarPlayback() {
+  if (!radarFrames.length) return;
+  if (radarPlaybackTimer !== null) {
+    stopRadarPlayback();
+    return;
+  }
+  qs("#radarPlay").textContent = "❚❚ Pause";
+  radarPlaybackTimer = window.setInterval(() => {
+    drawRadarFrame((radarFrameIndex + 1) % radarFrames.length);
+  }, 700);
+}
+
+function renderRadarPayload(payload) {
+  stopRadarPlayback();
+  radarFrames = (payload?.frames || []).filter((frame) => frame?.raster?.values?.length);
+  const stage = qs("#radarStage");
+  const timeline = qs("#radarTimeline");
+  const play = qs("#radarPlay");
+  if (!radarFrames.length) {
+    stage.hidden = true;
+    timeline.disabled = true;
+    play.disabled = true;
+    qs("#radarMeta").textContent = "No renderable radar frames are available. This does not mean precipitation is absent.";
+    return false;
+  }
+
+  stage.hidden = false;
+  timeline.disabled = false;
+  play.disabled = false;
+  timeline.max = String(radarFrames.length - 1);
+
+  let initial = 0;
+  radarFrames.forEach((frame, index) => {
+    if (frame.kind === "radar_observed") initial = index;
+  });
+  drawRadarFrame(initial);
+  return true;
+}
+
+async function loadRadarSurface() {
+  loadedSafetySurfaces.add("radar");
+  const button = qs("#loadRadar");
+  button.disabled = true;
+  setSurfaceState("radarState", "loading", "Loading nearby DWD radar…");
   try {
-    const result = await apiWithFallback(url, `safety-${kind}`);
-    qs(`#${outputId}`).textContent = JSON.stringify(result.payload, null, 2);
+    const result = await apiWithFallback("/api/radar", "safety-radar");
+    const hasFrames = renderRadarPayload(result.payload);
     const fallbackState = stateFromResult(result);
-    if (fallbackState === "fresh") {
-      setSurfaceState(stateId, "fresh", isWarning ? "Current response from the DWD official-warning endpoint." : "Current DWD radar metadata response.");
-      if (isWarning) updateOverviewWarning(result);
-    } else if (isWarning) {
-      setSurfaceState(stateId, fallbackState, `${cacheMessage(result)} — NOT current official warning status. DWD remains the authority; reconnect and refresh before relying on warnings.`, { alert: true });
-      updateOverviewWarning(result);
+    if (fallbackState === "fresh" && hasFrames) {
+      setSurfaceState("radarState", "fresh", "Radar ready · observed frames and short nowcast.");
+    } else if (fallbackState === "fresh") {
+      setSurfaceState("radarState", "stale", "Radar returned no renderable frames. This does not mean precipitation is absent.");
     } else {
-      setSurfaceState(stateId, fallbackState, `${cacheMessage(result)} — cached radar metadata is not current observed/nowcast evidence.`);
+      setSurfaceState("radarState", fallbackState, `${cacheMessage(result)}; radar is not current.`, { alert: fallbackState === "error" });
     }
   } catch (error) {
-    qs(`#${outputId}`).textContent = isWarning ? "Current DWD warning data nav pieejama." : "Current DWD radar data nav pieejama.";
-    setSurfaceState(stateId, navigator.onLine ? "error" : "offline", `${isWarning ? "DWD official warning" : "DWD radar"} endpoint unavailable: ${error}`, { alert: isWarning });
-    if (isWarning) qs("#overviewWarningState").textContent = "Current DWD warning status unavailable";
+    renderRadarPayload(null);
+    const state = navigator.onLine ? "error" : "offline";
+    setSurfaceState("radarState", state, `Radar unavailable: ${error}`, { alert: true });
+  } finally {
+    button.disabled = false;
   }
 }
 
 qs("#forecastLocation").onchange = () => { forecastLocationInitialized = true; refresh(); };
 qs("#refreshOverview").onclick = () => refresh();
-qs("#loadWarnings").onclick = () => loadSafetySurface("warnings");
-qs("#loadRadar").onclick = () => loadSafetySurface("radar");
-qs("#overviewWarningsButton").onclick = () => {
-  setActiveView("safety");
-  if (!loadedSafetySurfaces.has("warnings")) loadSafetySurface("warnings");
+qs("#loadRadar").onclick = () => { void loadRadarSurface(); };
+qs("#radarTimeline").oninput = (event) => {
+  stopRadarPlayback();
+  drawRadarFrame(event.target.value);
 };
+qs("#radarPlay").onclick = () => toggleRadarPlayback();
 
 window.addEventListener("offline", () => {
   setSurfaceState("networkState", "offline", "Browser reports offline. Visible forecast data is last-known cache and is not current.", { alert: true });
@@ -719,7 +795,7 @@ window.addEventListener("offline", () => {
 window.addEventListener("online", () => {
   setSurfaceState("networkState", "loading", "Connection returned; refreshing live API evidence.");
   refresh();
-  loadedSafetySurfaces.forEach((kind) => loadSafetySurface(kind));
+  if (loadedSafetySurfaces.has("radar")) void loadRadarSurface();
 });
 
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js", { scope: "/" });
