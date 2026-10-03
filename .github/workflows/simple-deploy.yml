@@ -1,12 +1,6 @@
 name: SIMPLE-DEPLOY Weather
 
 on:
-  push:
-    branches: [main]
-    paths-ignore:
-      - '.github/**'
-      - 'docs/**'
-      - 'tests/**'
   workflow_dispatch:
 
 permissions:
