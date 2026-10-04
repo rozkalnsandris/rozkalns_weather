@@ -256,7 +256,11 @@ def _dataset_schema(dataset: Any) -> dict[str, tuple[str, ...]]:
 
 
 def _lead_indices(dataset: Any, *, hours_limit: int) -> list[int]:
-    observed = [_lead_hour(item) for item in _values_list(dataset["lead_time"])]
+    raw = getattr(dataset["lead_time"], "values", dataset["lead_time"])
+    try:
+        observed = [_lead_hour(item) for item in raw]
+    except TypeError:
+        observed = [_lead_hour(raw)]
     result: list[int] = []
     for expected in range(1, hours_limit + 1):
         matches = [index for index, hour in enumerate(observed) if hour == expected]
