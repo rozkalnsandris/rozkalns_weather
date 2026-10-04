@@ -4,6 +4,7 @@ from pathlib import Path
 import tomllib
 
 import pytest
+import numpy as np
 
 from rozkalns_weather.locations import BENCHMARK_LOCATION
 from rozkalns_weather.weathernext_gcs import (
@@ -232,6 +233,29 @@ def test_first_access_reads_only_bounded_point_statistics_and_emits_sanitized_ev
     assert "fixture-only" not in rendered
     assert str(BENCHMARK_LOCATION.lat) not in rendered
     assert str(BENCHMARK_LOCATION.lon) not in rendered
+
+
+def test_numpy_timedelta64_lead_axis_is_supported_without_tolist_coercion() -> None:
+    dataset = _Dataset()
+    dataset._arrays["lead_time"] = _Array(
+        np.asarray(
+            [np.timedelta64(hour, "h") for hour in range(7)],
+            dtype="timedelta64[ns]",
+        )
+    )
+
+    prefix = f"{GCS_STATISTICS_ROOT}/{RUN_DIRECTORY}/"
+    result = read_private_first_access_gcs(
+        init_time=INIT,
+        retrieved_at=RETRIEVED,
+        credential_provider=_credential_provider,
+        client=_Client({"prefixes": [prefix], "items": []}),
+        store_factory=lambda **kwargs: object(),
+        dataset_opener=lambda store: dataset,
+    )
+
+    assert result.evidence["lead_count"] == 6
+    assert dataset.closed is True
 
 
 def test_first_access_fails_closed_on_schema_drift_without_fallback() -> None:
