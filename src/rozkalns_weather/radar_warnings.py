@@ -1,13 +1,24 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
+import math
 from typing import Any
+from urllib.parse import urlencode
 
 from .models import parse_time, utc_iso
-from .providers.base import JsonFetcher, fetch_json
+from .providers.base import BytesFetcher, JsonFetcher, fetch_bytes, fetch_json
 
 BRIGHTSKY_ALERTS_URL = "https://api.brightsky.dev/alerts"
 BRIGHTSKY_RADAR_URL = "https://api.brightsky.dev/radar"
+DWD_WMS_URL = "https://maps.dwd.de/geoserver/dwd/wms"
+DWD_WMS_LAYERS = "dwd:bluemarble,dwd:Niederschlagsradar"
+DWD_WMS_CRS = "EPSG:3857"
+DWD_WMS_IMAGE_SIZE_PX = 640
+DWD_WMS_MAX_IMAGE_BYTES = 2_000_000
+DWD_WMS_MAX_VIEW_SPAN_DEGREES = 2.0
+WEB_MERCATOR_RADIUS_M = 6_378_137.0
+WEB_MERCATOR_MAX_LAT = 85.0
+PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 RADAR_RENDER_DISTANCE_M = 20_000
 
 
@@ -77,6 +88,78 @@ def _sanitized_radar_frame(raw: dict[str, Any], *, now: datetime) -> dict[str, A
         frame["source"] = str(source)
     return frame
 
+
+
+def normalize_dwd_wms_time(value: str) -> str:
+    """Return the DWD WMS time form used by its advertised ISO8601 dimension."""
+
+    stamp = parse_time(value).astimezone(timezone.utc)
+    return stamp.strftime("%Y-%m-%dT%H:%M:%S.000Z")
+
+
+def _validate_radar_bounds(*, west: float, south: float, east: float, north: float) -> None:
+    if west >= east or south >= north:
+        raise ValueError("radar map bounds must have positive width and height")
+    if east - west > DWD_WMS_MAX_VIEW_SPAN_DEGREES or north - south > DWD_WMS_MAX_VIEW_SPAN_DEGREES:
+        raise ValueError("radar map view is too large")
+    if south < -WEB_MERCATOR_MAX_LAT or north > WEB_MERCATOR_MAX_LAT:
+        raise ValueError("radar map latitude is outside Web Mercator")
+
+
+def _web_mercator_xy(*, lon: float, lat: float) -> tuple[float, float]:
+    x = WEB_MERCATOR_RADIUS_M * math.radians(lon)
+    y = WEB_MERCATOR_RADIUS_M * math.log(
+        math.tan(math.pi / 4.0 + math.radians(lat) / 2.0)
+    )
+    return x, y
+
+
+def dwd_radar_map_url(
+    *,
+    at: str,
+    west: float,
+    south: float,
+    east: float,
+    north: float,
+) -> str:
+    """Build one fixed DWD WMS image for the requested public map viewport."""
+
+    _validate_radar_bounds(west=west, south=south, east=east, north=north)
+    left, bottom = _web_mercator_xy(lon=west, lat=south)
+    right, top = _web_mercator_xy(lon=east, lat=north)
+    params = {
+        "service": "WMS",
+        "version": "1.3.0",
+        "request": "GetMap",
+        "layers": DWD_WMS_LAYERS,
+        "styles": ",",
+        "crs": DWD_WMS_CRS,
+        "bbox": f"{left:.3f},{bottom:.3f},{right:.3f},{top:.3f}",
+        "width": str(DWD_WMS_IMAGE_SIZE_PX),
+        "height": str(DWD_WMS_IMAGE_SIZE_PX),
+        "format": "image/png",
+        "transparent": "FALSE",
+        "time": normalize_dwd_wms_time(at),
+    }
+    return f"{DWD_WMS_URL}?{urlencode(params)}"
+
+
+def fetch_dwd_radar_map_png(
+    *,
+    at: str,
+    west: float,
+    south: float,
+    east: float,
+    north: float,
+    fetcher: BytesFetcher = fetch_bytes,
+) -> bytes:
+    url = dwd_radar_map_url(at=at, west=west, south=south, east=east, north=north)
+    payload = fetcher(url)
+    if not payload.startswith(PNG_SIGNATURE):
+        raise ValueError("DWD WMS did not return a PNG image")
+    if len(payload) > DWD_WMS_MAX_IMAGE_BYTES:
+        raise ValueError("DWD WMS image is larger than the bounded map contract")
+    return payload
 
 def fetch_dwd_alerts(
     *,

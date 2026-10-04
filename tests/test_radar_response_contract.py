@@ -3,7 +3,13 @@ from __future__ import annotations
 from datetime import datetime, timezone
 import json
 
-from rozkalns_weather.radar_warnings import fetch_radar_point
+from rozkalns_weather.radar_warnings import (
+    PNG_SIGNATURE,
+    dwd_radar_map_url,
+    fetch_dwd_radar_map_png,
+    fetch_radar_point,
+    normalize_dwd_wms_time,
+)
 
 
 NOW = datetime(2026, 9, 28, 12, 0, tzinfo=timezone.utc)
@@ -77,3 +83,55 @@ def test_empty_radar_response_keeps_simple_timeline_contract() -> None:
 
     assert result["state"] == "no_radar_frames"
     assert result["frames"] == []
+
+
+def test_dwd_radar_map_uses_fixed_layers_and_normalized_utc_time() -> None:
+    assert normalize_dwd_wms_time("2026-09-28T12:30:00+00:00") == "2026-09-28T12:30:00.000Z"
+    url = dwd_radar_map_url(
+        at="2026-09-28T12:30:00+00:00",
+        west=7.4,
+        south=51.4,
+        east=7.8,
+        north=51.7,
+    )
+    assert "layers=dwd%3Abluemarble%2Cdwd%3ANiederschlagsradar" in url
+    assert "styles=%2C" in url
+    assert "crs=EPSG%3A3857" in url
+    assert "width=640" in url
+    assert "height=640" in url
+    assert "transparent=FALSE" in url
+    assert "time=2026-09-28T12%3A30%3A00.000Z" in url
+
+
+def test_dwd_radar_map_rejects_oversized_view_and_non_png() -> None:
+    try:
+        dwd_radar_map_url(
+            at="2026-09-28T12:30:00Z",
+            west=5.0,
+            south=50.0,
+            east=8.0,
+            north=51.0,
+        )
+    except ValueError as exc:
+        assert "too large" in str(exc)
+    else:
+        raise AssertionError("oversized radar view must be rejected")
+
+    def fake_bytes(_url: str) -> bytes:
+        return b"not-a-png"
+
+    try:
+        fetch_dwd_radar_map_png(
+            at="2026-09-28T12:30:00Z",
+            west=7.4,
+            south=51.4,
+            east=7.8,
+            north=51.7,
+            fetcher=fake_bytes,
+        )
+    except ValueError as exc:
+        assert "PNG" in str(exc)
+    else:
+        raise AssertionError("non-PNG radar response must be rejected")
+
+    assert PNG_SIGNATURE.startswith(b"\x89PNG")

@@ -116,3 +116,48 @@ def test_verification_summary_uses_station_05480_truth(tmp_path) -> None:
 def test_unknown_location_is_rejected(tmp_path) -> None:
     client, _ = _client(tmp_path)
     assert client.get("/api/hourly?location_id=unknown").status_code == 422
+
+
+def test_radar_map_proxy_is_bounded_same_origin_png(tmp_path, monkeypatch) -> None:
+    client, _ = _client(tmp_path)
+
+    def fake_map(**kwargs):
+        assert kwargs == {
+            "at": "2026-09-28T12:30:00+00:00",
+            "west": 7.4,
+            "south": 51.4,
+            "east": 7.8,
+            "north": 51.7,
+        }
+        return b"\x89PNG\r\n\x1a\nfixture"
+
+    monkeypatch.setattr("rozkalns_weather.app_core.fetch_dwd_radar_map_png", fake_map)
+    response = client.get(
+        "/api/radar/map",
+        params={
+            "at": "2026-09-28T12:30:00+00:00",
+            "west": 7.4,
+            "south": 51.4,
+            "east": 7.8,
+            "north": 51.7,
+        },
+    )
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "image/png"
+    assert response.headers["x-content-type-options"] == "nosniff"
+    assert response.content.startswith(b"\x89PNG")
+
+
+def test_radar_map_proxy_rejects_oversized_view(tmp_path) -> None:
+    client, _ = _client(tmp_path)
+    response = client.get(
+        "/api/radar/map",
+        params={
+            "at": "2026-09-28T12:30:00Z",
+            "west": 5.0,
+            "south": 50.0,
+            "east": 8.0,
+            "north": 51.0,
+        },
+    )
+    assert response.status_code == 422

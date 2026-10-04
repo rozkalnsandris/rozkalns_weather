@@ -7,7 +7,7 @@ from zoneinfo import ZoneInfo
 from typing import Literal
 
 from fastapi import FastAPI, HTTPException, Query
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from .config import Settings
@@ -20,7 +20,7 @@ from .providers import PROVIDERS
 from .providers.dwd_cdc_observations import CDC_STATION_ID
 from .provider_health import PUBLIC_PROVIDER_HEALTH_POLICIES, classify_public_provider_health
 from .provenance_api import blocked_trace_response, hourly_with_provenance, verification_value_trace
-from .radar_warnings import fetch_dwd_alerts, fetch_radar_point
+from .radar_warnings import fetch_dwd_alerts, fetch_dwd_radar_map_png, fetch_radar_point
 from .runtime import database_schema_state, readiness_payload
 from .truth_quality import database_truth_quality
 from .value_provenance import ValueProvenanceError
@@ -467,6 +467,35 @@ def create_app(settings: Settings | None = None, database: Database | None = Non
     def warnings() -> dict[str, object]:
         lat, lon, reference = _safety_reference(settings)
         return {**fetch_dwd_alerts(lat=lat, lon=lon), "reference_location": reference}
+
+    @app.get("/api/radar/map")
+    def radar_map(
+        at: str = Query(..., min_length=1),
+        west: float = Query(..., ge=-180.0, le=180.0),
+        south: float = Query(..., ge=-85.0, le=85.0),
+        east: float = Query(..., ge=-180.0, le=180.0),
+        north: float = Query(..., ge=-85.0, le=85.0),
+    ) -> Response:
+        try:
+            payload = fetch_dwd_radar_map_png(
+                at=at,
+                west=west,
+                south=south,
+                east=east,
+                north=north,
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+        except Exception as exc:
+            raise HTTPException(status_code=502, detail="DWD radar map unavailable") from exc
+        return Response(
+            content=payload,
+            media_type="image/png",
+            headers={
+                "Cache-Control": "private, max-age=300",
+                "X-Content-Type-Options": "nosniff",
+            },
+        )
 
     @app.get("/api/radar")
     def radar() -> dict[str, object]:
