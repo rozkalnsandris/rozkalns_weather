@@ -706,11 +706,9 @@ qsa("[data-days]").forEach((button) => {
   };
 });
 
-let radarFrames = [];
-let radarFrameIndex = 0;
-let radarPlaybackTimer = null;
+let radarFrame = null;
 let radarMap = null;
-let radarWmsLayer = null;
+let radarImageLayer = null;
 const RADAR_PUBLIC_CENTER = [51.532, 7.611];
 const RADAR_INITIAL_ZOOM = 12;
 
@@ -719,99 +717,74 @@ function radarFrameLabel(frame) {
   return `${kind} · ${formatTimestamp(frame?.timestamp)}`;
 }
 
-function ensureRadarMap(frame) {
+function radarMapUrl(frame, bounds) {
+  const params = new URLSearchParams({
+    at: frame.timestamp,
+    west: bounds.getWest().toFixed(6),
+    south: bounds.getSouth().toFixed(6),
+    east: bounds.getEast().toFixed(6),
+    north: bounds.getNorth().toFixed(6),
+  });
+  return `/api/radar/map?${params.toString()}`;
+}
+
+function refreshRadarMapImage() {
+  if (!radarMap || !radarFrame?.timestamp) return;
+  const bounds = radarMap.getBounds();
+  const url = radarMapUrl(radarFrame, bounds);
+  if (!radarImageLayer) {
+    radarImageLayer = L.imageOverlay(url, bounds, { opacity: 1 }).addTo(radarMap);
+    radarImageLayer.on("error", () => {
+      setSurfaceState("radarState", "error", "Radar map image unavailable. Try Refresh.", { alert: true });
+    });
+  } else {
+    radarImageLayer.setBounds(bounds);
+    radarImageLayer.setUrl(url);
+  }
+}
+
+function ensureRadarMap() {
   if (!window.L) throw new Error("Interactive map library unavailable");
-  if (!radarMap) {
-    radarMap = L.map("radarMap", {
-      minZoom: 9,
-      maxZoom: 17,
-    }).setView(RADAR_PUBLIC_CENTER, RADAR_INITIAL_ZOOM);
+  if (radarMap) return;
 
-    L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      maxZoom: 19,
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-    }).addTo(radarMap);
+  radarMap = L.map("radarMap", {
+    minZoom: 9,
+    maxZoom: 17,
+  }).setView(RADAR_PUBLIC_CENTER, RADAR_INITIAL_ZOOM);
 
-    radarWmsLayer = L.tileLayer.wms("https://maps.dwd.de/geoserver/dwd/wms", {
-      layers: "dwd:Niederschlagsradar",
-      format: "image/png",
-      transparent: true,
-      version: "1.3.0",
-      opacity: 0.72,
-      time: frame.timestamp,
-      attribution: 'Radar: <a href="https://www.dwd.de/">DWD</a>',
-    }).addTo(radarMap);
+  radarMap.attributionControl.addAttribution('<a href="https://www.dwd.de/">Map and radar: DWD</a>');
+  L.circleMarker(RADAR_PUBLIC_CENTER, {
+    radius: 6,
+    color: "#ffffff",
+    weight: 2,
+    fillColor: "#061424",
+    fillOpacity: 0.65,
+  }).bindTooltip("Dortmund-Wickede area").addTo(radarMap);
 
-    L.circleMarker(RADAR_PUBLIC_CENTER, {
-      radius: 6,
-      color: "#ffffff",
-      weight: 2,
-      fillColor: "#061424",
-      fillOpacity: 0.65,
-    }).bindTooltip("Dortmund-Wickede area").addTo(radarMap);
-  }
-
-  window.requestAnimationFrame(() => radarMap.invalidateSize());
-}
-
-function drawRadarFrame(index) {
-  if (!radarFrames.length) return;
-  radarFrameIndex = Math.max(0, Math.min(Number(index) || 0, radarFrames.length - 1));
-  const frame = radarFrames[radarFrameIndex];
-  const timeline = qs("#radarTimeline");
-  if (!frame?.timestamp) return;
-
-  ensureRadarMap(frame);
-  radarWmsLayer.setParams({ time: frame.timestamp });
-
-  timeline.value = String(radarFrameIndex);
-  qs("#radarTime").textContent = radarFrameLabel(frame);
-  qs("#radarMeta").textContent = `${radarFrameLabel(frame)} · drag or pinch to explore · public Wickede map center.`;
-}
-
-function stopRadarPlayback() {
-  if (radarPlaybackTimer !== null) window.clearInterval(radarPlaybackTimer);
-  radarPlaybackTimer = null;
-  const button = qs("#radarPlay");
-  if (button) button.textContent = "▶ Play";
-}
-
-function toggleRadarPlayback() {
-  if (!radarFrames.length) return;
-  if (radarPlaybackTimer !== null) {
-    stopRadarPlayback();
-    return;
-  }
-  qs("#radarPlay").textContent = "❚❚ Pause";
-  radarPlaybackTimer = window.setInterval(() => {
-    drawRadarFrame((radarFrameIndex + 1) % radarFrames.length);
-  }, 2500);
+  radarMap.on("moveend", () => refreshRadarMapImage());
 }
 
 function renderRadarPayload(payload) {
-  stopRadarPlayback();
-  radarFrames = (payload?.frames || []).filter((frame) => frame?.timestamp);
+  const frames = (payload?.frames || [])
+    .filter((frame) => frame?.timestamp)
+    .sort((left, right) => Date.parse(left.timestamp) - Date.parse(right.timestamp));
   const stage = qs("#radarStage");
-  const timeline = qs("#radarTimeline");
-  const play = qs("#radarPlay");
-  if (!radarFrames.length) {
+  if (!frames.length) {
+    radarFrame = null;
     stage.hidden = true;
-    timeline.disabled = true;
-    play.disabled = true;
-    qs("#radarMeta").textContent = "No renderable radar frames are available. This does not mean precipitation is absent.";
+    qs("#radarMeta").textContent = "No radar frame is available. This does not mean precipitation is absent.";
     return false;
   }
 
+  radarFrame = frames[frames.length - 1];
   stage.hidden = false;
-  timeline.disabled = false;
-  play.disabled = false;
-  timeline.max = String(radarFrames.length - 1);
-
-  let initial = 0;
-  radarFrames.forEach((frame, index) => {
-    if (frame.kind === "radar_observed") initial = index;
+  ensureRadarMap();
+  qs("#radarTime").textContent = radarFrameLabel(radarFrame);
+  qs("#radarMeta").textContent = `${radarFrameLabel(radarFrame)} · drag or pinch to explore · Refresh gets the newest frame.`;
+  window.requestAnimationFrame(() => {
+    radarMap.invalidateSize();
+    refreshRadarMapImage();
   });
-  drawRadarFrame(initial);
   return true;
 }
 
@@ -825,7 +798,7 @@ async function loadRadarSurface() {
     const hasFrames = renderRadarPayload(result.payload);
     const fallbackState = stateFromResult(result);
     if (fallbackState === "fresh" && hasFrames) {
-      setSurfaceState("radarState", "fresh", "Radar ready · observed frames and short nowcast.");
+      setSurfaceState("radarState", "fresh", "Latest DWD radar map ready.");
     } else if (fallbackState === "fresh") {
       setSurfaceState("radarState", "stale", "Radar returned no renderable frames. This does not mean precipitation is absent.");
     } else {
@@ -843,11 +816,6 @@ async function loadRadarSurface() {
 qs("#forecastLocation").onchange = () => { forecastLocationInitialized = true; refresh(); };
 qs("#refreshOverview").onclick = () => refresh();
 qs("#loadRadar").onclick = () => { void loadRadarSurface(); };
-qs("#radarTimeline").oninput = (event) => {
-  stopRadarPlayback();
-  drawRadarFrame(event.target.value);
-};
-qs("#radarPlay").onclick = () => toggleRadarPlayback();
 
 window.addEventListener("offline", () => {
   setSurfaceState("networkState", "offline", "Browser reports offline. Visible forecast data is last-known cache and is not current.", { alert: true });
