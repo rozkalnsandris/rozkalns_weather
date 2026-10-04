@@ -48,6 +48,17 @@ class _Client:
         return _Response(self.payload)
 
 
+class _LeadAxisValues:
+    def __init__(self, values):
+        self._values = list(values)
+
+    def __iter__(self):
+        return iter(self._values)
+
+    def tolist(self):
+        return [int(value.total_seconds() * 1_000_000_000) for value in self._values]
+
+
 class _Array:
     def __init__(self, values):
         self.values = values
@@ -232,6 +243,26 @@ def test_first_access_reads_only_bounded_point_statistics_and_emits_sanitized_ev
     assert "fixture-only" not in rendered
     assert str(BENCHMARK_LOCATION.lat) not in rendered
     assert str(BENCHMARK_LOCATION.lon) not in rendered
+
+
+def test_lead_axis_preserves_iterable_scalar_types_without_tolist_coercion() -> None:
+    dataset = _Dataset()
+    dataset._arrays["lead_time"] = _Array(
+        _LeadAxisValues([timedelta(hours=hour) for hour in range(7)])
+    )
+
+    prefix = f"{GCS_STATISTICS_ROOT}/{RUN_DIRECTORY}/"
+    result = read_private_first_access_gcs(
+        init_time=INIT,
+        retrieved_at=RETRIEVED,
+        credential_provider=_credential_provider,
+        client=_Client({"prefixes": [prefix], "items": []}),
+        store_factory=lambda **kwargs: object(),
+        dataset_opener=lambda store: dataset,
+    )
+
+    assert result.evidence["lead_count"] == 6
+    assert dataset.closed is True
 
 
 def test_first_access_fails_closed_on_schema_drift_without_fallback() -> None:
