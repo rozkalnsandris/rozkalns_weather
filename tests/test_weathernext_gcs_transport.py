@@ -4,7 +4,6 @@ from pathlib import Path
 import tomllib
 
 import pytest
-import numpy as np
 
 from rozkalns_weather.locations import BENCHMARK_LOCATION
 from rozkalns_weather.weathernext_gcs import (
@@ -47,6 +46,17 @@ class _Client:
     def get(self, url, *, params, headers):
         self.calls.append({"url": url, "params": dict(params), "headers": dict(headers)})
         return _Response(self.payload)
+
+
+class _LeadAxisValues:
+    def __init__(self, values):
+        self._values = list(values)
+
+    def __iter__(self):
+        return iter(self._values)
+
+    def tolist(self):
+        return [int(value.total_seconds() * 1_000_000_000) for value in self._values]
 
 
 class _Array:
@@ -235,13 +245,10 @@ def test_first_access_reads_only_bounded_point_statistics_and_emits_sanitized_ev
     assert str(BENCHMARK_LOCATION.lon) not in rendered
 
 
-def test_numpy_timedelta64_lead_axis_is_supported_without_tolist_coercion() -> None:
+def test_lead_axis_preserves_iterable_scalar_types_without_tolist_coercion() -> None:
     dataset = _Dataset()
     dataset._arrays["lead_time"] = _Array(
-        np.asarray(
-            [np.timedelta64(hour, "h") for hour in range(7)],
-            dtype="timedelta64[ns]",
-        )
+        _LeadAxisValues([timedelta(hours=hour) for hour in range(7)])
     )
 
     prefix = f"{GCS_STATISTICS_ROOT}/{RUN_DIRECTORY}/"
