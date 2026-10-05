@@ -83,3 +83,24 @@ dataset fallback or automatic retry.
 It is fixed to `station_05480`, six forecast hours and the precomputed
 WeatherNext 3 statistics GCS/Zarr surface. Any private binding, credential,
 schema or transport mismatch fails closed.
+
+
+## WeatherNext one-shot snapshot persistence
+
+After the read-only GCS canary has passed, the ordinary Weather image exposes one
+explicit persistence command:
+
+```bash
+python -m rozkalns_weather weathernext-gcs-persist --init <exact-UTC-init>
+```
+
+This remains an owner-gated admin operation. The command reuses the fixed
+read-only Google credential path, requires the existing SQLite schema, reads the
+same bounded `station_05480` WeatherNext statistics snapshot, and then writes
+one immutable `ForecastRun` plus its values through the normal database
+transaction. It does not initialize or migrate the schema, write the private
+home location, add retries/fallbacks, or create a second deployment path.
+
+Running this command against the production corpus is a DB/data mutation and
+therefore requires a separate exact LIVE authorization. Source readiness alone
+does not authorize the write.
