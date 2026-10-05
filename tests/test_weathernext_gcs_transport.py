@@ -287,6 +287,7 @@ def test_gcs_optional_extra_declares_explicit_auth_runtime_without_public_runtim
     optional = project["project"]["optional-dependencies"]
     gcs = tuple(optional["weathernext-gcs"])
     assert gcs == (
+        "dask[array]>=2026.8,<2027",
         "google-auth>=2.59.1,<3",
         "obstore>=0.11.1,<0.12",
         "requests>=2.34.2,<3",
@@ -318,3 +319,5 @@ def test_gcs_transport_source_stays_callback_only_and_does_not_load_credentials(
         assert token not in source
     assert "explicit GCS credential provider is required" in source
     assert "credential_provider=credential_provider" in source
+    assert "chunks={}" in source
+    assert "chunks=None" not in source
