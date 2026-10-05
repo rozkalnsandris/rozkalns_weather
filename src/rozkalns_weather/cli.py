@@ -56,6 +56,11 @@ def main() -> None:
     sub.add_parser("corpus-check", help="run corpus integrity checks")
     gcs_canary = sub.add_parser("weathernext-gcs-canary", help="run the bounded read-only WeatherNext GCS canary")
     gcs_canary.add_argument("--init", required=True, help="exact UTC init time, for example 2026-10-01T23:00:00Z")
+    gcs_persist = sub.add_parser(
+        "weathernext-gcs-persist",
+        help="persist one validated WeatherNext GCS snapshot into the existing corpus",
+    )
+    gcs_persist.add_argument("--init", required=True, help="exact UTC init time, for example 2026-10-01T23:00:00Z")
     backup = sub.add_parser("backup", help="create a consistent SQLite backup")
     backup.add_argument("--output", required=True)
     args = parser.parse_args()
@@ -72,6 +77,28 @@ def main() -> None:
         return
 
     settings = Settings.from_env()
+
+    if args.command == "weathernext-gcs-persist":
+        from .weathernext_canary import parse_init_utc
+        from .weathernext_persistence import (
+            WeatherNextGCSPersistenceError,
+            persist_fixed_snapshot,
+        )
+
+        database = Database(settings.database_url)
+        if database_schema_state(database)["state"] != "ready":
+            _print({"state": "weathernext_snapshot_persist_failed"})
+            raise SystemExit(1)
+        try:
+            evidence = persist_fixed_snapshot(
+                init_time=parse_init_utc(args.init),
+                database=database,
+            )
+        except (WeatherNextGCSPersistenceError, ValueError):
+            _print({"state": "weathernext_snapshot_persist_failed"})
+            raise SystemExit(1)
+        _print(evidence)
+        return
 
     if args.command == "init-database":
         database = _database(settings, initialize=True)
