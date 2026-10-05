@@ -27,7 +27,7 @@
 - [x] one-shot canary source path in the ordinary Weather image; no separate WeatherNext deploy stack
 - [x] perform one separately authorized private read-only GCS canary
 - [x] source-level one-shot persistence path for the existing corpus; no automatic schedule
-- [ ] persist one real WeatherNext snapshot with separately authorized DB/data mutation
+- [x] persist one real WeatherNext snapshot with separately authorized DB/data mutation
 - [ ] collect enough real samples for measured comparison
 
 BigQuery is no longer the active first-access path for the simple app.
