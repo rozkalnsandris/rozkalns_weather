@@ -191,6 +191,23 @@ def _values_list(value: Any) -> list[Any]:
     return raw if isinstance(raw, list) else [raw]
 
 
+def _scalar_values_preserving_types(value: Any) -> list[Any]:
+    raw = getattr(value, "values", value)
+    if getattr(raw, "ndim", None) == 0:
+        try:
+            return [raw[()]]
+        except (IndexError, KeyError, TypeError):
+            pass
+    if isinstance(raw, list):
+        return raw
+    if isinstance(raw, tuple):
+        return list(raw)
+    try:
+        return list(raw)
+    except TypeError:
+        return [raw]
+
+
 def _as_utc_datetime(value: Any) -> datetime:
     if isinstance(value, datetime):
         if value.tzinfo is None:
@@ -256,11 +273,10 @@ def _dataset_schema(dataset: Any) -> dict[str, tuple[str, ...]]:
 
 
 def _lead_indices(dataset: Any, *, hours_limit: int) -> list[int]:
-    raw = getattr(dataset["lead_time"], "values", dataset["lead_time"])
-    try:
-        observed = [_lead_hour(item) for item in raw]
-    except TypeError:
-        observed = [_lead_hour(raw)]
+    observed = [
+        _lead_hour(item)
+        for item in _scalar_values_preserving_types(dataset["lead_time"])
+    ]
     result: list[int] = []
     for expected in range(1, hours_limit + 1):
         matches = [index for index, hour in enumerate(observed) if hour == expected]
@@ -405,7 +421,7 @@ def read_private_first_access_gcs(
                 "WeatherNext GCS statistics schema mismatch: " + ",".join(errors)
             )
 
-        init_values = _values_list(dataset["init_time"])
+        init_values = _scalar_values_preserving_types(dataset["init_time"])
         if len(init_values) != 1 or _as_utc_datetime(init_values[0]) != init_time:
             raise WeatherNextGCSTransportError(
                 "WeatherNext GCS dataset init_time does not match requested init"
