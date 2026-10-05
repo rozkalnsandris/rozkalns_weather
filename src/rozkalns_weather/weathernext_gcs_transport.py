@@ -149,7 +149,7 @@ def _default_dataset_opener(store: Any) -> Any:
     zstore = zarr.storage.ObjectStore(store)
     return xr.open_zarr(
         zstore,
-        chunks=None,
+        chunks={},
         create_default_indexes=False,
         zarr_format=3,
     )
