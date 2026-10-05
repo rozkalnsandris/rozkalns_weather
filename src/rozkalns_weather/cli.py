@@ -79,7 +79,7 @@ def main() -> None:
     settings = Settings.from_env()
 
     if args.command == "weathernext-gcs-persist":
-        from .weathernext_canary import parse_init_utc
+        from .weathernext_canary import WeatherNextGCSCanaryError, parse_init_utc
         from .weathernext_persistence import (
             WeatherNextGCSPersistenceError,
             persist_fixed_snapshot,
@@ -94,7 +94,7 @@ def main() -> None:
                 init_time=parse_init_utc(args.init),
                 database=database,
             )
-        except (WeatherNextGCSPersistenceError, ValueError):
+        except (WeatherNextGCSCanaryError, WeatherNextGCSPersistenceError):
             _print({"state": "weathernext_snapshot_persist_failed"})
             raise SystemExit(1)
         _print(evidence)
