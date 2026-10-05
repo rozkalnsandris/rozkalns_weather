@@ -77,23 +77,7 @@ def _fixed_credential_provider() -> Any:
         raise WeatherNextGCSCanaryError("fixed WeatherNext credential provider failed closed") from exc
 
 
-def run_fixed_canary(init_time: datetime) -> Mapping[str, object]:
-    if os.geteuid() != 0:
-        raise WeatherNextGCSCanaryError(
-            "WeatherNext GCS canary requires root inside the one-shot container"
-        )
-    try:
-        result = read_private_first_access_gcs(
-            init_time=init_time,
-            retrieved_at=datetime.now(timezone.utc),
-            credential_provider=_fixed_credential_provider(),
-        )
-    except WeatherNextGCSCanaryError:
-        raise
-    except Exception as exc:
-        raise WeatherNextGCSCanaryError("WeatherNext GCS canary failed closed") from exc
-
-    evidence = dict(result.evidence)
+def _validate_canary_evidence(evidence: Mapping[str, object]) -> None:
     if (
         evidence.get("state") != "gcs_canary_complete"
         or evidence.get("location_id") != "station_05480"
@@ -104,4 +88,27 @@ def run_fixed_canary(init_time: datetime) -> Mapping[str, object]:
         or evidence.get("production_write_performed") is not False
     ):
         raise WeatherNextGCSCanaryError("WeatherNext GCS canary evidence failed closed")
-    return evidence
+
+
+def read_fixed_snapshot(init_time: datetime) -> Any:
+    if os.geteuid() != 0:
+        raise WeatherNextGCSCanaryError(
+            "WeatherNext GCS access requires root inside the one-shot container"
+        )
+    try:
+        result = read_private_first_access_gcs(
+            init_time=init_time,
+            retrieved_at=datetime.now(timezone.utc),
+            credential_provider=_fixed_credential_provider(),
+        )
+    except WeatherNextGCSCanaryError:
+        raise
+    except Exception as exc:
+        raise WeatherNextGCSCanaryError("WeatherNext GCS access failed closed") from exc
+
+    _validate_canary_evidence(dict(result.evidence))
+    return result
+
+
+def run_fixed_canary(init_time: datetime) -> Mapping[str, object]:
+    return dict(read_fixed_snapshot(init_time).evidence)
