@@ -48,6 +48,21 @@ class _Client:
         return _Response(self.payload)
 
 
+class _ScalarAxisValue:
+    ndim = 0
+
+    def __init__(self, value):
+        self._value = value
+
+    def __getitem__(self, key):
+        if key != ():
+            raise KeyError(key)
+        return self._value
+
+    def tolist(self):
+        return int(self._value.timestamp() * 1_000_000_000)
+
+
 class _LeadAxisValues:
     def __init__(self, values):
         self._values = list(values)
@@ -243,6 +258,24 @@ def test_first_access_reads_only_bounded_point_statistics_and_emits_sanitized_ev
     assert "fixture-only" not in rendered
     assert str(BENCHMARK_LOCATION.lat) not in rendered
     assert str(BENCHMARK_LOCATION.lon) not in rendered
+
+
+def test_init_axis_preserves_scalar_type_without_tolist_coercion() -> None:
+    dataset = _Dataset()
+    dataset._arrays["init_time"] = _Array(_ScalarAxisValue(INIT))
+
+    prefix = f"{GCS_STATISTICS_ROOT}/{RUN_DIRECTORY}/"
+    result = read_private_first_access_gcs(
+        init_time=INIT,
+        retrieved_at=RETRIEVED,
+        credential_provider=_credential_provider,
+        client=_Client({"prefixes": [prefix], "items": []}),
+        store_factory=lambda **kwargs: object(),
+        dataset_opener=lambda store: dataset,
+    )
+
+    assert result.evidence["selected_init_time_utc"] == "2026-10-01T23:00:00Z"
+    assert dataset.closed is True
 
 
 def test_lead_axis_preserves_iterable_scalar_types_without_tolist_coercion() -> None:
