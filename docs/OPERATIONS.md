@@ -104,3 +104,32 @@ home location, add retries/fallbacks, or create a second deployment path.
 Running this command against the production corpus is a DB/data mutation and
 therefore requires a separate exact LIVE authorization. Source readiness alone
 does not authorize the write.
+
+## Weather PUBLIC ingress: loopback-only consumer source
+
+The Weather service's consumer Compose publish declaration is explicitly
+`127.0.0.1:${WEATHER_PORT:-9180}:8000`. This preserves the configurable
+host port and fixed container port while disallowing wildcard interfaces
+for the Docker origin. The Cloudflare Tunnel route and its policy are
+managed separately by `RPi5_main`, not by this application repository.
+The other `public-ingest` job, persistent `weather_data` volume,
+health/readiness checks, and immutable-image SIMPLE-DEPLOY interface are
+unchanged.
+
+This consumer source change complements the separately reviewed RPi5 host
+SIMPLE-DEPLOY target in `rozkalnsandris/RPi5_main#915` / PR #916. The
+active host-owned Compose and registry digest must also be reconciled
+under that repository's independent merge/authorization rules. Neither
+source PR constitutes a production change.
+
+**Runtime remains a separate owner gate.** After both source changes
+have been reviewed and explicitly merged, obtain fresh sanitized
+Weather-only host preflight evidence: exact deployed identity, Compose
+and registry install hash, protected runtime/persistence preservation,
+and the approved narrow recovery boundary. Any container reconcile or
+recreate needs separate exact LIVE authority; do not perform schema,
+database, volume, credentials, shared Tunnel, firewall, DNS or
+unrelated-service mutation. Verify `/health` and `/ready`, public
+Cloudflare route behavior, and rerun the read-only Phase 7 ingress audit
+after an authorized rollout. Keep the recorded Weather wildcard drift
+open until a fresh runtime PASS; no automatic retry or rollback.
