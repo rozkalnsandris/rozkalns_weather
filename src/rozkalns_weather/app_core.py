@@ -239,9 +239,10 @@ def create_app(settings: Settings | None = None, database: Database | None = Non
         provider_states = []
         for provider in PROVIDERS:
             saved = stored.get(provider.id, {})
+            research_snapshot = evidence.get(provider.id, {})
             state = saved.get("state", "adapter_ready_not_ingested")
             if provider.id == "weathernext3" and provider.id not in stored:
-                state = "not_ingested"
+                state = "snapshot_available" if research_snapshot else "not_ingested"
             if provider.id in PUBLIC_PROVIDER_HEALTH_POLICIES:
                 health = classify_public_provider_health(provider.id, saved, evidence.get(provider.id), now=now)
                 state = health["ingest_state"]
@@ -254,9 +255,9 @@ def create_app(settings: Settings | None = None, database: Database | None = Non
                     "reason_code": "NOT_IN_PUBLIC_RECURRING_SCOPE",
                     "last_attempt_at_utc": saved.get("last_attempt_at_utc"),
                     "last_success_at_utc": saved.get("last_success_at_utc"),
-                    "last_init_time_utc": saved.get("last_init_time_utc"),
-                    "last_retrieved_at_utc": None,
-                    "latest_valid_time_utc": None,
+                    "last_init_time_utc": research_snapshot.get("last_init_time_utc") or saved.get("last_init_time_utc"),
+                    "last_retrieved_at_utc": research_snapshot.get("last_retrieved_at_utc"),
+                    "latest_valid_time_utc": research_snapshot.get("latest_valid_time_utc"),
                     "last_observed_at_utc": None,
                     "attempt_age_hours": None,
                     "success_age_hours": None,

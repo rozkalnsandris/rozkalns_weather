@@ -36,6 +36,52 @@ def test_private_home_health_never_exposes_coordinates(tmp_path) -> None:
     assert "7.6" not in response.text
 
 
+def test_weathernext_status_uses_persisted_research_snapshot(tmp_path) -> None:
+    client, database = _client(tmp_path)
+    missing = {item["id"]: item for item in client.get("/api/health/providers").json()["providers"]}
+    assert missing["weathernext3"]["state"] == "not_ingested"
+    assert missing["weathernext3"]["freshness_state"] == "not_tracked"
+
+    # Fixture-only values, not a claim about a real WeatherNext forecast.
+    init = datetime(2026, 10, 4, 6, tzinfo=timezone.utc)
+    retrieved = init + timedelta(minutes=10)
+    valid = init + timedelta(hours=1)
+    database.insert_forecast_run(
+        ForecastRun(
+            provider="weathernext3",
+            model_provider="Google",
+            model_name="WeatherNext 3",
+            model_version="fixture",
+            init_time_utc=init,
+            retrieved_at_utc=retrieved,
+            source_surface="fixture",
+            values=(
+                ForecastValue(
+                    valid_time_utc=valid,
+                    lead_hours=1,
+                    variable="temperature_2m",
+                    statistic="mean",
+                    value=12.0,
+                    unit="degC",
+                ),
+            ),
+        ),
+        location_id=BENCHMARK_LOCATION.id,
+    )
+    assert "weathernext3" not in database.provider_statuses()
+
+    response = client.get("/api/health/providers")
+    assert response.status_code == 200
+    research = {item["id"]: item for item in response.json()["providers"]}["weathernext3"]
+    assert research["state"] == research["ingest_state"] == "snapshot_available"
+    assert research["tracked"] is False
+    assert research["freshness_state"] == "not_tracked"
+    assert research["reason_code"] == "NOT_IN_PUBLIC_RECURRING_SCOPE"
+    assert research["last_init_time_utc"] == "2026-10-04T06:00:00Z"
+    assert research["last_retrieved_at_utc"] == "2026-10-04T06:10:00Z"
+    assert research["latest_valid_time_utc"] == "2026-10-04T07:00:00Z"
+
+
 def test_hourly_uses_immutable_station_snapshot(tmp_path) -> None:
     client, database = _client(tmp_path)
     init = datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0)
