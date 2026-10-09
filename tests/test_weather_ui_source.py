@@ -33,10 +33,21 @@ def test_service_worker_caches_the_loaded_shell() -> None:
     assert "/static/accuracy_v3.js" not in index
     assert "self.skipWaiting()" in worker
     assert "self.clients.claim()" in worker
-    assert '/static/app.js?v=48' in index
-    assert '"/static/app.js?v=48"' in worker
+    assert '/static/app.js?v=49' in index
+    assert '"/static/app.js?v=49"' in worker
     assert "ASSETS.map((asset) => new URL(asset, self.location.origin).pathname)" in worker
     assert "ignoreSearch: true" not in worker
+
+
+def test_weathernext_research_status_does_not_claim_recurring_freshness() -> None:
+    app = (STATIC / "app.js").read_text()
+    assert 'provider.id === "weathernext3" && provider.freshness_state === "not_tracked"' in app
+    assert 'provider.state === "snapshot_available" ? "research"' in app
+    assert 'provider.state === "not_ingested" ? "pending"' in app
+    assert "Research snapshot ${formatTimestamp(updatedAt)}" in app
+    assert "No research snapshot yet" in app
+    assert 'researchState || normalizedProviderState(provider)' in app
+    assert 'const tracked = (health.providers || []).filter((provider) => PUBLIC_PROVIDER_IDS.has(provider.id));' in app
 
 
 def test_simple_radar_and_status_do_not_reference_removed_lazy_modules() -> None:

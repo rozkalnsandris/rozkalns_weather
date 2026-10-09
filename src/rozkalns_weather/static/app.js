@@ -211,16 +211,24 @@ function globalNetworkState(healthState) {
 
 function providersCard(items) {
   return items.map((provider) => {
-    const uiState = normalizedProviderState(provider);
+    // Optional one-shot research is not a recurring provider freshness signal.
+    const researchOnly = provider.id === "weathernext3" && provider.freshness_state === "not_tracked";
+    const researchState = researchOnly && provider.state === "snapshot_available" ? "research"
+      : researchOnly && provider.state === "not_ingested" ? "pending" : null;
+    const uiState = researchState || normalizedProviderState(provider);
     const observedAt = provider.last_observed_at_utc;
     const updatedAt = provider.last_retrieved_at_utc || provider.last_success_at_utc;
-    const updateLabel = observedAt
-      ? `Observed ${formatTimestamp(observedAt)}`
-      : updatedAt
-        ? `Updated ${formatTimestamp(updatedAt)}`
-        : uiState === "inactive"
-          ? "Not collected yet"
-          : "Update time unavailable";
+    const updateLabel = researchState === "research"
+      ? updatedAt ? `Research snapshot ${formatTimestamp(updatedAt)}` : "Research snapshot time unavailable"
+      : researchState === "pending"
+        ? "No research snapshot yet"
+        : observedAt
+          ? `Observed ${formatTimestamp(observedAt)}`
+          : updatedAt
+            ? `Updated ${formatTimestamp(updatedAt)}`
+            : uiState === "inactive"
+              ? "Not collected yet"
+              : "Update time unavailable";
     return `
       <div class="provider provider-state-${uiState}">
         <div class="provider-heading"><strong>${escapeHtml(provider.model_name)}</strong><span class="state-chip state-${uiState}">${uiState}</span></div>
