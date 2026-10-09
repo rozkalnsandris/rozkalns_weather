@@ -140,4 +140,4 @@ def test_mobile_interaction_stays_compact_and_direct() -> None:
     assert ".chart svg{display:block;min-width:0;max-width:100%;height:auto}" in (STATIC / "app.css").read_text()
     time_semantics = (STATIC / "time_semantics.js").read_text()
     assert " · ${identity.utc}" not in time_semantics
-    assert "rozkalns-weather-v48" in worker
+    assert "rozkalns-weather-v49" in worker
