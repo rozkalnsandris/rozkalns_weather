@@ -458,8 +458,8 @@ function renderDaily(result, healthMap) {
   const rows = result.payload.days_by_provider || [];
   const options = window.RozkalnsDailyTrend.availableProviders(rows, localDateKey(), PROVIDER_PREFERENCE);
   const picker = qs("#dailyModelSelect");
-  picker.innerHTML = '<option value="auto">Auto (longest forecast)</option>' + options.map(({ provider, days }) =>
-    `<option value="${escapeHtml(provider)}">${escapeHtml(MODEL_LABELS[provider] || provider)} (${days} days)</option>`
+  picker.innerHTML = '<option value="auto">Auto</option>' + options.map(({ provider, days }) =>
+    `<option value="${escapeHtml(provider)}">${escapeHtml(MODEL_LABELS[provider] || provider)} · ${days}d</option>`
   ).join("");
   if (requestedDailyModel !== "auto" && !options.some(({ provider }) => provider === requestedDailyModel)) {
     requestedDailyModel = "auto";
