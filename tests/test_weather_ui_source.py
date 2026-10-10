@@ -37,8 +37,8 @@ def test_service_worker_caches_the_loaded_shell() -> None:
     assert "/static/accuracy_v3.js" not in index
     assert "self.skipWaiting()" in worker
     assert "self.clients.claim()" in worker
-    assert '/static/app.js?v=60' in index
-    assert '"/static/app.js?v=60"' in worker
+    assert '/static/app.js?v=61' in index
+    assert '"/static/app.js?v=61"' in worker
     assert "ASSETS.map((asset) => new URL(asset, self.location.origin).pathname)" in worker
     assert "ignoreSearch: true" not in worker
 
@@ -164,7 +164,7 @@ def test_mobile_interaction_stays_compact_and_direct() -> None:
     assert ".chart svg{display:block;min-width:0;max-width:100%;height:auto}" in (STATIC / "app.css").read_text()
     time_semantics = (STATIC / "time_semantics.js").read_text()
     assert " · ${identity.utc}" not in time_semantics
-    assert "rozkalns-weather-v60" in worker
+    assert "rozkalns-weather-v61" in worker
 
 
 def _wcag_contrast(foreground: str, background: str) -> float:
@@ -268,12 +268,12 @@ def test_next_days_versioned_dependencies_and_visible_render_failure() -> None:
     index = (STATIC / "index.html").read_text()
     worker = (STATIC / "sw.js").read_text()
     app = (STATIC / "app.js").read_text()
-    assert '<script src="/static/daily_trend.js?v=60" defer></script>' in index
-    assert '<script src="/static/app.js?v=60" defer></script>' in index
-    assert index.index('/static/daily_trend.js?v=60') < index.index('/static/app.js?v=60')
-    assert '"/static/daily_trend.js?v=60"' in worker
-    assert '"/static/app.js?v=60"' in worker
-    assert "rozkalns-weather-v60" in worker
+    assert '<script src="/static/daily_trend.js?v=61" defer></script>' in index
+    assert '<script src="/static/app.js?v=61" defer></script>' in index
+    assert index.index('/static/daily_trend.js?v=61') < index.index('/static/app.js?v=61')
+    assert '"/static/daily_trend.js?v=61"' in worker
+    assert '"/static/app.js?v=61"' in worker
+    assert "rozkalns-weather-v61" in worker
     assert 'if (daily.status === "fulfilled") {' in app
     assert 'renderDaily(daily.value, healthMap);' in app
     assert 'catch (_error) {' in app
@@ -333,10 +333,10 @@ def test_next_days_single_select_displays_effective_model() -> None:
     assert '#dailyProvider' not in app
     assert 'daily-model-label' not in css
     assert 'setDailyModelUnavailable();' in app
-    assert 'href="/static/accepted_ui.css?v=60"' in index
-    assert '"/static/accepted_ui.css?v=60"' in worker
-    assert '"/static/daily_trend.js?v=60"' in worker
-    assert '"/static/app.js?v=60"' in worker
+    assert 'href="/static/accepted_ui.css?v=61"' in index
+    assert '"/static/accepted_ui.css?v=61"' in worker
+    assert '"/static/daily_trend.js?v=61"' in worker
+    assert '"/static/app.js?v=61"' in worker
 
 
 def test_next_days_model_picker_is_native_and_provider_attributed() -> None:
@@ -354,8 +354,8 @@ def test_next_days_model_picker_is_native_and_provider_attributed() -> None:
     assert 'qs("#dailyModelSelect").addEventListener("change", (event) => {' in app
     assert 'renderDaily(latestDailyResult, latestDailyHealthMap);' in app
     assert 'html[data-ui-theme] #dailyModelSelect' in css
-    assert '"/static/daily_trend.js?v=60"' in worker
-    assert '"/static/app.js?v=60"' in worker
+    assert '"/static/daily_trend.js?v=61"' in worker
+    assert '"/static/app.js?v=61"' in worker
     assert 'target.dataset.days = String(limit);' in daily
 
 
@@ -489,3 +489,16 @@ def test_daily_model_picker_has_pointer_and_keyboard_focus_styles() -> None:
     assert "outline:2px solid var(--accent);" in css
     assert "min-height:44px;" in css
     assert "RozkalnsDailyTrend.select(rows, provider, todayKey)" in app
+
+
+
+def test_available_next_days_horizon_has_readable_text_in_both_themes() -> None:
+    css = (STATIC / "accepted_ui.css").read_text()
+    assert ".trend-horizon button[aria-pressed=false]:not(:disabled)" in css
+    assert "color:var(--ink); font-weight:600;" in css
+    assert ".trend-horizon button[aria-pressed=true]" in css
+    assert ".trend-horizon button:disabled { opacity:.5; cursor:default; }" in css
+    assert "min-height:44px;" in css
+    # Enabled 7/14-day choices use --ink on --soft for contrast in both themes.
+    assert _wcag_contrast("#203b54", "#eaf2fa") >= 4.5
+    assert _wcag_contrast("#e7f0f8", "#223b53") >= 4.5

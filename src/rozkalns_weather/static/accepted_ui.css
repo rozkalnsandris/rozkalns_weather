@@ -66,6 +66,8 @@ html[data-ui-theme] :focus-visible { outline:2px solid var(--accent); outline-of
 .trend-horizon { display:flex; background:var(--soft); border-radius:9px; padding:2px; }
 .trend-horizon button { min-width:52px; min-height:44px; border:0; border-radius:7px; background:transparent; color:var(--muted); font-size:12px; }
 .trend-horizon button[aria-pressed=true] { background:var(--card); color:var(--ink); font-weight:700; }
+/* Unselected but available is still actionable, not visually disabled. */
+.trend-horizon button[aria-pressed=false]:not(:disabled) { color:var(--ink); font-weight:600; }
 .trend-horizon button:disabled { opacity:.5; cursor:default; }
 .trend-legend { display:flex; gap:12px; margin:9px 0; font-size:11px; color:var(--muted); }
 .trend-max { color:var(--max); }
