@@ -37,8 +37,8 @@ def test_service_worker_caches_the_loaded_shell() -> None:
     assert "/static/accuracy_v3.js" not in index
     assert "self.skipWaiting()" in worker
     assert "self.clients.claim()" in worker
-    assert '/static/app.js?v=58' in index
-    assert '"/static/app.js?v=58"' in worker
+    assert '/static/app.js?v=59' in index
+    assert '"/static/app.js?v=59"' in worker
     assert "ASSETS.map((asset) => new URL(asset, self.location.origin).pathname)" in worker
     assert "ignoreSearch: true" not in worker
 
@@ -164,7 +164,7 @@ def test_mobile_interaction_stays_compact_and_direct() -> None:
     assert ".chart svg{display:block;min-width:0;max-width:100%;height:auto}" in (STATIC / "app.css").read_text()
     time_semantics = (STATIC / "time_semantics.js").read_text()
     assert " · ${identity.utc}" not in time_semantics
-    assert "rozkalns-weather-v58" in worker
+    assert "rozkalns-weather-v59" in worker
 
 
 def _wcag_contrast(foreground: str, background: str) -> float:
@@ -268,12 +268,12 @@ def test_next_days_versioned_dependencies_and_visible_render_failure() -> None:
     index = (STATIC / "index.html").read_text()
     worker = (STATIC / "sw.js").read_text()
     app = (STATIC / "app.js").read_text()
-    assert '<script src="/static/daily_trend.js?v=58" defer></script>' in index
-    assert '<script src="/static/app.js?v=58" defer></script>' in index
-    assert index.index('/static/daily_trend.js?v=58') < index.index('/static/app.js?v=58')
-    assert '"/static/daily_trend.js?v=58"' in worker
-    assert '"/static/app.js?v=58"' in worker
-    assert "rozkalns-weather-v58" in worker
+    assert '<script src="/static/daily_trend.js?v=59" defer></script>' in index
+    assert '<script src="/static/app.js?v=59" defer></script>' in index
+    assert index.index('/static/daily_trend.js?v=59') < index.index('/static/app.js?v=59')
+    assert '"/static/daily_trend.js?v=59"' in worker
+    assert '"/static/app.js?v=59"' in worker
+    assert "rozkalns-weather-v59" in worker
     assert 'if (daily.status === "fulfilled") {' in app
     assert 'renderDaily(daily.value, healthMap);' in app
     assert 'catch (_error) {' in app
@@ -319,20 +319,24 @@ assert.equal((html.match(/class="trend-day/g)||[]).length,14);
     assert result.returncode == 0, result.stderr
 
 
-def test_next_days_shows_full_forecast_model_at_a_glance() -> None:
+def test_next_days_single_select_displays_effective_model() -> None:
     app = (STATIC / "app.js").read_text()
     index = (STATIC / "index.html").read_text()
     css = (STATIC / "accepted_ui.css").read_text()
     worker = (STATIC / "sw.js").read_text()
     assert 'ecmwf_aifs: "ECMWF AIFS"' in app
     assert 'const modelName = MODEL_LABELS[provider] || selected[0]?.model_name || provider || "Provider unavailable";' in app
-    assert 'qs("#dailyProvider").textContent = provider ? `Model: ${modelName}` : "Model: unavailable";' in app
-    assert 'id="dailyProvider" class="source-label daily-model-label" aria-label="Forecast model"' in index
-    assert "html[data-ui-theme] .daily-model-label" in css
-    assert 'href="/static/accepted_ui.css?v=58"' in index
-    assert '"/static/accepted_ui.css?v=58"' in worker
-    assert '"/static/daily_trend.js?v=58"' in worker
-    assert '"/static/app.js?v=58"' in worker
+    assert 'const autoModelName = automaticProvider ? MODEL_LABELS[automaticProvider] || automaticProvider : null;' in app
+    assert 'Auto · ${autoModelName}' in app
+    assert 'const provider = requestedDailyModel === "auto" ? automaticProvider : requestedDailyModel;' in app
+    assert 'id="dailyProvider"' not in index
+    assert '#dailyProvider' not in app
+    assert 'daily-model-label' not in css
+    assert 'setDailyModelUnavailable();' in app
+    assert 'href="/static/accepted_ui.css?v=59"' in index
+    assert '"/static/accepted_ui.css?v=59"' in worker
+    assert '"/static/daily_trend.js?v=59"' in worker
+    assert '"/static/app.js?v=59"' in worker
 
 
 def test_next_days_model_picker_is_native_and_provider_attributed() -> None:
@@ -350,8 +354,8 @@ def test_next_days_model_picker_is_native_and_provider_attributed() -> None:
     assert 'qs("#dailyModelSelect").addEventListener("change", (event) => {' in app
     assert 'renderDaily(latestDailyResult, latestDailyHealthMap);' in app
     assert 'html[data-ui-theme] #dailyModelSelect' in css
-    assert '"/static/daily_trend.js?v=58"' in worker
-    assert '"/static/app.js?v=58"' in worker
+    assert '"/static/daily_trend.js?v=59"' in worker
+    assert '"/static/app.js?v=59"' in worker
     assert 'target.dataset.days = String(limit);' in daily
 
 
@@ -421,7 +425,6 @@ def test_next_days_compact_model_control_integrates_with_card() -> None:
     assert 'flex:0 1 195px;' in css
     assert 'min-height:44px;' in css
     assert 'background:var(--card);' in css
-    assert 'html[data-ui-theme] .next-days-heading .daily-model-label' in css
-    assert 'background:transparent;' in css
-    assert 'picker.innerHTML = \'<option value="auto">Auto</option>\'' in app
+    assert 'daily-model-label' not in css
+    assert 'picker.innerHTML = `<option value="auto">${escapeHtml(autoModelName ? `Auto · ${autoModelName}` : "Auto")}</option>`' in app
     assert '${days}d</option>' in app
