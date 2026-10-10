@@ -160,7 +160,7 @@ def test_mobile_interaction_stays_compact_and_direct() -> None:
     assert ".chart svg{display:block;min-width:0;max-width:100%;height:auto}" in (STATIC / "app.css").read_text()
     time_semantics = (STATIC / "time_semantics.js").read_text()
     assert " · ${identity.utc}" not in time_semantics
-    assert "rozkalns-weather-v52" in worker
+    assert "rozkalns-weather-v53" in worker
 
 
 def _wcag_contrast(foreground: str, background: str) -> float:
@@ -190,3 +190,27 @@ def test_galaxy_warning_text_and_fresh_chip_contrast_in_both_themes() -> None:
     assert _wcag_contrast("#e0f9eb", "#174533") >= 4.5
     assert _wcag_contrast("#286f9e", "#ffffff") >= 4.5
     assert _wcag_contrast("#8bc2ef", "#18293b") >= 4.5
+
+
+def test_home_overview_does_not_mislabel_station_or_fabricate_missing_data() -> None:
+    app = (STATIC / "app.js").read_text()
+    weather = (STATIC / "weather_ui.js").read_text()
+    index = (STATIC / "index.html").read_text()
+
+    assert 'label: "Werl · DWD reference"' in app
+    assert 'station_05480: "Werl · DWD reference"' in weather
+    assert "DWD CDC station 05480 in Werl" in app
+    assert '<h1 id="heroLocation">Checking forecast location…</h1>' in index
+    assert "return (upcoming.length ? upcoming : rows.slice(-count)).slice(0, count)" not in app + weather
+    assert app.count("return upcoming.slice(0, count);") == 1
+    assert weather.count("return upcoming.slice(0, count);") == 1
+    assert "const hourly = rows.some((row) => row.valid_time_utc)" in app
+    assert "const available = new Set(futureRows(tempRows || []" in weather
+    assert 'temp?.value != null && temp.value !== ""' in app
+    assert "const precipitationFor = (anchor) => {" in app
+    assert "anchor.init_time_utc !== row.init_time_utc" in app
+    assert 'row.value == null || row.value === ""' in app
+    assert 'const rain = precipitationFor(row);' in app
+    assert 'const rains = tempSeries.map(precipitationFor);' in app
+    assert 'if (value == null) return "";' in app
+    assert 'Number(row.value) ?? 0' not in app
