@@ -656,8 +656,18 @@ async function refresh() {
     qs("#consumerHourlyChart").innerHTML = "";
   }
 
-  if (daily.status === "fulfilled") renderDaily(daily.value, healthMap);
-  else {
+  if (daily.status === "fulfilled") {
+    try {
+      renderDaily(daily.value, healthMap);
+    } catch (_error) {
+      // A stale PWA dependency or rendering error must never leave Next Days
+      // showing the initial "Loading" state indefinitely.
+      qs("#dailyProvider").textContent = "Forecast display unavailable";
+      qs("#dailyGrid").textContent = "Daily forecast could not be displayed. Refresh to retry.";
+      qs("#heroHighLow").textContent = "H —° · L —°";
+      setSurfaceState("dailyState", "error", "Daily forecast could not be displayed. Refresh to retry.", { alert: true });
+    }
+  } else {
     qs("#dailyGrid").textContent = "Daily forecast unavailable.";
     qs("#heroHighLow").textContent = "H —° · L —°";
     setSurfaceState("dailyState", navigator.onLine ? "error" : "offline", `Daily forecast unavailable: ${daily.reason}`, { alert: true });

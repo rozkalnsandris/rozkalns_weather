@@ -1,4 +1,4 @@
-const CACHE = "rozkalns-weather-v54";
+const CACHE = "rozkalns-weather-v55";
 const CACHE_PREFIX = "rozkalns-weather-";
 const ASSETS=[
   "/",
@@ -7,8 +7,8 @@ const ASSETS=[
   "/static/vendor/leaflet/leaflet.css",
   "/static/vendor/leaflet/leaflet.js",
   "/static/ui_preferences.js",
-  "/static/daily_trend.js",
-  "/static/app.js?v=54",
+  "/static/daily_trend.js?v=55",
+  "/static/app.js?v=55",
   "/static/navigation_v1.js",
   "/static/model_snapshot_alignment.js",
   "/static/weather_ui.js",
