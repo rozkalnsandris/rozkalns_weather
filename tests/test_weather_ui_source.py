@@ -33,8 +33,8 @@ def test_service_worker_caches_the_loaded_shell() -> None:
     assert "/static/accuracy_v3.js" not in index
     assert "self.skipWaiting()" in worker
     assert "self.clients.claim()" in worker
-    assert '/static/app.js?v=52' in index
-    assert '"/static/app.js?v=52"' in worker
+    assert '/static/app.js?v=53' in index
+    assert '"/static/app.js?v=53"' in worker
     assert "ASSETS.map((asset) => new URL(asset, self.location.origin).pathname)" in worker
     assert "ignoreSearch: true" not in worker
 
@@ -197,10 +197,12 @@ def test_home_overview_does_not_mislabel_station_or_fabricate_missing_data() -> 
     weather = (STATIC / "weather_ui.js").read_text()
     index = (STATIC / "index.html").read_text()
 
-    assert 'label: "Werl · DWD reference"' in app
-    assert 'station_05480: "Werl · DWD reference"' in weather
-    assert "DWD CDC station 05480 in Werl" in app
-    assert '<h1 id="heroLocation">Checking forecast location…</h1>' in index
+    assert 'label: "Dortmund-Wickede · reference"' in app
+    assert 'station_05480: "Dortmund-Wickede · reference"' in weather
+    assert "observed weather comes from DWD CDC Werl 05480" in app
+    assert '<h1 id="heroLocation">Dortmund-Wickede · reference</h1>' in index
+    assert "No upcoming hourly forecast is available." in app
+    assert 'setSurfaceState("overviewTempState", "stale", "No upcoming hourly forecast is available.")' in app
     assert "return (upcoming.length ? upcoming : rows.slice(-count)).slice(0, count)" not in app + weather
     assert app.count("return upcoming.slice(0, count);") == 1
     assert weather.count("return upcoming.slice(0, count);") == 1

@@ -21,9 +21,9 @@ const FORECAST_LOCATION_META = {
     note: "Private home forecast and radar view.",
   },
   station_05480: {
-    label: "Werl · DWD reference",
-    heroLabel: "Werl · DWD reference",
-    note: "DWD CDC station 05480 in Werl; measured benchmark, not your Home location.",
+    label: "Dortmund-Wickede · reference",
+    heroLabel: "Dortmund-Wickede · reference",
+    note: "Reference forecast for Dortmund-Wickede; observed weather comes from DWD CDC Werl 05480, not Home.",
   },
 };
 
@@ -398,8 +398,10 @@ function renderConsumerHourly(tempResult, precipResult, healthMap) {
   qs("#hourlyProvider").textContent = provider ? `${modelName} · precipitation shown as amount (mm), not probability` : "No current forecast provider";
 
   if (!tempSeries.length) {
-    qs("#hourlyStrip").innerHTML = '<div class="empty-card">No forecast points available.</div>';
+    qs("#hourlyStrip").innerHTML = '<div class="empty-card">No upcoming hourly forecast available.</div>';
     qs("#consumerHourlyChart").innerHTML = "";
+    setSurfaceState("overviewTempState", "stale", "No upcoming hourly forecast is available.");
+    setSurfaceState("overviewPrecipState", "stale", "No upcoming hourly forecast is available.");
     return;
   }
 
