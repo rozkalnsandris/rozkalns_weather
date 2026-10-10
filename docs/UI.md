@@ -9,7 +9,7 @@ The private app has five views.
 - expired hourly forecasts must not appear as upcoming forecasts and must not displace a provider with valid upcoming data;
 - current DWD observation;
 - next hours;
-- next days (native accessible Compare model selector: Auto chooses the longest real available forecast; manually select ICON-D2 / ECMWF IFS / ECMWF AIFS or WeatherNext 3 only when genuine daily rows exist; 7/14 horizon remains where available; model name/freshness/provenance update together; never mix providers or fabricate unavailable dates); both app.js and daily_trend.js must use the same versioned PWA asset generation, and a rendering failure must display an error instead of permanent Loading;
+- next days (compact native Compare model selector aligned with the Next Days header inside the same card, with 44px touch target, an unobtrusive active-model label and no extra full-width selector row; Auto chooses the longest real forecast; manual models only with genuine daily rows; 7/14 horizon, model name/freshness/provenance update together; never mix providers or invent dates); both app.js and daily_trend.js must use the same versioned PWA asset generation, and a rendering failure must display an error instead of permanent Loading;
 - temperature/precipitation/wind;
 - small model snapshot;
 - visible DWD warning state.
