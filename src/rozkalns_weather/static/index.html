@@ -165,7 +165,7 @@
       <header class="subpage-header"><div><span class="eyebrow">Nearby precipitation + official safety</span><h1>Radar & Warnings</h1></div></header>
       <div class="panel radar-panel">
         <div class="radar-heading">
-          <div><div class="panel-title">Rain nearby</div><p class="muted">Interactive DWD radar map.</p></div>
+          <div><div class="panel-title">Rain nearby</div><p class="muted">Observed DWD rainfall on the official basemap.de map.</p></div>
           <button id="loadRadar" type="button">Refresh</button>
         </div>
         <div id="radarState" class="surface-state state-loading" role="status" aria-live="polite" aria-atomic="true">LOADING · opening radar</div>
@@ -173,7 +173,7 @@
           <div id="radarMap" class="radar-map" aria-label="Interactive precipitation radar map"></div>
           <span id="radarTime" class="radar-time">—</span>
         </div>
-        <div id="radarMeta" class="muted">Latest DWD radar map. Drag or pinch to explore; use Refresh for the newest frame.</div>
+        <div id="radarMeta" class="muted">Latest observed DWD radar. Drag or pinch to explore; use Refresh for a newer frame.</div>
         <div class="radar-legend" aria-label="Radar precipitation intensity">
           <span><i class="radar-key radar-key-light"></i>Light</span>
           <span><i class="radar-key radar-key-moderate"></i>Moderate</span>
@@ -229,7 +229,7 @@
 
   <script src="/static/vendor/leaflet/leaflet.js" defer></script>
   <script src="/static/daily_trend.js" defer></script>
-  <script src="/static/app.js?v=49" defer></script>
+  <script src="/static/app.js?v=51" defer></script>
   <script src="/static/navigation_v1.js" defer></script>
   <script src="/static/model_snapshot_alignment.js" defer></script>
   <script src="/static/weather_ui.js" defer></script>
