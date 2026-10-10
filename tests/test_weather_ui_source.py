@@ -33,8 +33,8 @@ def test_service_worker_caches_the_loaded_shell() -> None:
     assert "/static/accuracy_v3.js" not in index
     assert "self.skipWaiting()" in worker
     assert "self.clients.claim()" in worker
-    assert '/static/app.js?v=51' in index
-    assert '"/static/app.js?v=51"' in worker
+    assert '/static/app.js?v=52' in index
+    assert '"/static/app.js?v=52"' in worker
     assert "ASSETS.map((asset) => new URL(asset, self.location.origin).pathname)" in worker
     assert "ignoreSearch: true" not in worker
 
@@ -82,6 +82,11 @@ def test_simple_radar_and_status_do_not_reference_removed_lazy_modules() -> None
     assert "/api/radar/basemap?" in app
     assert "radarBaseLayer = L.imageOverlay(basemapUrl, bounds" in app
     assert "radarBaseLayer.setUrl(basemapUrl)" in app
+    assert "const RADAR_OVERLAY_OPACITY = 0.35;" in app
+    assert "radarImageLayer = L.imageOverlay(url, bounds, { opacity: RADAR_OVERLAY_OPACITY })" in app
+    assert "radarBaseLayer = L.imageOverlay(basemapUrl, bounds, { opacity: 1" in app
+    assert "rain colours are translucent so streets remain visible" in index.lower()
+    assert "radarImageLayer = L.imageOverlay(url, bounds, { opacity: 1 })" not in app
     assert "const observedFrames = frames.filter((frame) => frame.kind === \"radar_observed\")" in app
     assert "radarFrame = observedFrames[observedFrames.length - 1]" in app
     assert "basemap.de" in app
@@ -155,7 +160,7 @@ def test_mobile_interaction_stays_compact_and_direct() -> None:
     assert ".chart svg{display:block;min-width:0;max-width:100%;height:auto}" in (STATIC / "app.css").read_text()
     time_semantics = (STATIC / "time_semantics.js").read_text()
     assert " · ${identity.utc}" not in time_semantics
-    assert "rozkalns-weather-v51" in worker
+    assert "rozkalns-weather-v52" in worker
 
 
 def _wcag_contrast(foreground: str, background: str) -> float:
