@@ -6,7 +6,7 @@
   const dayTime = date => typeof date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(date) && Number.isFinite(Date.parse(date)) && new Date(date).toISOString().slice(0, 10) === date ? Date.parse(date) : null;
   // A longer daily horizon needs a model that actually covers it. Keep each
   // temperature/precipitation series attributed to one real provider.
-  function chooseProvider(rows, today, preferred = []) {
+  function availableProviders(rows, today, preferred = []) {
     const datesByProvider = new Map();
     (Array.isArray(rows) ? rows : []).forEach(row => {
       if (!row || typeof row.provider !== "string" || !row.provider ||
@@ -22,7 +22,10 @@
     return [...datesByProvider.keys()].sort((a, b) =>
       Math.min(14, datesByProvider.get(b).size) - Math.min(14, datesByProvider.get(a).size)
       || rank(a) - rank(b) || a.localeCompare(b)
-    )[0] || null;
+    ).map(provider => ({ provider, days: datesByProvider.get(provider).size }));
+  }
+  function chooseProvider(rows, today, preferred = []) {
+    return availableProviders(rows, today, preferred)[0]?.provider || null;
   }
   function select(rows, provider) {
     return (Array.isArray(rows) ? rows : []).filter(row => row.provider === provider && dayTime(row.date) !== null).slice().sort((a, b) => a.date.localeCompare(b.date)).slice(0, 14);
@@ -43,7 +46,7 @@
   const rainLabel = row => amount(row) === null ? "—" : `${amount(row).toFixed(1)} mm`;
   function render(target, rows, provider) {
     const available = select(rows, provider);
-    let limit = 7;
+    let limit = target.dataset.days === "14" && available.length > 7 ? 14 : 7;
     let chosen = available[0]?.date;
     const dateLabel = date => new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" }).format(new Date(date));
     function draw() {
@@ -71,6 +74,7 @@
         <div class="trend-selected" role="status"><strong>${escape(dateLabel(selected.date))}</strong><span>Max ${temperature(selected.temperature_max_c)} · Min ${temperature(selected.temperature_min_c)} · Rain ${rainLabel(selected)}</span></div>
         <details class="trend-table"><summary>Daily values and source</summary><p>${escape(provider)} · API daily aggregates. Precipitation is an amount, not probability.</p><div class="table-wrap"><table><caption>Available daily forecast values · ${escape(provider)}</caption><thead><tr><th scope="col">Date</th><th scope="col">Max °C</th><th scope="col">Min °C</th><th scope="col">Rain mm</th><th scope="col">Init UTC / quality</th><th scope="col">Retrieved UTC</th></tr></thead><tbody>${shown.map(row => `<tr><th scope="row">${escape(row.date)}</th><td>${temperature(row.temperature_max_c)}</td><td>${temperature(row.temperature_min_c)}</td><td>${rainLabel(row)}</td><td>${escape(row.init_time_utc || "—")} / ${escape(row.init_time_quality || "—")}</td><td>${escape(row.retrieved_at_utc || "—")}</td></tr>`).join("")}</tbody></table></div></details>`;
       target.dataset.provider = provider;
+      target.dataset.days = String(limit);
       target.querySelectorAll("[data-days]").forEach(button => button.addEventListener("click", () => { limit = Number(button.dataset.days); draw(); target.querySelector(`[data-days="${limit}"]`).focus(); }));
       target.querySelectorAll("[data-date]").forEach(button => button.addEventListener("click", () => {
         const scroll = target.querySelector(".trend-scroll").scrollLeft;
@@ -81,7 +85,7 @@
     }
     draw();
   }
-  const api = { number, chooseProvider, select, geometry, amount, render };
+  const api = { number, availableProviders, chooseProvider, select, geometry, amount, render };
   root.RozkalnsDailyTrend = api;
   if (typeof module !== "undefined") module.exports = api;
 })(typeof window !== "undefined" ? window : globalThis);

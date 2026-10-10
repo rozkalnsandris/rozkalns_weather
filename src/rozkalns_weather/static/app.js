@@ -31,6 +31,9 @@ const loadedSafetySurfaces = new Set();
 let lastHealth = null;
 let forecastLocationInitialized = false;
 let refreshSequence = 0;
+let requestedDailyModel = "auto";
+let latestDailyResult = null;
+let latestDailyHealthMap = null;
 let accuracyLoaded = false;
 const accuracyPayloads = new Map();
 const accuracyRequests = new Map();
@@ -453,7 +456,18 @@ function dayLabel(dateString) {
 
 function renderDaily(result, healthMap) {
   const rows = result.payload.days_by_provider || [];
-  const provider = window.RozkalnsDailyTrend.chooseProvider(rows, localDateKey(), PROVIDER_PREFERENCE);
+  const options = window.RozkalnsDailyTrend.availableProviders(rows, localDateKey(), PROVIDER_PREFERENCE);
+  const picker = qs("#dailyModelSelect");
+  picker.innerHTML = '<option value="auto">Auto (longest forecast)</option>' + options.map(({ provider, days }) =>
+    `<option value="${escapeHtml(provider)}">${escapeHtml(MODEL_LABELS[provider] || provider)} (${days} days)</option>`
+  ).join("");
+  if (requestedDailyModel !== "auto" && !options.some(({ provider }) => provider === requestedDailyModel)) {
+    requestedDailyModel = "auto";
+  }
+  picker.value = requestedDailyModel;
+  picker.disabled = options.length === 0;
+  const automaticProvider = window.RozkalnsDailyTrend.chooseProvider(rows, localDateKey(), PROVIDER_PREFERENCE);
+  const provider = requestedDailyModel === "auto" ? automaticProvider : requestedDailyModel;
   const selected = provider ? window.RozkalnsDailyTrend.select(rows, provider) : [];
   const modelName = MODEL_LABELS[provider] || selected[0]?.model_name || provider || "Provider unavailable";
   qs("#dailyProvider").textContent = provider ? `Model: ${modelName}` : "Model: unavailable";
@@ -657,6 +671,8 @@ async function refresh() {
   }
 
   if (daily.status === "fulfilled") {
+    latestDailyResult = daily.value;
+    latestDailyHealthMap = healthMap;
     try {
       renderDaily(daily.value, healthMap);
     } catch (_error) {
@@ -668,6 +684,9 @@ async function refresh() {
       setSurfaceState("dailyState", "error", "Daily forecast could not be displayed. Refresh to retry.", { alert: true });
     }
   } else {
+    latestDailyResult = null;
+    latestDailyHealthMap = null;
+    qs("#dailyModelSelect").disabled = true;
     qs("#dailyGrid").textContent = "Daily forecast unavailable.";
     qs("#heroHighLow").textContent = "H —° · L —°";
     setSurfaceState("dailyState", navigator.onLine ? "error" : "offline", `Daily forecast unavailable: ${daily.reason}`, { alert: true });
@@ -873,6 +892,17 @@ async function loadRadarSurface() {
   }
 }
 
+qs("#dailyModelSelect").addEventListener("change", (event) => {
+  requestedDailyModel = event.target.value;
+  if (!latestDailyResult) return;
+  try {
+    renderDaily(latestDailyResult, latestDailyHealthMap);
+  } catch (_error) {
+    qs("#dailyProvider").textContent = "Model: unavailable";
+    qs("#dailyGrid").textContent = "Daily forecast could not be displayed. Refresh to retry.";
+    setSurfaceState("dailyState", "error", "Daily forecast could not be displayed. Refresh to retry.", { alert: true });
+  }
+});
 qs("#forecastLocation").onchange = () => { forecastLocationInitialized = true; refresh(); };
 qs("#refreshOverview").onclick = () => refresh();
 qs("#loadRadar").onclick = () => { void loadRadarSurface(); };

@@ -9,7 +9,7 @@
   <link rel="icon" href="/static/icon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/static/vendor/leaflet/leaflet.css">
   <link rel="stylesheet" href="/static/app.css">
-  <link rel="stylesheet" href="/static/accepted_ui.css?v=56">
+  <link rel="stylesheet" href="/static/accepted_ui.css?v=57">
   <script src="/static/ui_preferences.js"></script>
   <style id="overview-hero-state-contract">
     html,body{margin:0;min-height:100%}
@@ -110,6 +110,12 @@
         <div class="section-heading">
           <div><h2 id="nextDaysTitle">Next Days</h2><span id="dailyProvider" class="source-label daily-model-label" aria-label="Forecast model">Model: pending</span></div>
           <span class="section-chevron" aria-hidden="true">›</span>
+        </div>
+        <div class="daily-model-controls">
+          <label for="dailyModelSelect">Compare model</label>
+          <select id="dailyModelSelect" aria-label="Daily forecast model" disabled>
+            <option value="auto">Auto (longest forecast)</option>
+          </select>
         </div>
         <div id="dailyState" class="surface-state state-loading compact-state" role="status" aria-live="polite" aria-atomic="true">LOADING · daily forecast</div>
         <div id="dailyGrid" class="daily-list">Loading daily forecast…</div>
@@ -228,8 +234,8 @@
   </nav>
 
   <script src="/static/vendor/leaflet/leaflet.js" defer></script>
-  <script src="/static/daily_trend.js?v=56" defer></script>
-  <script src="/static/app.js?v=56" defer></script>
+  <script src="/static/daily_trend.js?v=57" defer></script>
+  <script src="/static/app.js?v=57" defer></script>
   <script src="/static/navigation_v1.js" defer></script>
   <script src="/static/model_snapshot_alignment.js" defer></script>
   <script src="/static/weather_ui.js" defer></script>
