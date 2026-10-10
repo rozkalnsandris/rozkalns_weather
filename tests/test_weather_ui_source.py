@@ -1,4 +1,8 @@
 from pathlib import Path
+import shutil
+import subprocess
+
+import pytest
 
 ROOT = Path(__file__).parents[1]
 STATIC = ROOT / "src" / "rozkalns_weather" / "static"
@@ -33,8 +37,8 @@ def test_service_worker_caches_the_loaded_shell() -> None:
     assert "/static/accuracy_v3.js" not in index
     assert "self.skipWaiting()" in worker
     assert "self.clients.claim()" in worker
-    assert '/static/app.js?v=53' in index
-    assert '"/static/app.js?v=53"' in worker
+    assert '/static/app.js?v=54' in index
+    assert '"/static/app.js?v=54"' in worker
     assert "ASSETS.map((asset) => new URL(asset, self.location.origin).pathname)" in worker
     assert "ignoreSearch: true" not in worker
 
@@ -160,7 +164,7 @@ def test_mobile_interaction_stays_compact_and_direct() -> None:
     assert ".chart svg{display:block;min-width:0;max-width:100%;height:auto}" in (STATIC / "app.css").read_text()
     time_semantics = (STATIC / "time_semantics.js").read_text()
     assert " · ${identity.utc}" not in time_semantics
-    assert "rozkalns-weather-v53" in worker
+    assert "rozkalns-weather-v54" in worker
 
 
 def _wcag_contrast(foreground: str, background: str) -> float:
@@ -216,3 +220,45 @@ def test_home_overview_does_not_mislabel_station_or_fabricate_missing_data() -> 
     assert 'const rains = tempSeries.map(precipitationFor);' in app
     assert 'if (value == null) return "";' in app
     assert 'Number(row.value) ?? 0' not in app
+
+
+
+def test_daily_provider_choice_supports_7_and_14_days_without_mixing_models() -> None:
+    if not shutil.which("node"):
+        pytest.skip("Node.js is not installed")
+    script = r"""
+const assert = require("node:assert/strict");
+const daily = require(process.argv[1]);
+const preferred = ["weathernext3", "icon_d2", "ecmwf_ifs", "ecmwf_aifs"];
+const days = (provider, count) => Array.from({length: count}, (_, i) => ({
+  provider,
+  date: new Date(Date.UTC(2026, 9, 10 + i)).toISOString().slice(0, 10),
+  temperature_min_c: 5,
+  temperature_max_c: 14
+}));
+const rows = [...days("icon_d2", 3), ...days("ecmwf_ifs", 7), ...days("ecmwf_aifs", 15)];
+assert.equal(daily.chooseProvider(rows, "2026-10-10", preferred), "ecmwf_aifs");
+assert.equal(daily.select(rows, "ecmwf_aifs").length, 14);
+assert.equal(daily.chooseProvider([...days("icon_d2", 3), ...days("ecmwf_ifs", 7)], "2026-10-10", preferred), "ecmwf_ifs");
+assert.equal(daily.chooseProvider(days("icon_d2", 3), "2026-10-10", preferred), "icon_d2");
+assert.equal(daily.chooseProvider([], "2026-10-10", preferred), null);
+assert.equal(daily.chooseProvider([{provider:"ecmwf_aifs", date:"2026-10-11", temperature_min_c:null, temperature_max_c:null}], "2026-10-10", preferred), null);
+assert.equal(daily.chooseProvider([...days("icon_d2", 3), ...days("ecmwf_ifs", 3)], "2026-10-10", preferred), "icon_d2");
+assert.equal(daily.chooseProvider([...days("icon_d2", 3), ...days("ecmwf_aifs", 15)], "2026-10-16", preferred), "ecmwf_aifs");
+"""
+    result = subprocess.run(
+        ["node", "-e", script, str(STATIC / "daily_trend.js")],
+        capture_output=True, text=True, check=False,
+    )
+    assert result.returncode == 0, result.stderr
+
+
+def test_next_days_chooses_real_long_range_provider_and_tracks_total_available_days() -> None:
+    app = (STATIC / "app.js").read_text()
+    daily = (STATIC / "daily_trend.js").read_text()
+    weather = (STATIC / "weather_ui.js").read_text()
+    assert "window.RozkalnsDailyTrend.chooseProvider(rows, localDateKey(), PROVIDER_PREFERENCE)" in app
+    assert 'const api = { number, chooseProvider, select, geometry, amount, render };' in daily
+    assert '${available.length} available day' in daily
+    assert 'available.length <= 7 ? "disabled" : ""' in daily
+    assert 'document.querySelector("#dailyGrid")?.dataset.provider' in weather

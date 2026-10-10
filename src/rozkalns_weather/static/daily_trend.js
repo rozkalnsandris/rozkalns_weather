@@ -4,6 +4,26 @@
   const number = value => typeof value === "number" && Number.isFinite(value) ? value : null;
   const escape = value => String(value ?? "").replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[char]));
   const dayTime = date => typeof date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(date) && Number.isFinite(Date.parse(date)) && new Date(date).toISOString().slice(0, 10) === date ? Date.parse(date) : null;
+  // A longer daily horizon needs a model that actually covers it. Keep each
+  // temperature/precipitation series attributed to one real provider.
+  function chooseProvider(rows, today, preferred = []) {
+    const datesByProvider = new Map();
+    (Array.isArray(rows) ? rows : []).forEach(row => {
+      if (!row || typeof row.provider !== "string" || !row.provider ||
+          dayTime(row.date) === null || row.date < today ||
+          (number(row.temperature_min_c) === null && number(row.temperature_max_c) === null)) return;
+      if (!datesByProvider.has(row.provider)) datesByProvider.set(row.provider, new Set());
+      datesByProvider.get(row.provider).add(row.date);
+    });
+    const rank = provider => {
+      const index = preferred.indexOf(provider);
+      return index === -1 ? preferred.length : index;
+    };
+    return [...datesByProvider.keys()].sort((a, b) =>
+      Math.min(14, datesByProvider.get(b).size) - Math.min(14, datesByProvider.get(a).size)
+      || rank(a) - rank(b) || a.localeCompare(b)
+    )[0] || null;
+  }
   function select(rows, provider) {
     return (Array.isArray(rows) ? rows : []).filter(row => row.provider === provider && dayTime(row.date) !== null).slice().sort((a, b) => a.date.localeCompare(b.date)).slice(0, 14);
   }
@@ -37,7 +57,7 @@
       const y = value => 155 - (value - low) / Math.max(1, high - low) * 80;
       const width = shown.length * 48;
       const selected = shown.find(row => row.date === chosen);
-      target.innerHTML = `<div class="trend-toolbar"><span>${shown.length} available day${shown.length === 1 ? "" : "s"}</span><div class="trend-horizon" role="group" aria-label="Forecast horizon"><button type="button" data-days="7" aria-pressed="${limit === 7}">7 days</button><button type="button" data-days="14" aria-pressed="${limit === 14}" ${available.length <= 7 ? "disabled" : ""}>14 days</button></div></div>
+      target.innerHTML = `<div class="trend-toolbar"><span>${available.length} available day${available.length === 1 ? "" : "s"}</span><div class="trend-horizon" role="group" aria-label="Forecast horizon"><button type="button" data-days="7" aria-pressed="${limit === 7}">7 days</button><button type="button" data-days="14" aria-pressed="${limit === 14}" ${available.length <= 7 ? "disabled" : ""}>14 days</button></div></div>
         <div class="trend-legend"><span class="trend-max">● Max °C</span><span class="trend-min">┄ Min °C</span><span>Rain mm</span></div>
         <div class="trend-scroll" role="region" aria-label="Daily forecast; scroll for more days" tabindex="0"><div class="trend-plot" style="width:max(100%, ${width}px)"><svg class="trend-lines" viewBox="0 0 ${width} 240" preserveAspectRatio="none" aria-hidden="true"><path class="trend-max-line" d="${geometry(shown, "temperature_max_c", y)}"/><path class="trend-min-line" d="${geometry(shown, "temperature_min_c", y)}"/></svg>
         ${shown.map((row, index) => {
@@ -61,7 +81,7 @@
     }
     draw();
   }
-  const api = { number, select, geometry, amount, render };
+  const api = { number, chooseProvider, select, geometry, amount, render };
   root.RozkalnsDailyTrend = api;
   if (typeof module !== "undefined") module.exports = api;
 })(typeof window !== "undefined" ? window : globalThis);

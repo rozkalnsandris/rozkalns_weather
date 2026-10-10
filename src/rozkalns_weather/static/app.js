@@ -453,7 +453,7 @@ function dayLabel(dateString) {
 
 function renderDaily(result, healthMap) {
   const rows = result.payload.days_by_provider || [];
-  const provider = chooseProvider(rows);
+  const provider = window.RozkalnsDailyTrend.chooseProvider(rows, localDateKey(), PROVIDER_PREFERENCE);
   const selected = provider ? window.RozkalnsDailyTrend.select(rows, provider) : [];
   const modelName = selected[0]?.model_name || MODEL_LABELS[provider] || provider || "Provider unavailable";
   qs("#dailyProvider").textContent = provider ? `${modelName} · min/max and precipitation total` : "No daily provider";
