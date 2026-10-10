@@ -3,6 +3,10 @@
 The private app has five views.
 
 ## Overview
+- Home forecasts use the private runtime-only location; DWD current observations and detail tiles are measurements from Werl station 05480, **not Home measurements**;
+- the reference dashboard uses the approved Dortmund-Wickede presentation identity, while DWD observation provenance explicitly identifies Werl;
+- missing temperature and precipitation must render as unavailable (`—`), never become 0;
+- expired hourly forecasts must not appear as upcoming forecasts and must not displace a provider with valid upcoming data;
 - current DWD observation;
 - next hours;
 - next days;

@@ -230,14 +230,15 @@
     const cutoff = Date.now() - 30 * 60 * 1000;
     const upcoming = rows.filter((row) => {
       const date = new Date(row.valid_time_utc);
-      return !Number.isNaN(date.valueOf()) && date.getTime() >= cutoff;
+      return !Number.isNaN(date.valueOf()) && date.getTime() >= cutoff
+        && row.value != null && row.value !== "" && Number.isFinite(Number(row.value));
     });
-    return (upcoming.length ? upcoming : rows.slice(-count)).slice(0, count);
+    return upcoming.slice(0, count);
   }
 
   function chooseProvider(tempRows, precipRows) {
-    const available = new Set((tempRows || []).map((row) => row.provider));
-    const required = new Set((precipRows || []).map((row) => row.provider));
+    const available = new Set(futureRows(tempRows || [], (tempRows || []).length).map((row) => row.provider));
+    const required = new Set(futureRows(precipRows || [], (precipRows || []).length).map((row) => row.provider));
     return PROVIDER_PREFERENCE.find((provider) => available.has(provider) && required.has(provider))
       || PROVIDER_PREFERENCE.find((provider) => available.has(provider))
       || [...available][0]

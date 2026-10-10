@@ -23,7 +23,7 @@ const FORECAST_LOCATION_META = {
   station_05480: {
     label: "Dortmund-Wickede · reference",
     heroLabel: "Dortmund-Wickede · reference",
-    note: "Reference location used for model accuracy checks.",
+    note: "Reference forecast for Dortmund-Wickede; observed weather comes from DWD CDC Werl 05480, not Home.",
   },
 };
 
@@ -265,8 +265,8 @@ function observationMap(items) {
 
 function observedCondition(items) {
   const values = observationMap(items);
-  const precip = Number(values.precipitation_1h?.value);
-  const cloud = Number(values.cloud_cover?.value);
+  const precip = values.precipitation_1h?.value == null ? null : Number(values.precipitation_1h.value);
+  const cloud = values.cloud_cover?.value == null ? null : Number(values.cloud_cover.value);
   if (Number.isFinite(precip) && precip > 0.1) return { label: "Rain observed", icon: "🌧️" };
   if (Number.isFinite(cloud)) {
     if (cloud >= 80) return { label: "Cloudy", icon: "☁️" };
@@ -293,7 +293,7 @@ function renderCurrent(result, healthMap) {
   const condition = observedCondition(items);
   const temp = values.temperature_2m;
 
-  qs("#heroTemperature").textContent = temp && Number.isFinite(Number(temp.value)) ? `${Math.round(Number(temp.value))}°` : "—°";
+  qs("#heroTemperature").textContent = temp?.value != null && temp.value !== "" && Number.isFinite(Number(temp.value)) ? `${Math.round(Number(temp.value))}°` : "—°";
   qs("#heroCondition").textContent = condition.label;
   qs("#heroCondition").title = "Condition label is derived from observed DWD precipitation/cloud-cover values when available.";
   qs("#heroIcon").textContent = condition.icon;
@@ -348,8 +348,13 @@ function canonicalProviderRows(rows, providerId) {
 }
 
 function chooseProvider(rows, requiredRows = null) {
-  const available = new Set(rows.map((row) => row.provider));
-  const required = requiredRows ? new Set(requiredRows.map((row) => row.provider)) : null;
+  // Hourly views must not prefer an expired model run over an upcoming one.
+  // Daily rows have date (not valid_time_utc) and keep their existing selection.
+  const hourly = rows.some((row) => row.valid_time_utc);
+  const availableRows = hourly ? futureRows(rows, rows.length) : rows;
+  const requiredAvailableRows = hourly && requiredRows ? futureRows(requiredRows, requiredRows.length) : requiredRows;
+  const available = new Set(availableRows.map((row) => row.provider));
+  const required = requiredAvailableRows ? new Set(requiredAvailableRows.map((row) => row.provider)) : null;
   return PROVIDER_PREFERENCE.find((provider) => available.has(provider) && (!required || required.has(provider)))
     || PROVIDER_PREFERENCE.find((provider) => available.has(provider))
     || [...available][0]
@@ -361,9 +366,10 @@ function futureRows(rows, count = 8) {
   const cutoff = Date.now() - 30 * 60 * 1000;
   const upcoming = rows.filter((row) => {
     const date = berlinDate(row.valid_time_utc);
-    return date && date.getTime() >= cutoff;
+    return date && date.getTime() >= cutoff
+      && row.value != null && row.value !== "" && Number.isFinite(Number(row.value));
   });
-  return (upcoming.length ? upcoming : rows.slice(-count)).slice(0, count);
+  return upcoming.slice(0, count);
 }
 
 function rainIcon(amount) {
@@ -379,13 +385,23 @@ function renderConsumerHourly(tempResult, precipResult, healthMap) {
   const provider = chooseProvider(tempRows, precipRows);
   const tempSeries = provider ? futureRows(canonicalProviderRows(tempRows, provider), 8) : [];
   const precipSeries = provider ? canonicalProviderRows(precipRows, provider) : [];
-  const precipByTime = new Map(precipSeries.map((row) => [row.valid_time_utc, Number(row.value)]));
+  const precipByTime = new Map(precipSeries.map((row) => [row.valid_time_utc, row]));
+  const precipitationFor = (anchor) => {
+    const row = precipByTime.get(anchor.valid_time_utc);
+    if (!row || (anchor.init_time_utc && row.init_time_utc && anchor.init_time_utc !== row.init_time_utc)
+      || (anchor.model_version && row.model_version && anchor.model_version !== row.model_version)
+      || row.value == null || row.value === "") return null;
+    const amount = Number(row.value);
+    return Number.isFinite(amount) ? amount : null;
+  };
   const modelName = tempSeries[0]?.model_name || MODEL_LABELS[provider] || provider || "Provider unavailable";
   qs("#hourlyProvider").textContent = provider ? `${modelName} · precipitation shown as amount (mm), not probability` : "No current forecast provider";
 
   if (!tempSeries.length) {
-    qs("#hourlyStrip").innerHTML = '<div class="empty-card">No forecast points available.</div>';
+    qs("#hourlyStrip").innerHTML = '<div class="empty-card">No upcoming hourly forecast available.</div>';
     qs("#consumerHourlyChart").innerHTML = "";
+    setSurfaceState("overviewTempState", "stale", "No upcoming hourly forecast is available.");
+    setSurfaceState("overviewPrecipState", "stale", "No upcoming hourly forecast is available.");
     return;
   }
 
@@ -393,21 +409,21 @@ function renderConsumerHourly(tempResult, precipResult, healthMap) {
   qs("#hourlyStrip").innerHTML = tempSeries.map((row, index) => {
     const date = berlinDate(row.valid_time_utc);
     const isNearNow = date && Math.abs(date.getTime() - now) <= 45 * 60 * 1000;
-    const rain = precipByTime.has(row.valid_time_utc) ? precipByTime.get(row.valid_time_utc) : NaN;
+    const rain = precipitationFor(row);
     return `<div class="hour-card ${isNearNow || index === 0 ? "now" : ""}">
       <div class="hour-label">${isNearNow ? "Now" : escapeHtml(formatLocalTime(row.valid_time_utc))}</div>
       <div class="hour-icon">${rainIcon(rain)}</div>
       <strong>${Math.round(Number(row.value))}°</strong>
-      <small>${Number.isFinite(rain) ? `${rain.toFixed(1)} mm` : "— mm"}</small>
+      <small>${rain == null ? "— mm" : `${rain.toFixed(1)} mm`}</small>
     </div>`;
   }).join("");
 
   const temps = tempSeries.map((row) => Number(row.value));
-  const rains = tempSeries.map((row) => precipByTime.get(row.valid_time_utc) ?? 0);
+  const rains = tempSeries.map(precipitationFor);
   const min = Math.min(...temps);
   const max = Math.max(...temps);
   const range = Math.max(1, max - min);
-  const maxRain = Math.max(0.1, ...rains);
+  const maxRain = Math.max(0.1, ...rains.filter((value) => value != null));
   const width = 680;
   const left = 22;
   const right = width - 16;
@@ -415,6 +431,7 @@ function renderConsumerHourly(tempResult, precipResult, healthMap) {
   const y = (value) => 52 - ((value - min) / range) * 27;
   const path = tempSeries.map((row, index) => `${index ? "L" : "M"}${x(index).toFixed(1)},${y(Number(row.value)).toFixed(1)}`).join(" ");
   const bars = rains.map((value, index) => {
+    if (value == null) return "";
     const height = Math.max(1, (value / maxRain) * 24);
     return `<rect x="${(x(index) - 4).toFixed(1)}" y="${(96 - height).toFixed(1)}" width="8" height="${height.toFixed(1)}" rx="2" fill="#268fff" opacity="${value > 0 ? ".9" : ".25"}"/>`;
   }).join("");
