@@ -37,8 +37,8 @@ def test_service_worker_caches_the_loaded_shell() -> None:
     assert "/static/accuracy_v3.js" not in index
     assert "self.skipWaiting()" in worker
     assert "self.clients.claim()" in worker
-    assert '/static/app.js?v=59' in index
-    assert '"/static/app.js?v=59"' in worker
+    assert '/static/app.js?v=60' in index
+    assert '"/static/app.js?v=60"' in worker
     assert "ASSETS.map((asset) => new URL(asset, self.location.origin).pathname)" in worker
     assert "ignoreSearch: true" not in worker
 
@@ -164,7 +164,7 @@ def test_mobile_interaction_stays_compact_and_direct() -> None:
     assert ".chart svg{display:block;min-width:0;max-width:100%;height:auto}" in (STATIC / "app.css").read_text()
     time_semantics = (STATIC / "time_semantics.js").read_text()
     assert " · ${identity.utc}" not in time_semantics
-    assert "rozkalns-weather-v59" in worker
+    assert "rozkalns-weather-v60" in worker
 
 
 def _wcag_contrast(foreground: str, background: str) -> float:
@@ -257,7 +257,7 @@ def test_next_days_chooses_real_long_range_provider_and_tracks_total_available_d
     app = (STATIC / "app.js").read_text()
     daily = (STATIC / "daily_trend.js").read_text()
     weather = (STATIC / "weather_ui.js").read_text()
-    assert "window.RozkalnsDailyTrend.chooseProvider(rows, localDateKey(), PROVIDER_PREFERENCE)" in app
+    assert "window.RozkalnsDailyTrend.chooseProvider(rows, todayKey, PROVIDER_PREFERENCE)" in app
     assert 'const api = { number, availableProviders, chooseProvider, select, geometry, amount, render };' in daily
     assert '${available.length} available day' in daily
     assert 'available.length <= 7 ? "disabled" : ""' in daily
@@ -268,12 +268,12 @@ def test_next_days_versioned_dependencies_and_visible_render_failure() -> None:
     index = (STATIC / "index.html").read_text()
     worker = (STATIC / "sw.js").read_text()
     app = (STATIC / "app.js").read_text()
-    assert '<script src="/static/daily_trend.js?v=59" defer></script>' in index
-    assert '<script src="/static/app.js?v=59" defer></script>' in index
-    assert index.index('/static/daily_trend.js?v=59') < index.index('/static/app.js?v=59')
-    assert '"/static/daily_trend.js?v=59"' in worker
-    assert '"/static/app.js?v=59"' in worker
-    assert "rozkalns-weather-v59" in worker
+    assert '<script src="/static/daily_trend.js?v=60" defer></script>' in index
+    assert '<script src="/static/app.js?v=60" defer></script>' in index
+    assert index.index('/static/daily_trend.js?v=60') < index.index('/static/app.js?v=60')
+    assert '"/static/daily_trend.js?v=60"' in worker
+    assert '"/static/app.js?v=60"' in worker
+    assert "rozkalns-weather-v60" in worker
     assert 'if (daily.status === "fulfilled") {' in app
     assert 'renderDaily(daily.value, healthMap);' in app
     assert 'catch (_error) {' in app
@@ -333,10 +333,10 @@ def test_next_days_single_select_displays_effective_model() -> None:
     assert '#dailyProvider' not in app
     assert 'daily-model-label' not in css
     assert 'setDailyModelUnavailable();' in app
-    assert 'href="/static/accepted_ui.css?v=59"' in index
-    assert '"/static/accepted_ui.css?v=59"' in worker
-    assert '"/static/daily_trend.js?v=59"' in worker
-    assert '"/static/app.js?v=59"' in worker
+    assert 'href="/static/accepted_ui.css?v=60"' in index
+    assert '"/static/accepted_ui.css?v=60"' in worker
+    assert '"/static/daily_trend.js?v=60"' in worker
+    assert '"/static/app.js?v=60"' in worker
 
 
 def test_next_days_model_picker_is_native_and_provider_attributed() -> None:
@@ -349,13 +349,13 @@ def test_next_days_model_picker_is_native_and_provider_attributed() -> None:
     assert '<select id="dailyModelSelect" aria-label="Daily forecast model" disabled>' in html
     assert '<option value="auto">Auto</option>' in html
     assert 'requestedDailyModel = "auto"' in app
-    assert 'window.RozkalnsDailyTrend.availableProviders(rows, localDateKey(), PROVIDER_PREFERENCE)' in app
+    assert 'window.RozkalnsDailyTrend.availableProviders(rows, todayKey, PROVIDER_PREFERENCE)' in app
     assert 'const provider = requestedDailyModel === "auto" ? automaticProvider : requestedDailyModel;' in app
     assert 'qs("#dailyModelSelect").addEventListener("change", (event) => {' in app
     assert 'renderDaily(latestDailyResult, latestDailyHealthMap);' in app
     assert 'html[data-ui-theme] #dailyModelSelect' in css
-    assert '"/static/daily_trend.js?v=59"' in worker
-    assert '"/static/app.js?v=59"' in worker
+    assert '"/static/daily_trend.js?v=60"' in worker
+    assert '"/static/app.js?v=60"' in worker
     assert 'target.dataset.days = String(limit);' in daily
 
 
@@ -374,7 +374,7 @@ const rows = (provider,count) => Array.from({length:count},(_,i)=>({
 const all = [...rows("icon_d2",3),...rows("ecmwf_ifs",11),...rows("ecmwf_aifs",15)];
 const choices = daily.availableProviders(all,"2026-10-10",preferred);
 assert.deepEqual(choices,[
-  {provider:"ecmwf_aifs",days:15},
+  {provider:"ecmwf_aifs",days:14},
   {provider:"ecmwf_ifs",days:11},
   {provider:"icon_d2",days:3}
 ]);
@@ -428,3 +428,64 @@ def test_next_days_compact_model_control_integrates_with_card() -> None:
     assert 'daily-model-label' not in css
     assert 'picker.innerHTML = `<option value="auto">${escapeHtml(autoModelName ? `Auto · ${autoModelName}` : "Auto")}</option>`' in app
     assert '${days}d</option>' in app
+
+
+def test_daily_model_picker_matches_displayed_future_day_counts() -> None:
+    if not shutil.which("node"):
+        pytest.skip("Node.js is not installed")
+    script = r"""
+const assert = require("node:assert/strict");
+const daily = require(process.argv[1]);
+const row = (provider, date, temperature=12) => ({
+  provider, date, temperature_min_c:temperature-5,
+  temperature_max_c:temperature, precipitation_total_mm:0
+});
+const rows = [
+  row("icon_d2","2026-10-10"), // Yesterday must not inflate the graph.
+  row("icon_d2","2026-10-11"), row("icon_d2","2026-10-12"),
+  row("icon_d2","2026-10-12"), // Duplicate source day must not inflate the graph.
+  {provider:"icon_d2",date:"2026-10-13",temperature_min_c:null,temperature_max_c:null},
+  ...Array.from({length:15},(_,i)=>row("ecmwf_aifs",
+    new Date(Date.UTC(2026,9,11+i)).toISOString().slice(0,10)))
+];
+const today = "2026-10-11";
+const opts = daily.availableProviders(rows,today,["icon_d2","ecmwf_aifs"]);
+assert.deepEqual(opts,[{provider:"ecmwf_aifs",days:14},{provider:"icon_d2",days:2}]);
+assert.equal(daily.chooseProvider(rows,today,["icon_d2","ecmwf_aifs"]),"ecmwf_aifs");
+assert.deepEqual(daily.select(rows,"icon_d2",today).map(r=>r.date),[
+  "2026-10-11","2026-10-12"
+]);
+let html="";
+const buttons=[7,14].map(n=>({
+  dataset:{days:String(n)},addEventListener(_event,handler){this.handler=handler},focus(){}
+}));
+const target={
+  dataset:{},get innerHTML(){return html},set innerHTML(v){html=v},
+  querySelectorAll(q){return q==="[data-days]"?buttons:[]},
+  querySelector(q){return buttons.find(b=>q.includes(b.dataset.days))||null}
+};
+daily.render(target,daily.select(rows,"icon_d2",today),"icon_d2");
+assert.match(html,/2 available days/);
+assert.equal((html.match(/class="trend-day/g)||[]).length,2);
+assert.match(html,/data-days="14"[^>]*disabled/);
+daily.render(target,daily.select(rows,"ecmwf_aifs",today),"ecmwf_aifs");
+assert.match(html,/14 available days/);
+assert.equal((html.match(/class="trend-day/g)||[]).length,7);
+buttons[1].handler();
+assert.equal((html.match(/class="trend-day/g)||[]).length,14);
+"""
+    result = subprocess.run(
+        ["node", "-e", script, str(STATIC / "daily_trend.js")],
+        capture_output=True, text=True, check=False,
+    )
+    assert result.returncode == 0, result.stderr
+
+
+def test_daily_model_picker_has_pointer_and_keyboard_focus_styles() -> None:
+    css = (STATIC / "accepted_ui.css").read_text()
+    app = (STATIC / "app.js").read_text()
+    assert "html[data-ui-theme] #dailyModelSelect:focus:not(:focus-visible)" in css
+    assert "html[data-ui-theme] #dailyModelSelect:focus-visible" in css
+    assert "outline:2px solid var(--accent);" in css
+    assert "min-height:44px;" in css
+    assert "RozkalnsDailyTrend.select(rows, provider, todayKey)" in app

@@ -179,3 +179,14 @@ html[data-ui-theme] #dailyModelSelect:disabled { opacity:.6; }
 @media(max-width:380px) {
   html[data-ui-theme] .next-days-heading .daily-model-controls { flex-basis:160px; }
 }
+
+/* Pointer selection stays visually quiet; keyboard focus remains clearly visible. */
+html[data-ui-theme] #dailyModelSelect:focus:not(:focus-visible) {
+  outline:none;
+  box-shadow:none;
+}
+html[data-ui-theme] #dailyModelSelect:focus-visible {
+  outline:2px solid var(--accent);
+  outline-offset:2px;
+  box-shadow:none;
+}
