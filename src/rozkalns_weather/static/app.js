@@ -10,7 +10,7 @@ const MODEL_LABELS = {
   weathernext3: "WeatherNext 3",
   icon_d2: "ICON-D2",
   ecmwf_ifs: "ECMWF IFS",
-  ecmwf_aifs: "AIFS",
+  ecmwf_aifs: "ECMWF AIFS",
 };
 const STAT_PREFERENCE = ["deterministic", "mean", "p50"];
 const OBSERVATION_FRESH_HOURS = 3;
@@ -455,8 +455,8 @@ function renderDaily(result, healthMap) {
   const rows = result.payload.days_by_provider || [];
   const provider = window.RozkalnsDailyTrend.chooseProvider(rows, localDateKey(), PROVIDER_PREFERENCE);
   const selected = provider ? window.RozkalnsDailyTrend.select(rows, provider) : [];
-  const modelName = selected[0]?.model_name || MODEL_LABELS[provider] || provider || "Provider unavailable";
-  qs("#dailyProvider").textContent = provider ? `${modelName} · min/max and precipitation total` : "No daily provider";
+  const modelName = MODEL_LABELS[provider] || selected[0]?.model_name || provider || "Provider unavailable";
+  qs("#dailyProvider").textContent = provider ? `Model: ${modelName}` : "Model: unavailable";
 
   const state = providerSurfaceState(provider ? rows.filter((row) => row.provider === provider) : [], healthMap, result);
   setSurfaceState("dailyState", state.state, provider ? `${modelName}: ${state.message}` : state.message);
@@ -662,7 +662,7 @@ async function refresh() {
     } catch (_error) {
       // A stale PWA dependency or rendering error must never leave Next Days
       // showing the initial "Loading" state indefinitely.
-      qs("#dailyProvider").textContent = "Forecast display unavailable";
+      qs("#dailyProvider").textContent = "Model: unavailable";
       qs("#dailyGrid").textContent = "Daily forecast could not be displayed. Refresh to retry.";
       qs("#heroHighLow").textContent = "H —° · L —°";
       setSurfaceState("dailyState", "error", "Daily forecast could not be displayed. Refresh to retry.", { alert: true });

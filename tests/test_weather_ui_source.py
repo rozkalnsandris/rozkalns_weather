@@ -37,8 +37,8 @@ def test_service_worker_caches_the_loaded_shell() -> None:
     assert "/static/accuracy_v3.js" not in index
     assert "self.skipWaiting()" in worker
     assert "self.clients.claim()" in worker
-    assert '/static/app.js?v=55' in index
-    assert '"/static/app.js?v=55"' in worker
+    assert '/static/app.js?v=56' in index
+    assert '"/static/app.js?v=56"' in worker
     assert "ASSETS.map((asset) => new URL(asset, self.location.origin).pathname)" in worker
     assert "ignoreSearch: true" not in worker
 
@@ -164,7 +164,7 @@ def test_mobile_interaction_stays_compact_and_direct() -> None:
     assert ".chart svg{display:block;min-width:0;max-width:100%;height:auto}" in (STATIC / "app.css").read_text()
     time_semantics = (STATIC / "time_semantics.js").read_text()
     assert " · ${identity.utc}" not in time_semantics
-    assert "rozkalns-weather-v55" in worker
+    assert "rozkalns-weather-v56" in worker
 
 
 def _wcag_contrast(foreground: str, background: str) -> float:
@@ -268,12 +268,12 @@ def test_next_days_versioned_dependencies_and_visible_render_failure() -> None:
     index = (STATIC / "index.html").read_text()
     worker = (STATIC / "sw.js").read_text()
     app = (STATIC / "app.js").read_text()
-    assert '<script src="/static/daily_trend.js?v=55" defer></script>' in index
-    assert '<script src="/static/app.js?v=55" defer></script>' in index
-    assert index.index('/static/daily_trend.js?v=55') < index.index('/static/app.js?v=55')
-    assert '"/static/daily_trend.js?v=55"' in worker
-    assert '"/static/app.js?v=55"' in worker
-    assert "rozkalns-weather-v55" in worker
+    assert '<script src="/static/daily_trend.js?v=56" defer></script>' in index
+    assert '<script src="/static/app.js?v=56" defer></script>' in index
+    assert index.index('/static/daily_trend.js?v=56') < index.index('/static/app.js?v=56')
+    assert '"/static/daily_trend.js?v=56"' in worker
+    assert '"/static/app.js?v=56"' in worker
+    assert "rozkalns-weather-v56" in worker
     assert 'if (daily.status === "fulfilled") {' in app
     assert 'renderDaily(daily.value, healthMap);' in app
     assert 'catch (_error) {' in app
@@ -317,3 +317,19 @@ assert.equal((html.match(/class="trend-day/g)||[]).length,14);
     result = subprocess.run(["node","-e",script,str(STATIC / "daily_trend.js")],
                             capture_output=True,text=True,check=False)
     assert result.returncode == 0, result.stderr
+
+
+def test_next_days_shows_full_forecast_model_at_a_glance() -> None:
+    app = (STATIC / "app.js").read_text()
+    index = (STATIC / "index.html").read_text()
+    css = (STATIC / "accepted_ui.css").read_text()
+    worker = (STATIC / "sw.js").read_text()
+    assert 'ecmwf_aifs: "ECMWF AIFS"' in app
+    assert 'const modelName = MODEL_LABELS[provider] || selected[0]?.model_name || provider || "Provider unavailable";' in app
+    assert 'qs("#dailyProvider").textContent = provider ? `Model: ${modelName}` : "Model: unavailable";' in app
+    assert 'id="dailyProvider" class="source-label daily-model-label" aria-label="Forecast model"' in index
+    assert "html[data-ui-theme] .daily-model-label" in css
+    assert 'href="/static/accepted_ui.css?v=56"' in index
+    assert '"/static/accepted_ui.css?v=56"' in worker
+    assert '"/static/daily_trend.js?v=56"' in worker
+    assert '"/static/app.js?v=56"' in worker

@@ -131,3 +131,19 @@ html[data-ui-theme=dark] .state-chip.state-fresh { color:#e0f9eb; background:#17
 /* Simple mobile interaction: preserve large tap targets without adding another UI layer. */
 html[data-ui-theme] .radar-controls button,html[data-ui-theme] .radar-controls input[type="range"],html[data-ui-theme] .switches button,html[data-ui-theme] #forecastLocation{min-height:44px}
 @media(max-width:420px){html[data-ui-theme] .hourly-detail-values{grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}html[data-ui-theme] .hourly-detail-metric{min-width:0}html[data-ui-theme] .hourly-detail-metric span{font-size:10px;overflow-wrap:anywhere}}
+
+/* Keep the active Next Days forecast model clear on desktop and Galaxy A55. */
+html[data-ui-theme] .daily-model-label {
+  display:inline-flex;
+  align-items:center;
+  max-width:100%;
+  margin-top:5px;
+  padding:5px 9px;
+  border:1px solid var(--border);
+  border-radius:8px;
+  background:var(--soft);
+  color:var(--ink);
+  font-size:12px;
+  font-weight:700;
+  line-height:1.4;
+}
