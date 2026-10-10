@@ -720,6 +720,8 @@ let radarImageLayer = null;
 let radarBaseLayer = null;
 const RADAR_PUBLIC_CENTER = [51.532, 7.611];
 const RADAR_INITIAL_ZOOM = 12;
+// DWD intensity colours are real radar data; reduce visual occlusion, never remove classes.
+const RADAR_OVERLAY_OPACITY = 0.35;
 
 function radarFrameLabel(frame) {
   const kind = frame?.kind === "radar_nowcast" ? "Nowcast" : "Observed";
@@ -762,7 +764,7 @@ function refreshRadarMapImage() {
     radarBaseLayer.setUrl(basemapUrl);
   }
   if (!radarImageLayer) {
-    radarImageLayer = L.imageOverlay(url, bounds, { opacity: 1 }).addTo(radarMap);
+    radarImageLayer = L.imageOverlay(url, bounds, { opacity: RADAR_OVERLAY_OPACITY }).addTo(radarMap);
     radarImageLayer.on("error", () => {
       setSurfaceState("radarState", "error", "Radar map image unavailable. Try Refresh.", { alert: true });
     });
