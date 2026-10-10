@@ -6,12 +6,15 @@
   const dayTime = date => typeof date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(date) && Number.isFinite(Date.parse(date)) && new Date(date).toISOString().slice(0, 10) === date ? Date.parse(date) : null;
   // A longer daily horizon needs a model that actually covers it. Keep each
   // temperature/precipitation series attributed to one real provider.
+  const isUsableDay = (row, today = null) =>
+    row && typeof row.provider === "string" && row.provider &&
+    dayTime(row.date) !== null && (today === null || row.date >= today) &&
+    (number(row.temperature_min_c) !== null || number(row.temperature_max_c) !== null);
+
   function availableProviders(rows, today, preferred = []) {
     const datesByProvider = new Map();
     (Array.isArray(rows) ? rows : []).forEach(row => {
-      if (!row || typeof row.provider !== "string" || !row.provider ||
-          dayTime(row.date) === null || row.date < today ||
-          (number(row.temperature_min_c) === null && number(row.temperature_max_c) === null)) return;
+      if (!isUsableDay(row, today)) return;
       if (!datesByProvider.has(row.provider)) datesByProvider.set(row.provider, new Set());
       datesByProvider.get(row.provider).add(row.date);
     });
@@ -22,13 +25,21 @@
     return [...datesByProvider.keys()].sort((a, b) =>
       Math.min(14, datesByProvider.get(b).size) - Math.min(14, datesByProvider.get(a).size)
       || rank(a) - rank(b) || a.localeCompare(b)
-    ).map(provider => ({ provider, days: datesByProvider.get(provider).size }));
+    ).map(provider => ({ provider, days: Math.min(14, datesByProvider.get(provider).size) }));
   }
   function chooseProvider(rows, today, preferred = []) {
     return availableProviders(rows, today, preferred)[0]?.provider || null;
   }
-  function select(rows, provider) {
-    return (Array.isArray(rows) ? rows : []).filter(row => row.provider === provider && dayTime(row.date) !== null).slice().sort((a, b) => a.date.localeCompare(b.date)).slice(0, 14);
+  function select(rows, provider, today = null) {
+    const seen = new Set();
+    return (Array.isArray(rows) ? rows : [])
+      .filter(row => isUsableDay(row, today) && row.provider === provider)
+      .slice().sort((a, b) => a.date.localeCompare(b.date))
+      .filter(row => {
+        if (seen.has(row.date)) return false;
+        seen.add(row.date);
+        return true;
+      }).slice(0, 14);
   }
   function geometry(rows, field, y) {
     let previous = null;

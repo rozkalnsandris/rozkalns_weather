@@ -462,15 +462,16 @@ function setDailyModelUnavailable() {
 
 function renderDaily(result, healthMap) {
   const rows = result.payload.days_by_provider || [];
-  const options = window.RozkalnsDailyTrend.availableProviders(rows, localDateKey(), PROVIDER_PREFERENCE);
+  const todayKey = localDateKey();
+  const options = window.RozkalnsDailyTrend.availableProviders(rows, todayKey, PROVIDER_PREFERENCE);
   const picker = qs("#dailyModelSelect");
   if (requestedDailyModel !== "auto" && !options.some(({ provider }) => provider === requestedDailyModel)) {
     requestedDailyModel = "auto";
   }
-  const automaticProvider = window.RozkalnsDailyTrend.chooseProvider(rows, localDateKey(), PROVIDER_PREFERENCE);
+  const automaticProvider = window.RozkalnsDailyTrend.chooseProvider(rows, todayKey, PROVIDER_PREFERENCE);
   const autoModelName = automaticProvider ? MODEL_LABELS[automaticProvider] || automaticProvider : null;
   const provider = requestedDailyModel === "auto" ? automaticProvider : requestedDailyModel;
-  const selected = provider ? window.RozkalnsDailyTrend.select(rows, provider) : [];
+  const selected = provider ? window.RozkalnsDailyTrend.select(rows, provider, todayKey) : [];
   const modelName = MODEL_LABELS[provider] || selected[0]?.model_name || provider || "Provider unavailable";
   picker.innerHTML = `<option value="auto">${escapeHtml(autoModelName ? `Auto · ${autoModelName}` : "Auto")}</option>` + options.map(({ provider, days }) =>
     `<option value="${escapeHtml(provider)}">${escapeHtml(MODEL_LABELS[provider] || provider)} · ${days}d</option>`
@@ -488,7 +489,7 @@ function renderDaily(result, healthMap) {
   }
 
   window.RozkalnsDailyTrend.render(qs("#dailyGrid"), selected, provider);
-  const today = selected.find((row) => row.date === localDateKey());
+  const today = selected.find((row) => row.date === todayKey);
   const numeric = window.RozkalnsDailyTrend.number;
   qs("#heroHighLow").textContent = today && numeric(today.temperature_min_c) !== null && numeric(today.temperature_max_c) !== null
     ? `H ${Math.round(today.temperature_max_c)}° · L ${Math.round(today.temperature_min_c)}° · ${modelName}`

@@ -9,7 +9,7 @@ The private app has five views.
 - expired hourly forecasts must not appear as upcoming forecasts and must not displace a provider with valid upcoming data;
 - current DWD observation;
 - next hours;
-- next days (one compact native Compare model selector aligned with the Next Days header inside the same card, with 44px touch target and no duplicated active-model label; Auto's selected option shows the actual model name; Auto chooses the longest real forecast; manual models only with genuine daily rows; 7/14 horizon, model name/freshness/provenance update together; never mix providers or invent dates); both app.js and daily_trend.js must use the same versioned PWA asset generation, and a rendering failure must display an error instead of permanent Loading;
+- next days (one compact native Compare model selector aligned with the Next Days header inside the same card, with 44px touch target, unobtrusive pointer focus and a distinct :focus-visible keyboard indicator; Auto's selected option shows the actual model name; Auto chooses the longest real forecast; manual models only with genuine daily rows on or after today's Europe/Berlin date; dropdown and chart share the same valid deduplicated 14-day maximum, 7/14 horizon, model name/freshness/provenance update together; never mix providers or invent dates); both app.js and daily_trend.js must use the same versioned PWA asset generation, and a rendering failure must display an error instead of permanent Loading;
 - temperature/precipitation/wind;
 - small model snapshot;
 - visible DWD warning state.
