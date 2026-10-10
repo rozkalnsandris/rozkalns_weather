@@ -9,7 +9,7 @@ The private app has five views.
 - expired hourly forecasts must not appear as upcoming forecasts and must not displace a provider with valid upcoming data;
 - current DWD observation;
 - next hours;
-- next days;
+- next days (select the single provider with the longest real upcoming daily coverage, up to 14 days; display its model identity, never mix providers or pad missing days);
 - temperature/precipitation/wind;
 - small model snapshot;
 - visible DWD warning state.

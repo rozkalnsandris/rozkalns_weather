@@ -415,9 +415,9 @@
     window.renderDaily = function renderDailyWithNativeConditions(result, healthMap) {
       baseRenderDaily(result, healthMap);
       const rows = result?.payload?.days_by_provider || [];
-      const provider = PROVIDER_PREFERENCE.find((candidate) => rows.some((row) => row.provider === candidate))
-        || rows[0]?.provider
-        || null;
+      const renderedProvider = document.querySelector("#dailyGrid")?.dataset.provider;
+      const provider = renderedProvider && rows.some((row) => row.provider === renderedProvider)
+        ? renderedProvider : null;
       const selected = provider
         ? rows.filter((row) => row.provider === provider).sort((a, b) => String(a.date).localeCompare(String(b.date))).slice(0, 5)
         : [];
