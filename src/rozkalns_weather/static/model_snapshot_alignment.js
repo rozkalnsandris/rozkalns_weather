@@ -163,7 +163,10 @@
         } else {
           status.textContent = "NOT AVAILABLE YET · WeatherNext forecast";
         }
-        meta.textContent = "WeatherNext data has not been collected yet.";
+        const homeSelected = (root.document.querySelector("#forecastLocation")?.value || "home") === "home";
+        meta.textContent = homeSelected
+          ? "No WeatherNext forecast for Home. Station 05480 research snapshots are separate."
+          : "No matching WeatherNext forecast for this location and time.";
       }
     });
   }
