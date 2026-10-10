@@ -121,6 +121,13 @@ html[data-ui-theme] body .status-primary { background:var(--hero); border-color:
 .status-technical-details #providerGrid { margin-top:8px; }
 @media(max-width:420px) { .status-key-row { gap:8px; } .status-key-row strong { max-width:58%; } }
 
+/* Galaxy A55 acceptance: light/dark DWD warning text must match the panel theme. */
+html[data-ui-theme] .warning-readable { color:var(--ink); }
+html[data-ui-theme] .warning-readable summary { color:var(--accent); }
+html[data-ui-theme] .radar-legend { color:var(--muted); }
+html[data-ui-theme] .state-chip.state-fresh { color:#145d38; background:#e5f7eb; border-color:#2c875b; }
+html[data-ui-theme=dark] .state-chip.state-fresh { color:#e0f9eb; background:#174533; border-color:#77bf93; }
+
 /* Simple mobile interaction: preserve large tap targets without adding another UI layer. */
 html[data-ui-theme] .radar-controls button,html[data-ui-theme] .radar-controls input[type="range"],html[data-ui-theme] .switches button,html[data-ui-theme] #forecastLocation{min-height:44px}
 @media(max-width:420px){html[data-ui-theme] .hourly-detail-values{grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}html[data-ui-theme] .hourly-detail-metric{min-width:0}html[data-ui-theme] .hourly-detail-metric span{font-size:10px;overflow-wrap:anywhere}}

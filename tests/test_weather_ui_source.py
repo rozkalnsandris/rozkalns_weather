@@ -104,7 +104,9 @@ def test_simple_ui_hides_internal_research_controls() -> None:
     assert "descriptive provider disagreement" not in model_alignment
     assert "provider state" not in model_alignment
     assert "no genuine WeatherNext forecast value available" not in model_alignment
-    assert "WeatherNext data has not been collected yet." in model_alignment
+    assert "No WeatherNext forecast for Home. Station 05480 research snapshots are separate." in model_alignment
+    assert "No matching WeatherNext forecast for this location and time." in model_alignment
+    assert 'querySelector("#forecastLocation")' in model_alignment
     assert "Model difference" in model_alignment
     assert "/static/provenance_v1.js" not in html
     assert "/static/provenance_v1.js" not in worker
@@ -140,4 +142,33 @@ def test_mobile_interaction_stays_compact_and_direct() -> None:
     assert ".chart svg{display:block;min-width:0;max-width:100%;height:auto}" in (STATIC / "app.css").read_text()
     time_semantics = (STATIC / "time_semantics.js").read_text()
     assert " · ${identity.utc}" not in time_semantics
-    assert "rozkalns-weather-v49" in worker
+    assert "rozkalns-weather-v50" in worker
+
+
+def _wcag_contrast(foreground: str, background: str) -> float:
+    def luminance(hex_color: str) -> float:
+        values = [int(hex_color[index:index + 2], 16) / 255 for index in (1, 3, 5)]
+        linear = [v / 12.92 if v <= 0.04045 else ((v + 0.055) / 1.055) ** 2.4 for v in values]
+        return sum(a * b for a, b in zip(linear, (0.2126, 0.7152, 0.0722)))
+
+    lighter, darker = sorted((luminance(foreground), luminance(background)), reverse=True)
+    return (lighter + 0.05) / (darker + 0.05)
+
+
+def test_galaxy_warning_text_and_fresh_chip_contrast_in_both_themes() -> None:
+    css = (STATIC / "accepted_ui.css").read_text()
+    html = (STATIC / "index.html").read_text()
+    assert 'id="warningsOutput" class="warning-readable"' in html
+    assert "html[data-ui-theme] .warning-readable { color:var(--ink); }" in css
+    assert "html[data-ui-theme] .warning-readable summary { color:var(--accent); }" in css
+    assert "html[data-ui-theme] .radar-legend { color:var(--muted); }" in css
+    assert "html[data-ui-theme] .state-chip.state-fresh { color:#145d38; background:#e5f7eb; border-color:#2c875b; }" in css
+    assert "html[data-ui-theme=dark] .state-chip.state-fresh { color:#e0f9eb; background:#174533; border-color:#77bf93; }" in css
+    assert "html[data-ui-theme] { color-scheme:light; --bg:#f0f5fa; --card:#fff; --ink:#203b54;" in css
+    assert "html[data-ui-theme=dark] { color-scheme:dark; --bg:#101b29; --card:#18293b; --ink:#e7f0f8;" in css
+    assert _wcag_contrast("#203b54", "#ffffff") >= 4.5
+    assert _wcag_contrast("#e7f0f8", "#18293b") >= 4.5
+    assert _wcag_contrast("#145d38", "#e5f7eb") >= 4.5
+    assert _wcag_contrast("#e0f9eb", "#174533") >= 4.5
+    assert _wcag_contrast("#286f9e", "#ffffff") >= 4.5
+    assert _wcag_contrast("#8bc2ef", "#18293b") >= 4.5
