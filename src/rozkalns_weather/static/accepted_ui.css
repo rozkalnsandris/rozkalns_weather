@@ -147,3 +147,13 @@ html[data-ui-theme] .daily-model-label {
   font-weight:700;
   line-height:1.4;
 }
+
+/* Native forecast-model selector for keyboard and touch use. */
+html[data-ui-theme] .daily-model-controls { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin:8px 0 10px; }
+html[data-ui-theme] .daily-model-controls label { font-size:12px; color:var(--muted); }
+html[data-ui-theme] #dailyModelSelect {
+  min-height:44px; min-width:0; flex:1 1 170px; max-width:320px;
+  border:1px solid var(--border); border-radius:9px; padding:8px 10px;
+  background:var(--soft); color:var(--ink); font-size:13px;
+}
+html[data-ui-theme] #dailyModelSelect:disabled { opacity:.6; }

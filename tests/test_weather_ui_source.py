@@ -37,8 +37,8 @@ def test_service_worker_caches_the_loaded_shell() -> None:
     assert "/static/accuracy_v3.js" not in index
     assert "self.skipWaiting()" in worker
     assert "self.clients.claim()" in worker
-    assert '/static/app.js?v=56' in index
-    assert '"/static/app.js?v=56"' in worker
+    assert '/static/app.js?v=57' in index
+    assert '"/static/app.js?v=57"' in worker
     assert "ASSETS.map((asset) => new URL(asset, self.location.origin).pathname)" in worker
     assert "ignoreSearch: true" not in worker
 
@@ -164,7 +164,7 @@ def test_mobile_interaction_stays_compact_and_direct() -> None:
     assert ".chart svg{display:block;min-width:0;max-width:100%;height:auto}" in (STATIC / "app.css").read_text()
     time_semantics = (STATIC / "time_semantics.js").read_text()
     assert " · ${identity.utc}" not in time_semantics
-    assert "rozkalns-weather-v56" in worker
+    assert "rozkalns-weather-v57" in worker
 
 
 def _wcag_contrast(foreground: str, background: str) -> float:
@@ -258,7 +258,7 @@ def test_next_days_chooses_real_long_range_provider_and_tracks_total_available_d
     daily = (STATIC / "daily_trend.js").read_text()
     weather = (STATIC / "weather_ui.js").read_text()
     assert "window.RozkalnsDailyTrend.chooseProvider(rows, localDateKey(), PROVIDER_PREFERENCE)" in app
-    assert 'const api = { number, chooseProvider, select, geometry, amount, render };' in daily
+    assert 'const api = { number, availableProviders, chooseProvider, select, geometry, amount, render };' in daily
     assert '${available.length} available day' in daily
     assert 'available.length <= 7 ? "disabled" : ""' in daily
     assert 'document.querySelector("#dailyGrid")?.dataset.provider' in weather
@@ -268,12 +268,12 @@ def test_next_days_versioned_dependencies_and_visible_render_failure() -> None:
     index = (STATIC / "index.html").read_text()
     worker = (STATIC / "sw.js").read_text()
     app = (STATIC / "app.js").read_text()
-    assert '<script src="/static/daily_trend.js?v=56" defer></script>' in index
-    assert '<script src="/static/app.js?v=56" defer></script>' in index
-    assert index.index('/static/daily_trend.js?v=56') < index.index('/static/app.js?v=56')
-    assert '"/static/daily_trend.js?v=56"' in worker
-    assert '"/static/app.js?v=56"' in worker
-    assert "rozkalns-weather-v56" in worker
+    assert '<script src="/static/daily_trend.js?v=57" defer></script>' in index
+    assert '<script src="/static/app.js?v=57" defer></script>' in index
+    assert index.index('/static/daily_trend.js?v=57') < index.index('/static/app.js?v=57')
+    assert '"/static/daily_trend.js?v=57"' in worker
+    assert '"/static/app.js?v=57"' in worker
+    assert "rozkalns-weather-v57" in worker
     assert 'if (daily.status === "fulfilled") {' in app
     assert 'renderDaily(daily.value, healthMap);' in app
     assert 'catch (_error) {' in app
@@ -329,7 +329,77 @@ def test_next_days_shows_full_forecast_model_at_a_glance() -> None:
     assert 'qs("#dailyProvider").textContent = provider ? `Model: ${modelName}` : "Model: unavailable";' in app
     assert 'id="dailyProvider" class="source-label daily-model-label" aria-label="Forecast model"' in index
     assert "html[data-ui-theme] .daily-model-label" in css
-    assert 'href="/static/accepted_ui.css?v=56"' in index
-    assert '"/static/accepted_ui.css?v=56"' in worker
-    assert '"/static/daily_trend.js?v=56"' in worker
-    assert '"/static/app.js?v=56"' in worker
+    assert 'href="/static/accepted_ui.css?v=57"' in index
+    assert '"/static/accepted_ui.css?v=57"' in worker
+    assert '"/static/daily_trend.js?v=57"' in worker
+    assert '"/static/app.js?v=57"' in worker
+
+
+def test_next_days_model_picker_is_native_and_provider_attributed() -> None:
+    html = (STATIC / "index.html").read_text()
+    app = (STATIC / "app.js").read_text()
+    css = (STATIC / "accepted_ui.css").read_text()
+    daily = (STATIC / "daily_trend.js").read_text()
+    worker = (STATIC / "sw.js").read_text()
+    assert '<label for="dailyModelSelect">Compare model</label>' in html
+    assert '<select id="dailyModelSelect" aria-label="Daily forecast model" disabled>' in html
+    assert 'requestedDailyModel = "auto"' in app
+    assert 'window.RozkalnsDailyTrend.availableProviders(rows, localDateKey(), PROVIDER_PREFERENCE)' in app
+    assert 'const provider = requestedDailyModel === "auto" ? automaticProvider : requestedDailyModel;' in app
+    assert 'qs("#dailyModelSelect").addEventListener("change", (event) => {' in app
+    assert 'renderDaily(latestDailyResult, latestDailyHealthMap);' in app
+    assert 'html[data-ui-theme] #dailyModelSelect' in css
+    assert '"/static/daily_trend.js?v=57"' in worker
+    assert '"/static/app.js?v=57"' in worker
+    assert 'target.dataset.days = String(limit);' in daily
+
+
+def test_daily_model_selection_respects_actual_coverage_and_horizon() -> None:
+    if not shutil.which("node"):
+        pytest.skip("Node.js is not installed")
+    script = r"""
+const assert = require("node:assert/strict");
+const daily = require(process.argv[1]);
+const preferred = ["weathernext3", "icon_d2", "ecmwf_ifs", "ecmwf_aifs"];
+const rows = (provider,count) => Array.from({length:count},(_,i)=>({
+  provider,
+  date:new Date(Date.UTC(2026,9,10+i)).toISOString().slice(0,10),
+  temperature_min_c:7,temperature_max_c:14,precipitation_total_mm:1
+}));
+const all = [...rows("icon_d2",3),...rows("ecmwf_ifs",11),...rows("ecmwf_aifs",15)];
+const choices = daily.availableProviders(all,"2026-10-10",preferred);
+assert.deepEqual(choices,[
+  {provider:"ecmwf_aifs",days:15},
+  {provider:"ecmwf_ifs",days:11},
+  {provider:"icon_d2",days:3}
+]);
+assert.equal(daily.chooseProvider(all,"2026-10-10",preferred),"ecmwf_aifs");
+const withInvalid = [...all,{provider:"weathernext3",date:"2026-10-10",temperature_min_c:null,temperature_max_c:null}];
+assert.equal(daily.availableProviders(withInvalid,"2026-10-10",preferred).some(x=>x.provider==="weathernext3"),false);
+let html = "";
+const buttons = [7,14].map(n=>({dataset:{days:String(n)},addEventListener(_type,handler){this.handler=handler},focus(){}}));
+const target = {
+  dataset:{},get innerHTML(){return html},set innerHTML(value){html=value},
+  querySelectorAll(selector){return selector==="[data-days]"?buttons:[]},
+  querySelector(selector){return buttons.find(b=>selector.includes(b.dataset.days))||null}
+};
+daily.render(target, all, "ecmwf_aifs");
+assert.equal(target.dataset.provider,"ecmwf_aifs");
+buttons[1].handler();
+assert.equal(target.dataset.days,"14");
+assert.equal((html.match(/class="trend-day/g)||[]).length,14);
+daily.render(target, all, "ecmwf_ifs");
+assert.equal(target.dataset.provider,"ecmwf_ifs");
+assert.equal(target.dataset.days,"14");
+assert.equal((html.match(/class="trend-day/g)||[]).length,11);
+daily.render(target, all, "icon_d2");
+assert.equal(target.dataset.provider,"icon_d2");
+assert.equal(target.dataset.days,"7");
+assert.match(html,/data-days="14"[^>]*disabled/);
+assert.equal((html.match(/class="trend-day/g)||[]).length,3);
+"""
+    result = subprocess.run(
+        ["node", "-e", script, str(STATIC / "daily_trend.js")],
+        capture_output=True, text=True, check=False,
+    )
+    assert result.returncode == 0, result.stderr
