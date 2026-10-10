@@ -717,6 +717,7 @@ qsa("[data-days]").forEach((button) => {
 let radarFrame = null;
 let radarMap = null;
 let radarImageLayer = null;
+let radarBaseLayer = null;
 const RADAR_PUBLIC_CENTER = [51.532, 7.611];
 const RADAR_INITIAL_ZOOM = 12;
 
@@ -736,10 +737,30 @@ function radarMapUrl(frame, bounds) {
   return `/api/radar/map?${params.toString()}`;
 }
 
+function radarBasemapUrl(bounds) {
+  const params = new URLSearchParams({
+    west: bounds.getWest().toFixed(6),
+    south: bounds.getSouth().toFixed(6),
+    east: bounds.getEast().toFixed(6),
+    north: bounds.getNorth().toFixed(6),
+  });
+  return `/api/radar/basemap?${params.toString()}`;
+}
+
 function refreshRadarMapImage() {
   if (!radarMap || !radarFrame?.timestamp) return;
   const bounds = radarMap.getBounds();
   const url = radarMapUrl(radarFrame, bounds);
+  const basemapUrl = radarBasemapUrl(bounds);
+  if (!radarBaseLayer) {
+    radarBaseLayer = L.imageOverlay(basemapUrl, bounds, { opacity: 1, alt: "Official basemap.de map" }).addTo(radarMap);
+    radarBaseLayer.on("error", () => {
+      setSurfaceState("radarState", "error", "Map background unavailable. Try Refresh.", { alert: true });
+    });
+  } else {
+    radarBaseLayer.setBounds(bounds);
+    radarBaseLayer.setUrl(basemapUrl);
+  }
   if (!radarImageLayer) {
     radarImageLayer = L.imageOverlay(url, bounds, { opacity: 1 }).addTo(radarMap);
     radarImageLayer.on("error", () => {
@@ -756,12 +777,13 @@ function ensureRadarMap() {
   if (radarMap) return;
 
   radarMap = L.map("radarMap", {
-    minZoom: 9,
+    minZoom: 11,
     maxZoom: 17,
   }).setView(RADAR_PUBLIC_CENTER, RADAR_INITIAL_ZOOM);
 
-  radarMap.attributionControl.addAttribution('<a href="https://www.dwd.de/">Map and radar: DWD</a>');
+  radarMap.attributionControl.addAttribution('<a href="https://basemap.de/">Map: © GeoBasis-DE / BKG</a> · <a href="https://www.dwd.de/">Radar: DWD</a>');
   L.circleMarker(RADAR_PUBLIC_CENTER, {
+    pane: "markerPane",
     radius: 6,
     color: "#ffffff",
     weight: 2,
@@ -776,19 +798,20 @@ function renderRadarPayload(payload) {
   const frames = (payload?.frames || [])
     .filter((frame) => frame?.timestamp)
     .sort((left, right) => Date.parse(left.timestamp) - Date.parse(right.timestamp));
+  const observedFrames = frames.filter((frame) => frame.kind === "radar_observed");
   const stage = qs("#radarStage");
-  if (!frames.length) {
+  if (!observedFrames.length) {
     radarFrame = null;
     stage.hidden = true;
-    qs("#radarMeta").textContent = "No radar frame is available. This does not mean precipitation is absent.";
+    qs("#radarMeta").textContent = "No observed DWD radar frame is available. This does not mean precipitation is absent.";
     return false;
   }
 
-  radarFrame = frames[frames.length - 1];
+  radarFrame = observedFrames[observedFrames.length - 1];
   stage.hidden = false;
   ensureRadarMap();
   qs("#radarTime").textContent = radarFrameLabel(radarFrame);
-  qs("#radarMeta").textContent = `${radarFrameLabel(radarFrame)} · drag or pinch to explore · Refresh gets the newest frame.`;
+  qs("#radarMeta").textContent = `${radarFrameLabel(radarFrame)} · DWD rain radar over basemap.de · drag or pinch to explore.`;
   window.requestAnimationFrame(() => {
     radarMap.invalidateSize();
     refreshRadarMapImage();
@@ -806,7 +829,7 @@ async function loadRadarSurface() {
     const hasFrames = renderRadarPayload(result.payload);
     const fallbackState = stateFromResult(result);
     if (fallbackState === "fresh" && hasFrames) {
-      setSurfaceState("radarState", "fresh", "Latest DWD radar map ready.");
+      setSurfaceState("radarState", "fresh", "Latest observed DWD radar map ready.");
     } else if (fallbackState === "fresh") {
       setSurfaceState("radarState", "stale", "Radar returned no renderable frames. This does not mean precipitation is absent.");
     } else {

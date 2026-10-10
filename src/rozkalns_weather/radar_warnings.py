@@ -11,7 +11,9 @@ from .providers.base import BytesFetcher, JsonFetcher, fetch_bytes, fetch_json
 BRIGHTSKY_ALERTS_URL = "https://api.brightsky.dev/alerts"
 BRIGHTSKY_RADAR_URL = "https://api.brightsky.dev/radar"
 DWD_WMS_URL = "https://maps.dwd.de/geoserver/dwd/wms"
-DWD_WMS_LAYERS = "dwd:bluemarble,dwd:Niederschlagsradar"
+DWD_WMS_LAYERS = "dwd:Niederschlagsradar"
+BKG_WMS_URL = "https://sgx.geodatenzentrum.de/wms_basemapde"
+BKG_WMS_LAYER = "de_basemapde_web_raster_grau"
 DWD_WMS_CRS = "EPSG:3857"
 DWD_WMS_IMAGE_SIZE_PX = 640
 DWD_WMS_MAX_IMAGE_BYTES = 2_000_000
@@ -132,16 +134,60 @@ def dwd_radar_map_url(
         "version": "1.3.0",
         "request": "GetMap",
         "layers": DWD_WMS_LAYERS,
-        "styles": ",",
+        "styles": "",
+        "crs": DWD_WMS_CRS,
+        "bbox": f"{left:.3f},{bottom:.3f},{right:.3f},{top:.3f}",
+        "width": str(DWD_WMS_IMAGE_SIZE_PX),
+        "height": str(DWD_WMS_IMAGE_SIZE_PX),
+        "format": "image/png",
+        "transparent": "TRUE",
+        "time": normalize_dwd_wms_time(at),
+    }
+    return f"{DWD_WMS_URL}?{urlencode(params)}"
+
+
+def bkg_basemap_url(
+    *,
+    west: float,
+    south: float,
+    east: float,
+    north: float,
+) -> str:
+    """Fixed official German basemap for the bounded public radar viewport."""
+
+    _validate_radar_bounds(west=west, south=south, east=east, north=north)
+    left, bottom = _web_mercator_xy(lon=west, lat=south)
+    right, top = _web_mercator_xy(lon=east, lat=north)
+    params = {
+        "service": "WMS",
+        "version": "1.3.0",
+        "request": "GetMap",
+        "layers": BKG_WMS_LAYER,
+        "styles": "default",
         "crs": DWD_WMS_CRS,
         "bbox": f"{left:.3f},{bottom:.3f},{right:.3f},{top:.3f}",
         "width": str(DWD_WMS_IMAGE_SIZE_PX),
         "height": str(DWD_WMS_IMAGE_SIZE_PX),
         "format": "image/png",
         "transparent": "FALSE",
-        "time": normalize_dwd_wms_time(at),
     }
-    return f"{DWD_WMS_URL}?{urlencode(params)}"
+    return f"{BKG_WMS_URL}?{urlencode(params)}"
+
+
+def fetch_bkg_basemap_png(
+    *,
+    west: float,
+    south: float,
+    east: float,
+    north: float,
+    fetcher: BytesFetcher = fetch_bytes,
+) -> bytes:
+    payload = fetcher(bkg_basemap_url(west=west, south=south, east=east, north=north))
+    if not payload.startswith(PNG_SIGNATURE):
+        raise ValueError("Official basemap WMS did not return a PNG image")
+    if len(payload) > DWD_WMS_MAX_IMAGE_BYTES:
+        raise ValueError("Official basemap image is larger than the bounded map contract")
+    return payload
 
 
 def fetch_dwd_radar_map_png(

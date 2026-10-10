@@ -33,8 +33,8 @@ def test_service_worker_caches_the_loaded_shell() -> None:
     assert "/static/accuracy_v3.js" not in index
     assert "self.skipWaiting()" in worker
     assert "self.clients.claim()" in worker
-    assert '/static/app.js?v=49' in index
-    assert '"/static/app.js?v=49"' in worker
+    assert '/static/app.js?v=51' in index
+    assert '"/static/app.js?v=51"' in worker
     assert "ASSETS.map((asset) => new URL(asset, self.location.origin).pathname)" in worker
     assert "ignoreSearch: true" not in worker
 
@@ -79,6 +79,19 @@ def test_simple_radar_and_status_do_not_reference_removed_lazy_modules() -> None
     assert "https://maps.dwd.de" not in app
     assert "RADAR_PUBLIC_CENTER = [51.532, 7.611]" in app
     assert "/api/radar/map?" in app
+    assert "/api/radar/basemap?" in app
+    assert "radarBaseLayer = L.imageOverlay(basemapUrl, bounds" in app
+    assert "radarBaseLayer.setUrl(basemapUrl)" in app
+    assert "const observedFrames = frames.filter((frame) => frame.kind === \"radar_observed\")" in app
+    assert "radarFrame = observedFrames[observedFrames.length - 1]" in app
+    assert "basemap.de" in app
+    assert "© GeoBasis-DE / BKG" in app
+    assert "minZoom: 11" in app
+    assert "sgx.geodatenzentrum.de" not in app
+    assert "https://tile.openstreetmap.org" not in app
+    api = (ROOT / "src" / "rozkalns_weather" / "app_core.py").read_text()
+    assert '@app.get("/api/radar/basemap")' in api
+    assert 'fetch_bkg_basemap_png(west=west, south=south, east=east, north=north)' in api
     assert 'radarMap.on("moveend"' in app
     assert "radarPlaybackTimer" not in app
     assert "preloadRadarFrameMaps" not in app
@@ -142,7 +155,7 @@ def test_mobile_interaction_stays_compact_and_direct() -> None:
     assert ".chart svg{display:block;min-width:0;max-width:100%;height:auto}" in (STATIC / "app.css").read_text()
     time_semantics = (STATIC / "time_semantics.js").read_text()
     assert " · ${identity.utc}" not in time_semantics
-    assert "rozkalns-weather-v50" in worker
+    assert "rozkalns-weather-v51" in worker
 
 
 def _wcag_contrast(foreground: str, background: str) -> float:
