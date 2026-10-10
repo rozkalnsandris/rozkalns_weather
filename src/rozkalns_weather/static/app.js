@@ -454,23 +454,29 @@ function dayLabel(dateString) {
   return new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Berlin", weekday: "short" }).format(date);
 }
 
+function setDailyModelUnavailable() {
+  const picker = qs("#dailyModelSelect");
+  picker.innerHTML = '<option value="auto">Unavailable</option>';
+  picker.disabled = true;
+}
+
 function renderDaily(result, healthMap) {
   const rows = result.payload.days_by_provider || [];
   const options = window.RozkalnsDailyTrend.availableProviders(rows, localDateKey(), PROVIDER_PREFERENCE);
   const picker = qs("#dailyModelSelect");
-  picker.innerHTML = '<option value="auto">Auto</option>' + options.map(({ provider, days }) =>
-    `<option value="${escapeHtml(provider)}">${escapeHtml(MODEL_LABELS[provider] || provider)} · ${days}d</option>`
-  ).join("");
   if (requestedDailyModel !== "auto" && !options.some(({ provider }) => provider === requestedDailyModel)) {
     requestedDailyModel = "auto";
   }
-  picker.value = requestedDailyModel;
-  picker.disabled = options.length === 0;
   const automaticProvider = window.RozkalnsDailyTrend.chooseProvider(rows, localDateKey(), PROVIDER_PREFERENCE);
+  const autoModelName = automaticProvider ? MODEL_LABELS[automaticProvider] || automaticProvider : null;
   const provider = requestedDailyModel === "auto" ? automaticProvider : requestedDailyModel;
   const selected = provider ? window.RozkalnsDailyTrend.select(rows, provider) : [];
   const modelName = MODEL_LABELS[provider] || selected[0]?.model_name || provider || "Provider unavailable";
-  qs("#dailyProvider").textContent = provider ? `Model: ${modelName}` : "Model: unavailable";
+  picker.innerHTML = `<option value="auto">${escapeHtml(autoModelName ? `Auto · ${autoModelName}` : "Auto")}</option>` + options.map(({ provider, days }) =>
+    `<option value="${escapeHtml(provider)}">${escapeHtml(MODEL_LABELS[provider] || provider)} · ${days}d</option>`
+  ).join("");
+  picker.value = requestedDailyModel;
+  picker.disabled = options.length === 0;
 
   const state = providerSurfaceState(provider ? rows.filter((row) => row.provider === provider) : [], healthMap, result);
   setSurfaceState("dailyState", state.state, provider ? `${modelName}: ${state.message}` : state.message);
@@ -678,7 +684,7 @@ async function refresh() {
     } catch (_error) {
       // A stale PWA dependency or rendering error must never leave Next Days
       // showing the initial "Loading" state indefinitely.
-      qs("#dailyProvider").textContent = "Model: unavailable";
+      setDailyModelUnavailable();
       qs("#dailyGrid").textContent = "Daily forecast could not be displayed. Refresh to retry.";
       qs("#heroHighLow").textContent = "H —° · L —°";
       setSurfaceState("dailyState", "error", "Daily forecast could not be displayed. Refresh to retry.", { alert: true });
@@ -686,7 +692,7 @@ async function refresh() {
   } else {
     latestDailyResult = null;
     latestDailyHealthMap = null;
-    qs("#dailyModelSelect").disabled = true;
+    setDailyModelUnavailable();
     qs("#dailyGrid").textContent = "Daily forecast unavailable.";
     qs("#heroHighLow").textContent = "H —° · L —°";
     setSurfaceState("dailyState", navigator.onLine ? "error" : "offline", `Daily forecast unavailable: ${daily.reason}`, { alert: true });
@@ -898,7 +904,7 @@ qs("#dailyModelSelect").addEventListener("change", (event) => {
   try {
     renderDaily(latestDailyResult, latestDailyHealthMap);
   } catch (_error) {
-    qs("#dailyProvider").textContent = "Model: unavailable";
+    setDailyModelUnavailable();
     qs("#dailyGrid").textContent = "Daily forecast could not be displayed. Refresh to retry.";
     setSurfaceState("dailyState", "error", "Daily forecast could not be displayed. Refresh to retry.", { alert: true });
   }
