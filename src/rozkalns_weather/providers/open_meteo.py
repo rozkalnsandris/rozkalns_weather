@@ -151,6 +151,11 @@ ICON_D2 = OpenMeteoModel("icon_d2", "DWD", "ICON-D2", "icon_d2", 2, "dwd_icon_d2
 ECMWF_IFS = OpenMeteoModel("ecmwf_ifs", "ECMWF", "IFS HRES", "ecmwf_ifs", 10, "ecmwf_ifs")
 ECMWF_AIFS = OpenMeteoModel("ecmwf_aifs", "ECMWF", "AIFS", "ecmwf_aifs025_single", 15, "ecmwf_aifs025_single")
 
+# Open-Meteo can currently return the entire AIFS gust series as null with
+# hourly_units.wind_gusts_10m="undefined". Keep requesting it so restored
+# upstream values are retained, but do not reject otherwise valid AIFS runs.
+AIFS_NULLABLE_ALL_NULL_VARIABLES = frozenset({"wind_gusts_10m"})
+
 
 @dataclass(frozen=True, slots=True)
 class ModelRunMetadata:
@@ -187,7 +192,15 @@ def parse_open_meteo(
     requested_variables: tuple[str, ...] = HOURLY_VARIABLES,
 ) -> ForecastRun:
     contract_report = enforce_contract(
-        inspect_open_meteo_single(payload, requested_variables=requested_variables)
+        inspect_open_meteo_single(
+            payload,
+            requested_variables=requested_variables,
+            nullable_all_null_variables=(
+                AIFS_NULLABLE_ALL_NULL_VARIABLES
+                if model.provider_id == ECMWF_AIFS.provider_id
+                else frozenset()
+            ),
+        )
     )
     hourly = payload.get("hourly")
     units = payload.get("hourly_units", {})

@@ -248,6 +248,7 @@ def _series_contract(
     requested_variables: Sequence[str],
     contract_name: str,
     allow_members: bool,
+    nullable_all_null_variables: frozenset[str] = frozenset(),
 ) -> ContractReport:
     findings: list[ContractFinding] = []
     hourly = payload.get("hourly")
@@ -297,7 +298,17 @@ def _series_contract(
                 findings.append(_finding(BLOCKED, "SERIES_LENGTH_MISMATCH", column))
             unit = units.get(column, units.get(variable))
             if accepted_units is not None and unit not in accepted_units:
-                findings.append(_finding(BLOCKED, "UNIT_DRIFT", f"{column}:{unit!r}"))
+                # A model-specific, wholly empty upstream field has no usable
+                # values or unit to store. Do not block its other valid fields.
+                # Any non-null value with the wrong unit remains BLOCKED.
+                if (
+                    variable in nullable_all_null_variables
+                    and unit in (None, "undefined")
+                    and all(value is None for value in series)
+                ):
+                    findings.append(_finding(WARN, "FIELD_ALL_NULL_UPSTREAM", column))
+                else:
+                    findings.append(_finding(BLOCKED, "UNIT_DRIFT", f"{column}:{unit!r}"))
 
     if allow_members and member_sets:
         shapes = {tuple(sorted(value)) for value in member_sets.values()}
@@ -313,12 +324,14 @@ def inspect_open_meteo_single(
     payload: Mapping[str, Any],
     *,
     requested_variables: Sequence[str],
+    nullable_all_null_variables: frozenset[str] = frozenset(),
 ) -> ContractReport:
     return _series_contract(
         payload,
         requested_variables=requested_variables,
         contract_name="open_meteo_single_runs_v1",
         allow_members=False,
+        nullable_all_null_variables=nullable_all_null_variables,
     )
 
 
