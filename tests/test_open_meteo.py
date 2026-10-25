@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from copy import deepcopy
 
 import pytest
 
@@ -12,7 +13,9 @@ from rozkalns_weather.providers.open_meteo import (
     OpenMeteoTransportError,
     decode_open_meteo_json_response,
     parse_model_metadata,
+    parse_open_meteo,
 )
+from rozkalns_weather.providers.provider_contracts import ProviderContractDriftError
 
 PAYLOAD = {
     "generationtime_ms": 1.2,
@@ -138,3 +141,55 @@ def test_unrelated_non_json_response_is_not_silently_relabelled_as_missing_run()
         )
     assert caught.value.reason_code == OPEN_METEO_NON_JSON_RESPONSE
     assert caught.value.reason_code != OPEN_METEO_MODEL_RUN_UNAVAILABLE
+
+
+def _parse_aifs_or_icon_with_gusts(payload, model):
+    return parse_open_meteo(
+        payload,
+        model=model,
+        retrieved_at=datetime(2026, 9, 7, 8, 30, tzinfo=timezone.utc),
+        init_time=datetime(2026, 9, 7, 6, tzinfo=timezone.utc),
+        availability_time=datetime(2026, 9, 7, 8, tzinfo=timezone.utc),
+    )
+
+
+def test_aifs_all_null_gusts_are_warned_without_discarding_valid_forecast() -> None:
+    payload = deepcopy(PAYLOAD)
+    payload["hourly_units"]["wind_gusts_10m"] = "undefined"
+    payload["hourly"]["wind_gusts_10m"] = [None, None]
+
+    run = _parse_aifs_or_icon_with_gusts(payload, ECMWF_AIFS)
+
+    assert any(value.variable == "temperature_2m" for value in run.values)
+    assert not any(value.variable == "wind_gust_10m" for value in run.values)
+    assert run.source_metadata["provider_contract_drift"] == {
+        "provider_contract": "open_meteo_single_runs_v1",
+        "status": "WARN",
+        "reason_codes": ["FIELD_ALL_NULL_UPSTREAM"],
+    }
+
+
+def test_aifs_non_null_gust_with_undefined_unit_still_blocks() -> None:
+    payload = deepcopy(PAYLOAD)
+    payload["hourly_units"]["wind_gusts_10m"] = "undefined"
+    payload["hourly"]["wind_gusts_10m"] = [None, 4.0]
+
+    with pytest.raises(ProviderContractDriftError, match="UNIT_DRIFT"):
+        _parse_aifs_or_icon_with_gusts(payload, ECMWF_AIFS)
+
+
+def test_non_aifs_all_null_gust_unit_drift_still_blocks() -> None:
+    payload = deepcopy(PAYLOAD)
+    payload["hourly_units"]["wind_gusts_10m"] = "undefined"
+    payload["hourly"]["wind_gusts_10m"] = [None, None]
+
+    with pytest.raises(ProviderContractDriftError, match="UNIT_DRIFT"):
+        _parse_aifs_or_icon_with_gusts(payload, ICON_D2)
+
+
+def test_aifs_valid_gusts_keep_values_and_units() -> None:
+    run = _parse_aifs_or_icon_with_gusts(deepcopy(PAYLOAD), ECMWF_AIFS)
+    gusts = [value for value in run.values if value.variable == "wind_gust_10m"]
+    assert [value.value for value in gusts] == [4.0, 5.0]
+    assert all(value.unit == "m/s" for value in gusts)
+    assert run.source_metadata["provider_contract_drift"]["status"] == "COMPATIBLE"
