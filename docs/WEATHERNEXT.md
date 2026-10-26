@@ -12,6 +12,7 @@ The source adapter is bounded around:
 - a small lead-hour slice;
 - precomputed mean/p10/p25/p50/p75/p90 statistics;
 - point selection before materialization;
+- grouped bounded compute after slicing: one station-grid Dataset and one surface-grid Dataset, never one remote compute per statistic variable;
 - no production write during the first read.
 
 ## Runtime rule

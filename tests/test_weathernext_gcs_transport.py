@@ -88,6 +88,33 @@ class _Array:
         return _Array(values)
 
 
+class _SelectedDataset:
+    def __init__(self, *, arrays, parent, variables):
+        self._arrays = dict(arrays)
+        self._parent = parent
+        self._variables = tuple(variables)
+
+    def isel(self, **indexers):
+        self._parent.selection_calls.append(
+            {"variables": self._variables, "indexers": dict(indexers)}
+        )
+        return _SelectedDataset(
+            arrays={
+                name: array.isel(**indexers)
+                for name, array in self._arrays.items()
+            },
+            parent=self._parent,
+            variables=self._variables,
+        )
+
+    def compute(self):
+        self._parent.compute_calls.append(self._variables)
+        return self
+
+    def __getitem__(self, key):
+        return self._arrays[key]
+
+
 class _Dataset:
     def __init__(self, *, missing_variable=None):
         lat05 = BENCHMARK_LOCATION.lat
@@ -135,12 +162,23 @@ class _Dataset:
             if name not in self.coords
         }
         self.closed = False
+        self.selection_calls = []
+        self.compute_calls = []
 
     def __getitem__(self, key):
+        if isinstance(key, list):
+            return _SelectedDataset(
+                arrays={name: self._arrays[name] for name in key},
+                parent=self,
+                variables=tuple(key),
+            )
         return self._arrays[key]
 
     def close(self):
         self.closed = True
+
+    def compute(self):
+        raise AssertionError("full dataset compute is forbidden")
 
     def load(self):
         raise AssertionError("full dataset load is forbidden")
@@ -251,6 +289,21 @@ def test_first_access_reads_only_bounded_point_statistics_and_emits_sanitized_ev
     assert evidence["coordinates_exposed"] is False
     assert evidence["raw_values_exposed"] is False
     assert evidence["production_write_performed"] is False
+    assert dataset.compute_calls == [
+        tuple(STATION_STATISTIC_VARIABLES),
+        tuple(SURFACE_STATISTIC_VARIABLES),
+    ]
+    assert len(dataset.selection_calls) == 2
+    for selection in dataset.selection_calls:
+        assert selection["indexers"]["lead_time"] == [1, 2, 3, 4, 5, 6]
+        assert selection["indexers"].get("init_time", 0) == 0
+        grid_indexers = {
+            key: value
+            for key, value in selection["indexers"].items()
+            if key.startswith(("lat_", "lon_"))
+        }
+        assert len(grid_indexers) == 2
+        assert all(type(value) is int for value in grid_indexers.values())
     assert result.run.transport_provider == "Google Cloud Storage/Zarr"
     assert result.run.source_metadata["location_id"] == "station_05480"
     assert result.run.upstream_available_at_utc is None
