@@ -226,3 +226,142 @@ def common_sample_leaderboard(
         )
     )
     return output
+
+
+def anchored_common_sample_leaderboard(
+    samples: Iterable[SkillSample],
+    *,
+    anchor_provider: str,
+    include_bootstrap: bool = True,
+) -> list[dict[str, object]]:
+    """Return one strict common cohort per bucket anchored to one provider.
+
+    The anchor defines the comparison opportunities. Each anchor timestamp is
+    assigned to the exact provider/model-version availability vector present at
+    that timestamp. The largest exact cohort is selected deterministically per
+    lead bucket so an intermittent peer cannot erase an otherwise valid anchored
+    comparison, while every reported provider still uses the same matched IDs.
+    """
+
+    if not anchor_provider:
+        raise ValueError("anchor_provider must be non-empty")
+
+    items = list(samples)
+    grouped: dict[tuple[str, str, str], list[SkillSample]] = {}
+    for item in items:
+        grouped.setdefault(
+            (item.mode, item.variable, lead_bucket(item.lead_hours)), []
+        ).append(item)
+
+    output: list[dict[str, object]] = []
+    for (mode, variable, bucket), bucket_items in sorted(grouped.items()):
+        providers = sorted({item.provider for item in bucket_items})
+        if anchor_provider not in providers or len(providers) < 2:
+            continue
+
+        by_provider_sample: dict[tuple[str, str], SkillSample] = {}
+        for item in bucket_items:
+            key = (item.provider, item.sample_id)
+            if key in by_provider_sample:
+                raise ValueError(
+                    f"duplicate sample identity in anchored comparison: {item.provider}:{item.sample_id}"
+                )
+            by_provider_sample[key] = item
+
+        anchor_ids = {
+            item.sample_id
+            for item in bucket_items
+            if item.provider == anchor_provider
+        }
+        if not anchor_ids:
+            continue
+
+        cohorts: dict[tuple[tuple[str, str], ...], list[str]] = {}
+        comparable_anchor_ids: set[str] = set()
+        for sample_id in sorted(anchor_ids):
+            version_vector = tuple(
+                (
+                    provider,
+                    by_provider_sample[(provider, sample_id)].model_version
+                    or "unknown",
+                )
+                for provider in providers
+                if (provider, sample_id) in by_provider_sample
+            )
+            if len(version_vector) < 2:
+                continue
+            cohorts.setdefault(version_vector, []).append(sample_id)
+            comparable_anchor_ids.add(sample_id)
+
+        if not cohorts:
+            continue
+
+        version_vector, cohort_ids = min(
+            cohorts.items(),
+            key=lambda item: (-len(item[1]), item[0]),
+        )
+        cohort_versions = dict(version_vector)
+        matched_sample_ids = list(cohort_ids)
+        excluded_sample_ids = sorted(anchor_ids - set(cohort_ids))
+        matched_set_id = _matched_set_id(
+            mode=mode,
+            variable=variable,
+            bucket=bucket,
+            comparison_cohort=cohort_versions,
+            matched_sample_ids=matched_sample_ids,
+        )
+
+        for provider in cohort_versions:
+            available_ids = {
+                sample_id
+                for sample_id in anchor_ids
+                if (provider, sample_id) in by_provider_sample
+            }
+            expected_n = len(anchor_ids)
+            available_n = len(available_ids)
+            missing_n = expected_n - available_n
+            missingness: dict[str, int | float] = {
+                "expected_n": expected_n,
+                "available_n": available_n,
+                "missing_n": missing_n,
+                "common_n": len(cohort_ids),
+                "total_common_n": len(comparable_anchor_ids),
+                "excluded_non_common_n": available_n - len(cohort_ids),
+                "excluded_from_matched_set_n": len(excluded_sample_ids),
+                "missing_fraction": (missing_n / expected_n) if expected_n else 0.0,
+            }
+            provider_items = [
+                by_provider_sample[(provider, sample_id)]
+                for sample_id in cohort_ids
+            ]
+            output.append(
+                {
+                    "mode": mode,
+                    "variable": variable,
+                    "lead_bucket": bucket,
+                    "provider": provider,
+                    "model_version": cohort_versions[provider],
+                    "comparison_cohort": cohort_versions,
+                    "matched_set_id": matched_set_id,
+                    "matched_sample_ids": matched_sample_ids,
+                    "excluded_sample_ids": excluded_sample_ids,
+                    "excluded_sample_count": len(excluded_sample_ids),
+                    "common_sample_ids": matched_sample_ids,
+                    **_metric_row(
+                        provider_items,
+                        missingness=missingness,
+                        include_bootstrap=include_bootstrap,
+                    ),
+                }
+            )
+
+    output.sort(
+        key=lambda row: (
+            str(row["mode"]),
+            str(row["variable"]),
+            str(row["lead_bucket"]),
+            str(sorted(dict(row["comparison_cohort"]).items())),
+            str(row["provider"]),
+        )
+    )
+    return output
