@@ -310,9 +310,14 @@ def _point_records(
             raise WeatherNextGCSTransportError("dataset init_time dimension must be singleton")
         base_indexers["init_time"] = 0
 
+    # Reduce the remote Zarr dataset to the exact six lead hours and one grid
+    # point before any Dask execution. Computing the selected Dataset once keeps
+    # all variables in one bounded task graph instead of triggering one remote
+    # compute/fetch cycle per variable through DataArray.values.
+    selected = dataset[list(variables)].isel(**base_indexers).compute()
+
     for variable in variables:
-        selected = dataset[variable].isel(**base_indexers)
-        values = _values_list(selected)
+        values = _values_list(selected[variable])
         if len(values) != hours_limit:
             raise WeatherNextGCSTransportError(
                 "bounded point selection returned an unexpected value count"
