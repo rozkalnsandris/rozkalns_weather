@@ -159,6 +159,84 @@ def test_verification_summary_uses_station_05480_truth(tmp_path) -> None:
     assert all("matched_sample_ids" not in row for row in compact["common_sample_slices"])
 
 
+def test_verification_summary_keeps_weathernext_when_aifs_is_nonoverlapping(tmp_path) -> None:
+    client, database = _client(tmp_path)
+    now = datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0)
+    matched = now - timedelta(hours=2)
+    aifs_only = now - timedelta(hours=1)
+
+    database.insert_observations(
+        [
+            Observation(
+                source_provider="DWD",
+                station_id="05480",
+                location_id=BENCHMARK_LOCATION.id,
+                observed_at_utc=valid,
+                variable="temperature_2m",
+                value=10.0,
+                unit="degC",
+            )
+            for valid in (matched, aifs_only)
+        ]
+    )
+
+    for provider, model_version, value, valid in (
+        ("weathernext3", "3.0.0", 9.8, matched),
+        ("ecmwf_ifs", None, 10.2, matched),
+        ("icon_d2", None, 10.1, matched),
+        ("ecmwf_aifs", None, 10.3, aifs_only),
+    ):
+        database.insert_forecast_run(
+            ForecastRun(
+                provider=provider,
+                model_provider="fixture",
+                model_name=provider,
+                model_version=model_version,
+                init_time_utc=valid - timedelta(hours=1),
+                retrieved_at_utc=valid - timedelta(minutes=30),
+                source_surface="fixture",
+                values=(
+                    ForecastValue(
+                        valid_time_utc=valid,
+                        lead_hours=1,
+                        variable="temperature_2m",
+                        statistic="mean" if provider == "weathernext3" else "deterministic",
+                        value=value,
+                        unit="degC",
+                    ),
+                ),
+            ),
+            location_id=BENCHMARK_LOCATION.id,
+        )
+
+    payload = client.get("/api/verification/summary?days=30").json()
+    rows = [
+        row
+        for row in payload["common_sample_slices"]
+        if row["lead_bucket"] == "0-6h"
+    ]
+
+    assert {row["provider"] for row in rows} == {
+        "weathernext3",
+        "ecmwf_ifs",
+        "icon_d2",
+    }
+    assert all(row["matched_sample_ids"] == [matched.isoformat().replace("+00:00", "Z")] for row in rows)
+    assert all("ecmwf_aifs" not in row["comparison_cohort"] for row in rows)
+
+    compact = client.get("/api/verification/summary?days=30&compact=true").json()
+    compact_rows = [
+        row
+        for row in compact["common_sample_slices"]
+        if row["lead_bucket"] == "0-6h"
+    ]
+    assert {row["provider"] for row in compact_rows} == {
+        "weathernext3",
+        "ecmwf_ifs",
+        "icon_d2",
+    }
+
+
 def test_unknown_location_is_rejected(tmp_path) -> None:
     client, _ = _client(tmp_path)
     assert client.get("/api/hourly?location_id=unknown").status_code == 422

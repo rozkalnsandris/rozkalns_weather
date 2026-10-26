@@ -1,6 +1,11 @@
 import pytest
 
-from rozkalns_weather.leaderboard import SkillSample, bootstrap_mean_ci, common_sample_leaderboard
+from rozkalns_weather.leaderboard import (
+    SkillSample,
+    anchored_common_sample_leaderboard,
+    bootstrap_mean_ci,
+    common_sample_leaderboard,
+)
 
 
 def test_bootstrap_ci_is_explicitly_suppressed_for_small_samples() -> None:
@@ -101,3 +106,43 @@ def test_duplicate_provider_sample_identity_fails_closed() -> None:
                 SkillSample("a", "ifs", "v1", 12, 1.5, 1.0),
             ]
         )
+
+
+def test_anchored_leaderboard_ignores_nonoverlapping_intermittent_peer() -> None:
+    samples = [
+        SkillSample("a", "weathernext3", "3.0.0", 1, 1.0, 1.0),
+        SkillSample("b", "weathernext3", "3.0.0", 2, 2.0, 2.0),
+        SkillSample("a", "ecmwf_ifs", None, 1, 1.2, 1.0),
+        SkillSample("b", "ecmwf_ifs", None, 2, 2.2, 2.0),
+        SkillSample("a", "icon_d2", None, 1, 0.8, 1.0),
+        SkillSample("b", "icon_d2", None, 2, 1.8, 2.0),
+        SkillSample("c", "ecmwf_aifs", None, 1, 9.0, 9.0),
+    ]
+
+    assert common_sample_leaderboard(samples) == []
+
+    rows = anchored_common_sample_leaderboard(
+        samples,
+        anchor_provider="weathernext3",
+        include_bootstrap=False,
+    )
+
+    assert {row["provider"] for row in rows} == {
+        "weathernext3",
+        "ecmwf_ifs",
+        "icon_d2",
+    }
+    assert all(row["n"] == 2 for row in rows)
+    assert all(row["matched_sample_ids"] == ["a", "b"] for row in rows)
+    assert all(
+        row["comparison_cohort"]
+        == {
+            "ecmwf_ifs": "unknown",
+            "icon_d2": "unknown",
+            "weathernext3": "3.0.0",
+        }
+        for row in rows
+    )
+    assert all(row["missingness"]["expected_n"] == 2 for row in rows)
+    assert all(row["missingness"]["common_n"] == 2 for row in rows)
+    assert all(row["missingness"]["missing_n"] == 0 for row in rows)

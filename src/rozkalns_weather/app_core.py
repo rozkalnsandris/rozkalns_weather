@@ -13,7 +13,7 @@ from fastapi.staticfiles import StaticFiles
 from .config import Settings
 from .current_store import latest_current_observations
 from .db import Database
-from .leaderboard import SkillSample, common_sample_leaderboard
+from .leaderboard import SkillSample, anchored_common_sample_leaderboard, common_sample_leaderboard
 from .locations import BENCHMARK_LOCATION
 from .models import parse_time
 from .providers import PROVIDERS
@@ -369,10 +369,34 @@ def create_app(settings: Settings | None = None, database: Database | None = Non
     ) -> dict[str, object]:
         require_database_ready()
         rows = database.temperature_verification_pairs(days=days, location_id=BENCHMARK_LOCATION.id)
+        temperature_samples = _temperature_common_samples(rows)
         common_sample_slices = common_sample_leaderboard(
-            _temperature_common_samples(rows),
+            temperature_samples,
             include_bootstrap=not compact,
         )
+        weathernext_slices = anchored_common_sample_leaderboard(
+            temperature_samples,
+            anchor_provider="weathernext3",
+            include_bootstrap=not compact,
+        )
+        weathernext_buckets = {
+            str(row["lead_bucket"])
+            for row in weathernext_slices
+            if row["provider"] == "weathernext3"
+        }
+        if weathernext_buckets:
+            common_sample_slices = [
+                row
+                for row in common_sample_slices
+                if str(row["lead_bucket"]) not in weathernext_buckets
+            ] + weathernext_slices
+            common_sample_slices.sort(
+                key=lambda row: (
+                    str(row["lead_bucket"]),
+                    str(row["provider"]),
+                    str(row["model_version"]),
+                )
+            )
         if compact:
             visible_fields = (
                 "provider",
