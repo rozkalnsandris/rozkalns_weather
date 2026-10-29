@@ -5,6 +5,7 @@ from typing import Mapping
 
 from .db import Database
 from .locations import BENCHMARK_LOCATION
+from .orchestrator import FileRunLock
 from .weathernext_canary import WeatherNextGCSCanaryError, read_fixed_snapshot
 
 
@@ -33,10 +34,11 @@ def persist_fixed_snapshot(
         )
 
     try:
-        database.insert_forecast_run(
-            run,
-            location_id=BENCHMARK_LOCATION.id,
-        )
+        with FileRunLock(database.lock_path):
+            database.insert_forecast_run(
+                run,
+                location_id=BENCHMARK_LOCATION.id,
+            )
     except Exception as exc:
         raise WeatherNextGCSPersistenceError(
             "WeatherNext GCS snapshot persistence failed closed"
